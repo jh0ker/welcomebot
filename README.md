@@ -2,7 +2,7 @@
 #### A Python Telegram Bot that greets everyone who joins a group chat
 
 It uses the Flask microframework and the [python-telegram-bot](https://github.com/leandrotoledo/python-telegram-bot) library. 
-It's based on this [example](https://github.com/sooyhwang/Simple-Echo-Telegram-Bot).
+It's based on this [example](https://github.com/sooyhwang/Simple-Echo-Telegram-Bot) and uses [pickledb](https://bitbucket.org/patx/pickledb) for basic persistence.
 
 The file is prepared to be run by anyone by filling out the blanks in the configuration. The bot currently runs on [@jh0ker_welcomebot](https://telegram.me/jh0ker_welcomebot)
 
@@ -10,8 +10,6 @@ The file is prepared to be run by anyone by filling out the blanks in the config
 * Python 3.4 (may work with earlier versions, untested)
 * [python-telegram-bot](https://github.com/leandrotoledo/python-telegram-bot) module (tested with version 2.8.7)
 * [Flask](http://flask.pocoo.org/) microframework (tested with version 0.10.1)
-* [pickleDB](https://pythonhosted.org/pickleDB/) module (tested with version 0.4)
-* [simplejson](https://pypi.python.org/pypi/simplejson/) module as a dependency of pickleDB (tested with version 3.8.0)
 
 ## How to use
 * Install the script
