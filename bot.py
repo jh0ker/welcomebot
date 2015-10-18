@@ -2,7 +2,7 @@
 
 import telegram
 from flask import Flask, request
-import pickledb
+import python3pickledb as pickledb
 
 # Configuration
 BOTNAME = 'examplebot'  # The name of the bot, without @
@@ -29,14 +29,14 @@ helptext  = 'Welcomes everyone that enters a group chat that this bot is a part 
 
 # Create database object
 global db
-db = pickledb.load('bot.db', False)
+db = pickledb.load('bot.db', True)
 
 # Welcome a user to the chat
 def welcome(update):
     chat_id = update.message.chat.id
     
     # Pull the custom message for this chat from the database
-    message = db.get(chat_id)
+    message = db.get(str(chat_id))
     
     # Use default message if there's no custom one set
     if message is None:
@@ -81,7 +81,7 @@ def message(update):
     message = ' '.join(text[1:])
     
     # Put message into database
-    db.set(chat_id, message)
+    db.set(str(chat_id), message)
     
     bot.sendMessage(chat_id=chat_id, text='Got it!')
     
