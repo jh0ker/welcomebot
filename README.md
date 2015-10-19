@@ -4,6 +4,8 @@
 It uses the Flask microframework and the [python-telegram-bot](https://github.com/leandrotoledo/python-telegram-bot) library. 
 It's based on this [example](https://github.com/sooyhwang/Simple-Echo-Telegram-Bot) and uses [pickledb](https://bitbucket.org/patx/pickledb) for basic persistence.
 
+Please also check out my other bots, [TexBot](https://github.com/jh0ker/texbot) and [GitBot](https://github.com/jh0ker/gitbot).
+
 The file is prepared to be run by anyone by filling out the blanks in the configuration. The bot currently runs on [@jh0ker_welcomebot](https://telegram.me/jh0ker_welcomebot)
 
 ## Required
