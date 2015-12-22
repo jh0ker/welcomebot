@@ -8,8 +8,8 @@ import python3pickledb as pickledb
 import traceback
 
 # Configuration
-BOTNAME = 'examplebot'
-TOKEN = 'TOKEN'
+BOTNAME = 'jh0ker_testbot'
+TOKEN = '148447715:AAHbczRui6gO3RBlKQ2IwU2hMd226LqZE90'
 BASE_URL = 'example.com'  # Domain name of your server, without
 # protocol. You may include a port, if you dont want to use 443.
 HOST = '0.0.0.0'  # Public IP Address of your server
@@ -31,7 +31,16 @@ help_text = 'Welcomes everyone that enters a group chat that this bot is a ' \
             'Please [rate me](http://storebot.me/bot/examplebot) :) ' \
             'Questions? Message my creator @exampleuser'
 
-# Create database object
+'''
+Create database object
+Database schema:
+<chat_id> -> welcome message
+<chat_id>_bye -> goodbye message
+<chat_id>_adm -> user id of the user who invited the bot
+<chat_id>_lck -> boolean if the bot is locked or unlocked
+
+chats -> list of chat ids where the bot has received messages in.
+'''
 db = pickledb.load('bot.db', True)
 
 if not db.get('chats'):
@@ -52,10 +61,15 @@ logger = logging.getLogger(__name__)
 
 
 def check(bot, update, override_lock=None):
+    """
+    Perform some checks on the update. If checks were successful, returns True,
+    else sends an error message to the chat and returns False.
+    """
+
     chat_id = update.message.chat_id
     chat_str = str(chat_id)
 
-    if chat_id > 0:
+    if update.message.chat.type == 'private':
         bot.sendMessage(chat_id=chat_id,
                         text='Please add me to a group first!')
         return False
@@ -71,8 +85,9 @@ def check(bot, update, override_lock=None):
     return True
 
 
-# Welcome a user to the chat
 def welcome(bot, update):
+    """ Welcomes a user to the chat """
+
     message = update.message
     chat_id = message.chat.id
     logger.debug('%s joined to chat %d (%s)'
@@ -95,8 +110,9 @@ def welcome(bot, update):
     bot.sendMessage(chat_id=chat_id, text=text)
 
 
-# Welcome a user to the chat
 def goodbye(bot, update):
+    """ Sends goodbye message when a user left the chat """
+
     message = update.message
     chat_id = message.chat.id
     logger.debug('%s left chat %d (%s)'
@@ -122,8 +138,12 @@ def goodbye(bot, update):
     bot.sendMessage(chat_id=chat_id, text=text)
 
 
-# Introduce the bot to a chat its been added to
 def introduce(bot, update):
+    """
+    Introduces the bot to a chat its been added to and saves the user id of the
+    user who invited us.
+    """
+
     chat_id = update.message.chat.id
     invited = update.message.from_user.id
 
@@ -140,8 +160,9 @@ def introduce(bot, update):
     bot.sendMessage(chat_id=chat_id, text=text)
 
 
-# Print help text
 def help(bot, update):
+    """ Prints help text """
+
     chat_id = update.message.chat.id
 
     bot.sendMessage(chat_id=chat_id,
@@ -150,8 +171,9 @@ def help(bot, update):
                     disable_web_page_preview=True)
 
 
-# Set custom message
 def set_welcome(bot, update, args):
+    """ Sets custom welcome message """
+
     chat_id = update.message.chat.id
 
     # Check admin privilege and group context
@@ -175,8 +197,8 @@ def set_welcome(bot, update, args):
     bot.sendMessage(chat_id=chat_id, text='Got it!')
 
 
-# Set custom message
 def set_goodbye(bot, update, args):
+    """ Enables and sets custom goodbye message """
     chat_id = update.message.chat.id
 
     # Check admin privilege and group context
@@ -201,6 +223,7 @@ def set_goodbye(bot, update, args):
 
 
 def disable_goodbye(bot, update):
+    """ Disables the goodbye message """
     chat_id = update.message.chat.id
 
     # Check admin privilege and group context
@@ -214,6 +237,8 @@ def disable_goodbye(bot, update):
 
 
 def lock(bot, update):
+    """ Locks the chat, so only the invitee can change settings """
+
     chat_id = update.message.chat.id
 
     # Check admin privilege and group context
@@ -227,6 +252,8 @@ def lock(bot, update):
 
 
 def unlock(bot, update):
+    """ Unlocks the chat, so everyone can change settings """
+
     chat_id = update.message.chat.id
 
     # Check admin privilege and group context
@@ -240,7 +267,12 @@ def unlock(bot, update):
 
 
 def empty_message(bot, update):
-    # Keep chatlist
+    """
+    Empty messages could be status messages, so we check them if there is a new
+    group member, someone left the chat or if the bot has been added somewhere.
+    """
+
+    # Keep list of chats
     chats = db.get('chats')
 
     if update.message.chat.id not in chats:
@@ -263,6 +295,12 @@ def empty_message(bot, update):
 
 
 def broadcast(bot, update, args):
+    """
+    CLI command handler to send a broadcast message to all entries in the chat
+    list. Used to send information about updates. Deleted or blocked chats will
+    be deleted.
+    """
+
     chats = db.get('chats')
     text = ' '.join(args)
 
@@ -287,8 +325,10 @@ def broadcast(bot, update, args):
     else:
         print("Chat list down to <25% - something seems to be wrong!")
 
+
 def set_log_level(bot, update, args):
-    chats = db.get('chats')
+    """ Another CLI command. Changes the logging level for the console. """
+
     level = args[0]
 
     if level == "DEBUG":
@@ -308,11 +348,15 @@ def set_log_level(bot, update, args):
 
 
 def chatcount(bot, update):
+    """ CLI command to print the amount of chats we're in """
+
     chats = db.get('chats')
     print("Added to %s chats." % len(chats))
 
 
 def error(bot, update, error):
+    """ Error handling """
+
     if isinstance(error, TelegramError)\
             and error.message == "Unauthorized"\
             or "PEER_ID_INVALID" in error.message\
@@ -330,7 +374,7 @@ def error(bot, update, error):
 
 def main():
     # Create the EventHandler and pass it your bot's token.
-    updater = Updater(TOKEN, workers=2)
+    updater = Updater(TOKEN)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
