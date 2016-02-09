@@ -8,13 +8,14 @@ import python3pickledb as pickledb
 import traceback
 
 # Configuration
-BOTNAME = 'jh0ker_testbot'
-TOKEN = '148447715:AAHbczRui6gO3RBlKQ2IwU2hMd226LqZE90'
+BOTNAME = 'examplebot'
+TOKEN = 'TOKEN'
+
+# Fill these if you want to use webhook
 BASE_URL = 'example.com'  # Domain name of your server, without
 # protocol. You may include a port, if you dont want to use 443.
 HOST = '0.0.0.0'  # Public IP Address of your server
 PORT = 5002  # Port on which the Webhook should listen on
-
 CERT = 'cert.pem'
 CERT_KEY = 'key.key'
 
@@ -38,9 +39,11 @@ Database schema:
 <chat_id>_bye -> goodbye message
 <chat_id>_adm -> user id of the user who invited the bot
 <chat_id>_lck -> boolean if the bot is locked or unlocked
+<chat_id>_quiet -> boolean if the bot is quieted
 
 chats -> list of chat ids where the bot has received messages in.
 '''
+# Create database object
 db = pickledb.load('bot.db', True)
 
 if not db.get('chats'):
@@ -50,12 +53,8 @@ if not db.get('chats'):
 root = logging.getLogger()
 root.setLevel(logging.DEBUG)
 
-ch = logging.StreamHandler(sys.stdout)
-ch.setLevel(logging.INFO)
-formatter = \
-    logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-root.addHandler(ch)
+logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +68,7 @@ def check(bot, update, override_lock=None):
     chat_id = update.message.chat_id
     chat_str = str(chat_id)
 
-    if update.message.chat.type == 'private':
+    if chat_id > 0:
         bot.sendMessage(chat_id=chat_id,
                         text='Please add me to a group first!')
         return False
@@ -78,13 +77,15 @@ def check(bot, update, override_lock=None):
         else db.get(chat_str + '_lck')
 
     if locked and db.get(chat_str + '_adm') != update.message.from_user.id:
-        bot.sendMessage(chat_id=chat_id, text='Sorry, only the person who '
-                                              'invited me can do that.')
+        if not db.get(chat_str + '_quiet'):
+            bot.sendMessage(chat_id=chat_id, text='Sorry, only the person who '
+                                                  'invited me can do that.')
         return False
 
     return True
 
 
+# Welcome a user to the chat
 def welcome(bot, update):
     """ Welcomes a user to the chat """
 
@@ -110,6 +111,7 @@ def welcome(bot, update):
     bot.sendMessage(chat_id=chat_id, text=text)
 
 
+# Welcome a user to the chat
 def goodbye(bot, update):
     """ Sends goodbye message when a user left the chat """
 
@@ -138,6 +140,7 @@ def goodbye(bot, update):
     bot.sendMessage(chat_id=chat_id, text=text)
 
 
+# Introduce the bot to a chat its been added to
 def introduce(bot, update):
     """
     Introduces the bot to a chat its been added to and saves the user id of the
@@ -160,6 +163,7 @@ def introduce(bot, update):
     bot.sendMessage(chat_id=chat_id, text=text)
 
 
+# Print help text
 def help(bot, update):
     """ Prints help text """
 
@@ -171,6 +175,7 @@ def help(bot, update):
                     disable_web_page_preview=True)
 
 
+# Set custom message
 def set_welcome(bot, update, args):
     """ Sets custom welcome message """
 
@@ -197,8 +202,10 @@ def set_welcome(bot, update, args):
     bot.sendMessage(chat_id=chat_id, text='Got it!')
 
 
+# Set custom message
 def set_goodbye(bot, update, args):
     """ Enables and sets custom goodbye message """
+
     chat_id = update.message.chat.id
 
     # Check admin privilege and group context
@@ -224,6 +231,7 @@ def set_goodbye(bot, update, args):
 
 def disable_goodbye(bot, update):
     """ Disables the goodbye message """
+
     chat_id = update.message.chat.id
 
     # Check admin privilege and group context
@@ -251,6 +259,36 @@ def lock(bot, update):
     bot.sendMessage(chat_id=chat_id, text='Got it!')
 
 
+def quiet(bot, update):
+    """ Quiets the chat, so no error messages will be sent """
+
+    chat_id = update.message.chat.id
+
+    # Check admin privilege and group context
+    if not check(bot, update, override_lock=True):
+        return
+
+    # Lock the bot for this chat
+    db.set(str(chat_id) + '_quiet', True)
+
+    bot.sendMessage(chat_id=chat_id, text='Got it!')
+
+
+def unquiet(bot, update):
+    """ Unquiets the chat """
+
+    chat_id = update.message.chat.id
+
+    # Check admin privilege and group context
+    if not check(bot, update, override_lock=True):
+        return
+
+    # Lock the bot for this chat
+    db.set(str(chat_id) + '_quiet', False)
+
+    bot.sendMessage(chat_id=chat_id, text='Got it!')
+
+
 def unlock(bot, update):
     """ Unlocks the chat, so everyone can change settings """
 
@@ -272,7 +310,7 @@ def empty_message(bot, update):
     group member, someone left the chat or if the bot has been added somewhere.
     """
 
-    # Keep list of chats
+    # Keep chatlist
     chats = db.get('chats')
 
     if update.message.chat.id not in chats:
@@ -304,8 +342,6 @@ def broadcast(bot, update, args):
     chats = db.get('chats')
     text = ' '.join(args)
 
-    chat_length = len(chats)
-
     for chat_id in chats:
         print("Messaging chat %d" % chat_id)
         try:
@@ -313,17 +349,17 @@ def broadcast(bot, update, args):
         except TelegramError as te:
             logger.warn(te)
             chats.remove(chat_id)
-            logger.info("Removed chat_id %s from chat list.")
+            logger.info("Removed chat_id %s from chat list." % chat_id)
 
         except:
             logger.warn("Error on chat_id %d:" % chat_id)
             traceback.print_exc()
 
-    if len(chats) > (chat_length / 4):
+    if len(chats) > 25:
         db.set('chats', chats)
         print("Broadcasted message!")
     else:
-        print("Chat list down to <25% - something seems to be wrong!")
+        print("Not deleted chat list - something seems to be wrong!")
 
 
 def set_log_level(bot, update, args):
@@ -343,43 +379,47 @@ def set_log_level(bot, update, args):
         logger.error("Unkown logging level.")
         return
 
-    ch.setLevel(level)
+    logging.basicConfig(level=level,
+                        format='%(asctime)s - %(name)s - '
+                               '%(levelname)s - %(message)s')
     logger.log(level, "Set logging level!")
 
 
 def chatcount(bot, update):
-    """ CLI command to print the amount of chats we're in """
+    """ CLI command to print the amount of groups we're in """
 
     chats = db.get('chats')
-    print("Added to %s chats." % len(chats))
+    print("Added to %s groups." % len([chat for chat in chats if chat < 0]))
 
 
-def error(bot, update, error):
+def error(bot, update, error, **kwargs):
     """ Error handling """
 
-    if isinstance(error, TelegramError)\
-            and error.message == "Unauthorized"\
-            or "PEER_ID_INVALID" in error.message\
-            and isinstance(update, Update):
+    try:
+        if isinstance(error, TelegramError)\
+                and error.message == "Unauthorized"\
+                or "PEER_ID_INVALID" in error.message\
+                and isinstance(update, Update):
 
-        chats = db.get('chats')
-        chats.remove(update.message.chat_id)
-        db.set('chats', chats)
-        logger.info('Removed chat_id %s from chat list'
-                    % update.message.chat_id)
-    else:
-        logger.error("An error (%s) occurred: %s"
-                     % (type(error), error.message))
+            chats = db.get('chats')
+            chats.remove(update.message.chat_id)
+            db.set('chats', chats)
+            logger.info('Removed chat_id %s from chat list'
+                        % update.message.chat_id)
+        else:
+            logger.error("An error (%s) occurred: %s"
+                         % (type(error), error.message))
+    except:
+        pass
 
 
 def main():
-    # Create the EventHandler and pass it your bot's token.
-    updater = Updater(TOKEN)
+    # Create the Updater and pass it your bot's token.
+    updater = Updater(TOKEN, workers=2)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
-    # Telegram message handlers
     dp.addTelegramCommandHandler("start", help)
     dp.addTelegramCommandHandler("help", help)
     dp.addTelegramCommandHandler('welcome', set_welcome)
@@ -387,10 +427,11 @@ def main():
     dp.addTelegramCommandHandler('disable_goodbye', disable_goodbye)
     dp.addTelegramCommandHandler("lock", lock)
     dp.addTelegramCommandHandler("unlock", unlock)
+    dp.addTelegramCommandHandler("quiet", quiet)
+    dp.addTelegramCommandHandler("unquiet", unquiet)
 
     dp.addTelegramRegexHandler('^$', empty_message)
 
-    # Command line handlers
     dp.addStringCommandHandler('broadcast', broadcast)
     dp.addStringCommandHandler('level', set_log_level)
     dp.addStringCommandHandler('count', chatcount)
@@ -398,24 +439,16 @@ def main():
     dp.addErrorHandler(error)
 
     # Start the Bot and store the update Queue, so we can insert updates
-    update_queue = updater.start_polling(poll_interval=1, timeout=10)
+    update_queue = updater.start_polling(poll_interval=1, timeout=5)
 
-    # Alternatively, run with webhook:
     '''
+    # Alternatively, run with webhook:
     updater.bot.setWebhook(webhook_url='https://%s/%s' % (BASE_URL, TOKEN))
 
-    # In my case, SSL is handled by a reverse proxy which is configured with a
-    # subdomain to deliver to port 5002:
+    # Or, if SSL is handled by a reverse proxy, the webhook URL is already set
+    # and the reverse proxy is configured to deliver directly to port 6000:
 
     update_queue = updater.start_webhook(HOST, PORT, url_path=TOKEN)
-
-    # Else, you need to pass the cert and keyfiles as well:
-
-    # update_queue = updater.start_webhook(HOST,
-    #                                      PORT,
-    #                                      cert=CERT,
-    #                                      key=CERT_KEY,
-    #                                      url_path=TOKEN)
     '''
 
     # Start CLI-Loop
