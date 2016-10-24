@@ -15,6 +15,7 @@ import python3pickledb as pickledb
 # Configuration
 BOTNAME = 'usernameofbot'
 TOKEN = 'TOKEN'
+BOTAN_TOKEN = 'BOTANTOKEN'
 
 help_text = 'Welcomes everyone that enters a group chat that this bot is a ' \
             'part of. By default, only the person who invited the bot into ' \
@@ -363,11 +364,15 @@ def error(bot, update, error, **kwargs):
         pass
 
 
-botan = Botan('XZY-HRoWfG_AJEimJi47Ku0bWwJDCbAC')
-
+botan = None
+if BOTAN_TOKEN != 'BOTANTOKEN':
+    botan = Botan(BOTAN_TOKEN)
 
 @run_async
 def stats(bot, update, **kwargs):
+    if not botan:
+        return
+
     if botan.track(update.message):
         logger.debug("Tracking with botan.io successful")
     else:
