@@ -11,5 +11,5 @@ The file is prepared to be run by anyone by filling out the blanks in the config
 
 ## How to use
 * Clone the repo
-* Edit `TOKEN` in `bot.py`
+* Edit `TOKEN` and `BOTNAME` in `bot.py`
 * Follow Bot instructions
