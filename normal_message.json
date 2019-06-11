@@ -6,14 +6,16 @@
     "id": -331276130,
     "type": "group",
     "title": "Welcome",
-    "all_members_are_administrators": True},
+    "all_members_are_administrators": True,
+  },
   "text": "/welcome",
   "entities":
   [
     {
       "type": "bot_command",
       "offset": 0,
-      "length": 27}
+      "length": 27,
+    }
   ],
   "caption_entities": [],
   "photo": [],
