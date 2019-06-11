@@ -28,11 +28,16 @@ logger = logging.getLogger(__name__)
 
 def help(update, context):
     """Help message"""
-    help_text = ("/flip - Бросить монетку (Орёл или Решка);\n"
-                 "/myiq - Мой IQ (0 - 200);\n"
-                 "/muhdick - Длина моего шланга (0 - 25);\n"
-                 "/echo - Получить ответ своим же сообщением;\n"
-                 "/help - Это меню;\n")
+    help_text = (
+        "/echo - Получить ответ своим же сообщением;\n"
+        "/help - Это меню;\n"
+        "\n"
+        "Генераторы чисел:\n"
+        "/flip - Бросить монетку (Орёл или Решка);\n"
+        "/myiq - Мой IQ (0 - 200);\n"
+        "/muhdick - Длина моего шланга (0 - 25);\n"
+        "/random - Случайное число в выбранном диапазоне, включая концы."
+                 )
     context.bot.send_message(chat_id=update.message.chat_id, text=help_text)
 
 
@@ -40,7 +45,6 @@ def welcome(update, context):
     """Welcome message for the user"""
     # Get the message, id, user information.
     message = update.message
-    print(message)
     chat_id = message.chat.id
     logger.info('%s joined to chat %d (%s)'
                 % (escape(message.new_chat_members[0].first_name),
@@ -104,9 +108,22 @@ def muhdick(update, context):
     else:
         context.bot.send_message(chat_id=update.message.chat_id, text=f"Длина твоего шланга {muh_dick} см! (0 - 25)")
 
+def randomnumber(update, context):
+    """Return a random number between two integers"""
+    args = update.message.text[13:].split()
+    if len(args) == 2:
+        try:
+            arg1, arg2 = int(args[0]), int(args[1])
+            generated_number = random.randint(arg1, arg2)
+            context.bot.send_message(chat_id=update.message.chat_id, text=f"Выпало {generated_number}.")
+        except ValueError:
+            context.bot.send_message(chat_id=update.message.chat_id, text='Аргументы неверны. Должны быть два числа.')
+    else:
+        pass
 
 def image(update, context):
     """Return an image"""
+    # TODO - Make a random image from imgur using their API.
     link = 'https://imgur.com/gallery/F4IKheK'
     context.bot.send_message(chat_id=update.message.chat_id, text=link)
 
@@ -118,6 +135,7 @@ def error(update, context):
 
 def main():
     """Start the bot."""
+    # TODO - fix a bug when additional bots break the commands of this bot
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
@@ -133,6 +151,7 @@ def main():
     dp.add_handler(CommandHandler("flip", flip))
     dp.add_handler(CommandHandler("myiq", myiq))
     dp.add_handler(CommandHandler("muhdick", muhdick))
+    dp.add_handler(CommandHandler("randomnumber", randomnumber))
 
     # add welcomer
     dp.add_handler(MessageHandler(Filters.status_update.new_chat_members, empty_message))
