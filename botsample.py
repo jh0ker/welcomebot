@@ -199,7 +199,7 @@ def set_welcome(bot, update, args):
 
     # Only continue if there's a message
     if not message:
-        send_async(bot, chat_id=chat_id, 
+        send_async(bot, chat_id=chat_id,
                    text='You need to send a message, too! For example:\n'
                         '<code>/welcome Hello $username, welcome to '
                         '$title!</code>',
@@ -227,7 +227,7 @@ def set_goodbye(bot, update, args):
 
     # Only continue if there's a message
     if not message:
-        send_async(bot, chat_id=chat_id, 
+        send_async(bot, chat_id=chat_id,
                    text='You need to send a message, too! For example:\n'
                         '<code>/goodbye Goodbye, $username!</code>',
                    parse_mode=ParseMode.HTML)
