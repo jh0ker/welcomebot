@@ -12,6 +12,7 @@ bot.
 import logging
 import random
 from html import escape
+import requests
 
 from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
 
@@ -29,7 +30,6 @@ def help(update, context):
                 "/echo - Получить ответ своим же сообщением;" \
                 ""
     context.bot.send_message(chat_id=update.message.chat_id, text=help_text)
-
 
 def welcome(update, context):
     """Welcome message for the user"""
@@ -73,14 +73,13 @@ def echo(update, context):
 
 def flip(update, context):
     """Start message"""
-    flip_outcome = random.choice['Орёл!', 'Решка!']
+    flip_outcome = random.choice(['Орёл!', 'Решка!'])
     context.bot.send_message(chat_id=update.message.chat_id, text=flip_outcome)
 
-
-def unknown(update, context):
-    context.bot.send_message(chat_id=update.message.chat_id,
-                             text="Sorry, I didn't understand that command. Please, use /help if you are unsure")
-
+def image(update,context):
+    """Return an image"""
+    link = 'https://imgur.com/gallery/F4IKheK'
+    context.bot.send_message(chat_id=update.message.chat_id, text=link)
 
 def error(update, context):
     """Log Errors caused by Updates."""
@@ -92,7 +91,7 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    TOKEN = "870603098:AAGkX9YkwtBFU1pMyugoPDia8UNC4XOOiZk"
+    TOKEN = ""
     updater = Updater(TOKEN, use_context=True)
 
     # Get the dispatcher to register handlers
@@ -103,12 +102,10 @@ def main():
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("echo", echo))
     dp.add_handler(CommandHandler("flip", flip))
+    dp.add_handler(CommandHandler("random", random))
 
     # add welcomer
     dp.add_handler(MessageHandler(Filters.status_update.new_chat_members, empty_message))
-
-    # filter unknown
-    dp.add_handler(MessageHandler(Filters.command, unknown))
 
     # log all errors
     dp.add_error_handler(error)
