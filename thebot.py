@@ -38,7 +38,7 @@ def help(update, context):
         "/muhdick - Длина моего шланга (0 - 25);\n"
         "/random - Случайное число в выбранном диапазоне, включая концы."
                  )
-    context.bot.send_message(chat_id=update.message.chat_id, text=help_text)
+    update.message.reply_text(help_text)
 
 
 def welcome(update, context):
@@ -54,7 +54,7 @@ def welcome(update, context):
     reply_end = random.choice(['Имя, Фамилия. Изображения ног НИ В КОЕМ СЛУЧАЕ не кидать.', 'Имя, Фамилия, фото ног.'])
     reply = (f"Приветствуем вас в Думерском Чате, {message.new_chat_members[0].first_name}!\n"
              f"С вас {reply_end}")
-    context.bot.send_message(chat_id=update.message.chat_id, text=reply)
+    update.message.reply_text(reply)
 
 
 def empty_message(update, context):
@@ -77,13 +77,13 @@ def empty_message(update, context):
 def echo(update, context):
     """Echo back the message"""
     return_echo = update.message.text[6:]
-    context.bot.send_message(chat_id=update.message.chat_id, text=return_echo)
+    update.message.reply_text(text=return_echo)
 
 
 def flip(update, context):
     """Start message"""
     flip_outcome = random.choice(['Орёл!', 'Решка!'])
-    context.bot.send_message(chat_id=update.message.chat_id, text=flip_outcome)
+    update.message.reply_text(flip_outcome)
 
 
 def myiq(update, context):
@@ -97,16 +97,16 @@ def myiq(update, context):
         message = f"Твой уровень IQ {iq_level}. Ты умный, братишка! (0 - 200)"
     else:
         message = f"Твой уровень IQ {iq_level}. Ты гений, братишка! (0 - 200)"
-    context.bot.send_message(chat_id=update.message.chat_id, text=message)
+    update.message.reply_text(message)
 
 
 def muhdick(update, context):
     """Return dick size in cm (0-25)"""
     muh_dick = random.randint(0, 25)
     if muh_dick == 0:
-        context.bot.send_message(chat_id=update.message.chat_id, text='У тебя нет члена (0), хаха! (0 - 25)')
+        update.message.reply_text('У тебя нет члена (0), хаха! (0 - 25)')
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text=f"Длина твоего шланга {muh_dick} см! (0 - 25)")
+        update.message.reply_text(f"Длина твоего шланга {muh_dick} см! (0 - 25)")
 
 def randomnumber(update, context):
     """Return a random number between two integers"""
@@ -115,9 +115,9 @@ def randomnumber(update, context):
         try:
             arg1, arg2 = int(args[0]), int(args[1])
             generated_number = random.randint(arg1, arg2)
-            context.bot.send_message(chat_id=update.message.chat_id, text=f"Выпало {generated_number}.")
+            update.message.reply_text(f"Выпало {generated_number}.")
         except ValueError:
-            context.bot.send_message(chat_id=update.message.chat_id, text='Аргументы неверны. Должны быть два числа.')
+            update.message.reply_text('Аргументы неверны. Должны быть два числа.')
     else:
         pass
 
@@ -125,7 +125,7 @@ def image(update, context):
     """Return an image"""
     # TODO - Make a random image from imgur using their API.
     link = 'https://imgur.com/gallery/F4IKheK'
-    context.bot.send_message(chat_id=update.message.chat_id, text=link)
+    update.message.reply_text(link)
 
 
 def error(update, context):
