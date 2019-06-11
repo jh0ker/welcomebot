@@ -30,7 +30,7 @@ def help(update, context):
     """Help message"""
     help_text = ("/flip - Бросить монетку (Орёл или Решка);\n"
                  "/myiq - Мой IQ (0 - 200);\n"
-                 "/muhdick - Длина моего шланга (0 - 25);\n" 
+                 "/muhdick - Длина моего шланга (0 - 25);\n"
                  "/echo - Получить ответ своим же сообщением;\n"
                  "/help - Это меню;\n")
     context.bot.send_message(chat_id=update.message.chat_id, text=help_text)
@@ -63,7 +63,7 @@ def empty_message(update, context):
     # someone entered chat
     if update.message.new_chat_members is not None:
         # update was added to a group chat
-        if update.message.new_chat_members[0].is_bot == True:
+        if update.message.new_chat_members[0].is_bot is True:
             return
         # Another user joined the chat
         else:
@@ -81,26 +81,29 @@ def flip(update, context):
     flip_outcome = random.choice(['Орёл!', 'Решка!'])
     context.bot.send_message(chat_id=update.message.chat_id, text=flip_outcome)
 
+
 def myiq(update, context):
     """Return IQ level (0-200)"""
     iq_level = random.randint(0, 200)
     if iq_level < 85:
-        message = f"Твой уровень IQ {iq_level}. Грустно за тебя, братишка."
+        message = f"Твой уровень IQ {iq_level}. Грустно за тебя, братишка. (0 - 200)"
     elif 85 <= iq_level <= 115:
-        message = f"Твой уровень IQ {iq_level}. Ты средний, братишка."
+        message = f"Твой уровень IQ {iq_level}. Ты норми, братишка. (0 - 200)"
     elif 115 < iq_level <= 125:
-        message = f"Твой уровень IQ {iq_level}. Ты умный, братишка!"
+        message = f"Твой уровень IQ {iq_level}. Ты умный, братишка! (0 - 200)"
     else:
-        message = f"Твой уровень IQ {iq_level}. Ты гений, братишка!"
+        message = f"Твой уровень IQ {iq_level}. Ты гений, братишка! (0 - 200)"
     context.bot.send_message(chat_id=update.message.chat_id, text=message)
+
 
 def muhdick(update, context):
     """Return dick size in cm (0-25)"""
     muh_dick = random.randint(0, 25)
     if muh_dick == 0:
-        context.bot.send_message(chat_id=update.message.chat_id, text='У тебя нет члена (0), хаха!')
+        context.bot.send_message(chat_id=update.message.chat_id, text='У тебя нет члена (0), хаха! (0 - 25)')
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text=f"Длина твоего шланга {muh_dick} см!")
+        context.bot.send_message(chat_id=update.message.chat_id, text=f"Длина твоего шланга {muh_dick} см! (0 - 25)")
+
 
 def image(update, context):
     """Return an image"""
