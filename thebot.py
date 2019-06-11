@@ -1,12 +1,5 @@
 """
-Simple Bot to reply to Telegram messages.
-First, a few handler functions are defined. Then, those functions are passed to
-the Dispatcher and registered at their respective places.
-Then, the bot is started and runs until we press Ctrl-C on the command line.
-Usage:
-Basic Echobot example, repeats messages.
-Press Ctrl-C on the command line or send a signal to the process to stop the
-bot.
+Authors (telegrams) - @doitforgachi, @dovaogedot
 """
 
 import logging
@@ -29,6 +22,7 @@ logger = logging.getLogger(__name__)
 def help(update, context):
     """Help message"""
     help_text = (
+        "Пример комманды для бота: /help@random_welcome_bot\n"
         "/echo - Получить ответ своим же сообщением;\n"
         "/help - Это меню;\n"
         "\n"
@@ -37,7 +31,7 @@ def help(update, context):
         "/myiq - Мой IQ (0 - 200);\n"
         "/muhdick - Длина моего шланга (0 - 25);\n"
         "/random - Случайное число в выбранном диапазоне, включая концы."
-                 )
+        )
     update.message.reply_text(help_text)
 
 
@@ -108,6 +102,7 @@ def muhdick(update, context):
     else:
         update.message.reply_text(f"Длина твоего шланга {muh_dick} см! (0 - 25)")
 
+
 def randomnumber(update, context):
     """Return a random number between two integers"""
     args = update.message.text[13:].split()
@@ -120,6 +115,7 @@ def randomnumber(update, context):
             update.message.reply_text('Аргументы неверны. Должны быть два числа.')
     else:
         pass
+
 
 def image(update, context):
     """Return an image"""
