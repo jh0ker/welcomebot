@@ -6,6 +6,7 @@ import logging
 import random
 from html import escape
 from os import environ
+import requests
 
 from telegram.ext import CommandHandler
 from telegram.ext import Filters
@@ -29,6 +30,8 @@ def help(update, context):
         "/echo [сообщение]- Получить ответ своим же сообщением;\n"
         "/myiq - Мой IQ (0 - 200);\n"
         "/muhdick - Длина моего шланга (0 - 25);\n"
+        "/cat - Случайное фото котика;\n"
+        "/dog - Случайное фото собачки;\n"
         "\n"
         "Генераторы чисел:\n"
         "/flip - Бросить монетку (Орёл или Решка);\n"
@@ -134,13 +137,18 @@ def randomnumber(update, context):
     else:
         pass
 
+def dog(update, context):
+    """Get a random dog image"""
+    while True:
+        response = requests.get('https://random.dog/woof.json').json()
+        if 'mp4' not in response['url']:
+            break
+    update.message.reply_text(photo=response['url'])
 
-def image(update, context):
-    """Return an image"""
-    # TODO - Make a random image from imgur using their API.
-    link = 'https://imgur.com/gallery/F4IKheK'
-    update.message.reply_text(text=link)
-
+def cat(update, context):
+    """Get a random cat image"""
+    response = requests.get('http://aws.random.cat/meow').json()
+    update.message.reply_text(photo=response['url'])
 
 def error(update, context):
     """Log Errors caused by Updates."""
@@ -165,6 +173,8 @@ def main():
     dp.add_handler(CommandHandler("myiq", myiq))
     dp.add_handler(CommandHandler("muhdick", muhdick))
     dp.add_handler(CommandHandler("randomnumber", randomnumber))
+    dp.add_handler(CommandHandler("randomdog", dog))
+    dp.add_handler(CommandHandler("randomcat", cat))
 
     # add welcomer
     dp.add_handler(MessageHandler(Filters.status_update.new_chat_members, empty_message))
