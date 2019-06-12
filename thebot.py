@@ -5,6 +5,7 @@ Authors (telegrams) - @doitforgachi, @dovaogedot
 import logging
 import random
 from html import escape
+from os import environ
 
 from telegram.ext import CommandHandler
 from telegram.ext import Filters
@@ -135,7 +136,7 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    TOKEN = ""
+    TOKEN = environ.get("TG_BOT_TOKEN")
     updater = Updater(TOKEN, use_context=True)
 
     # Get the dispatcher to register handlers
