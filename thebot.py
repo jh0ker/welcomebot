@@ -39,7 +39,7 @@ def help(update, context):
         "\n"
         "Генераторы чисел:\n"
         "/flip - Бросить монетку (Орёл или Решка);\n"
-        "/random [число1] [число2] - Случайное число в выбранном диапазоне, включая концы."
+        "/random [число1] [число2] - Случайное число в выбранном диапазоне, включая концы;"
     )
     bot.send_message(chat_id=update.message.chat_id,
                      text=help_text,
@@ -199,8 +199,7 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    # TOKEN = environ.get("TG_BOT_TOKEN")
-    TOKEN = "832751678:AAFZo70Y2icygBFO9CU_I4TeJFa_WONfANU"
+    TOKEN = environ.get("TG_BOT_TOKEN")
 
     updater = Updater(TOKEN, use_context=True)
 
