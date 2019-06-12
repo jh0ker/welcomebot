@@ -24,16 +24,17 @@ def help(update, context):
     """Help message"""
     help_text = (
         "Пример комманды для бота: /help@random_welcome_bot\n"
-        "/echo - Получить ответ своим же сообщением;\n"
+        "[] в самой команде не использовать.\n"
+        "/echo [сообщение]- Получить ответ своим же сообщением;\n"
         "/help - Это меню;\n"
         "\n"
         "Генераторы чисел:\n"
         "/flip - Бросить монетку (Орёл или Решка);\n"
         "/myiq - Мой IQ (0 - 200);\n"
         "/muhdick - Длина моего шланга (0 - 25);\n"
-        "/random - Случайное число в выбранном диапазоне, включая концы."
+        "/random [число1] [число2] - Случайное число в выбранном диапазоне, включая концы."
         )
-    update.message.reply_text(help_text)
+    update.message.reply_text(text=help_text)
 
 
 def welcome(update, context):
@@ -49,7 +50,7 @@ def welcome(update, context):
     reply_end = random.choice(['Имя, Фамилия. Изображения ног НИ В КОЕМ СЛУЧАЕ не кидать.', 'Имя, Фамилия, фото ног.'])
     reply = (f"Приветствуем вас в Думерском Чате, {message.new_chat_members[0].first_name}!\n"
              f"С вас {reply_end}")
-    update.message.reply_text(reply)
+    update.message.reply_text(text=reply)
 
 
 def empty_message(update, context):
@@ -68,6 +69,10 @@ def empty_message(update, context):
         else:
             return welcome(update, context)
 
+    # думер - хуюмер
+    if 'думер' in update.message.text.lower():
+        update.message.reply_text(text='хуюмер')
+
 
 def echo(update, context):
     """Echo back the message"""
@@ -78,7 +83,7 @@ def echo(update, context):
 def flip(update, context):
     """Start message"""
     flip_outcome = random.choice(['Орёл!', 'Решка!'])
-    update.message.reply_text(flip_outcome)
+    update.message.reply_text(text=flip_outcome)
 
 
 def myiq(update, context):
@@ -92,16 +97,16 @@ def myiq(update, context):
         message = f"Твой уровень IQ {iq_level}. Ты умный, братишка! (0 - 200)"
     else:
         message = f"Твой уровень IQ {iq_level}. Ты гений, братишка! (0 - 200)"
-    update.message.reply_text(message)
+    update.message.reply_text(text=message)
 
 
 def muhdick(update, context):
     """Return dick size in cm (0-25)"""
     muh_dick = random.randint(0, 25)
     if muh_dick == 0:
-        update.message.reply_text('У тебя нет члена (0), хаха! (0 - 25)')
+        update.message.reply_text(text='У тебя нет члена (0), хаха! (0 - 25)')
     else:
-        update.message.reply_text(f"Длина твоего шланга {muh_dick} см! (0 - 25)")
+        update.message.reply_text(text=f"Длина твоего шланга {muh_dick} см! (0 - 25)")
 
 
 def randomnumber(update, context):
@@ -111,9 +116,9 @@ def randomnumber(update, context):
         try:
             arg1, arg2 = int(args[0]), int(args[1])
             generated_number = random.randint(arg1, arg2)
-            update.message.reply_text(f"Выпало {generated_number}.")
+            update.message.reply_text(text=f"Выпало {generated_number}.")
         except ValueError:
-            update.message.reply_text('Аргументы неверны. Должны быть два числа.')
+            update.message.reply_text(text='Аргументы неверны. Должны быть два числа.')
     else:
         pass
 
@@ -122,7 +127,7 @@ def image(update, context):
     """Return an image"""
     # TODO - Make a random image from imgur using their API.
     link = 'https://imgur.com/gallery/F4IKheK'
-    update.message.reply_text(link)
+    update.message.reply_text(text=link)
 
 
 def error(update, context):
@@ -132,7 +137,6 @@ def error(update, context):
 
 def main():
     """Start the bot."""
-    # TODO - fix a bug when additional bots break the commands of this bot
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
