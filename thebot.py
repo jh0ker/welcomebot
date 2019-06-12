@@ -6,8 +6,9 @@ import logging
 import random
 from html import escape
 from os import environ
-import requests
 
+import requests
+from bs4 import BeautifulSoup
 from telegram.ext import CommandHandler
 from telegram.ext import Filters
 from telegram.ext import MessageHandler
@@ -32,6 +33,7 @@ def help(update, context):
         "/muhdick - Длина моего шланга (0 - 25);\n"
         "/cat - Случайное фото котика;\n"
         "/dog - Случайное фото собачки;\n"
+        "/dadjoke - Случайная dad joke;\n"
         "\n"
         "Генераторы чисел:\n"
         "/flip - Бросить монетку (Орёл или Решка);\n"
@@ -58,6 +60,7 @@ def welcome_user(update, context):
 
 def welcome_bot(update, context):
     """Welcome message for a bot"""
+    pass
 
 
 def empty_message(update, context):
@@ -137,6 +140,7 @@ def randomnumber(update, context):
     else:
         pass
 
+
 def dog(update, context):
     """Get a random dog image"""
     while True:
@@ -145,10 +149,20 @@ def dog(update, context):
             break
     update.message.reply_text(photo=response['url'])
 
+
 def cat(update, context):
     """Get a random cat image"""
     response = requests.get('http://aws.random.cat/meow').json()
     update.message.reply_text(photo=response['url'])
+
+
+def dadjoke(update, context):
+    """Get a random dad joke"""
+    response = requests.get('https://icanhazdadjoke.com/')
+    soup = BeautifulSoup(response.text, "lxml")
+    joke = str(soup.find_all('meta')[-5])[15:][:-30]
+    update.message.reply_text(text=joke)
+
 
 def error(update, context):
     """Log Errors caused by Updates."""
@@ -175,6 +189,7 @@ def main():
     dp.add_handler(CommandHandler("randomnumber", randomnumber))
     dp.add_handler(CommandHandler("randomdog", dog))
     dp.add_handler(CommandHandler("randomcat", cat))
+    dp.add_handler(CommandHandler("dadjoke", dadjoke))
 
     # add welcomer
     dp.add_handler(MessageHandler(Filters.status_update.new_chat_members, empty_message))
