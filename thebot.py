@@ -41,21 +41,21 @@ def help(update, context):
         "/flip - Бросить монетку (Орёл или Решка);\n"
         "/random [число1] [число2] - Случайное число в выбранном диапазоне, включая концы."
     )
-    update.message.reply_text(text=help_text)
+    bot.send_message(chat_id=update.message.chat_id,
+                     text=help_text,
+                     reply_to_message_id=update.message.message_id)
 
 
 def welcome_user(update, context):
     """Welcome message for the user"""
     # Get the message, id, user information.
-    message = update.message
-    chat_id = message.chat.id
     logger.info('%s joined to chat %d (%s)'
-                % (escape(message.new_chat_members[0].first_name),
-                   chat_id,
-                   escape(message.chat.title)))
+                % (escape(update.message.new_chat_members[0].first_name),
+                   update.message.chat.id,
+                   escape(update.message.chat.title)))
     # Generate a reply
     reply_end = random.choice(['Имя, Фамилия. Изображения ног НИ В КОЕМ СЛУЧАЕ не кидать.', 'Имя, Фамилия, фото ног.'])
-    reply = (f"Приветствуем вас в Думерском Чате, {message.new_chat_members[0].first_name}!\n"
+    reply = (f"Приветствуем вас в Думерском Чате, {update.message.new_chat_members[0].first_name}!\n"
              f"С вас {reply_end}")
     bot.send_message(chat_id=update.message.chat_id,
                      text=reply,
@@ -72,7 +72,6 @@ def empty_message(update, context):
     Empty messages could be status messages, so we check them if there is a new
     group member.
     """
-
     # someone entered chat
     if update.message.new_chat_members is not None:
         # update was added to a group chat
