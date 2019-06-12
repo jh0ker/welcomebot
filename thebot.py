@@ -120,13 +120,13 @@ def muhdick(update, context):
     muh_dick = update.message.chat_id % 26
     if muh_dick == 0:
         bot.send_message(chat_id=update.message.chat_id,
-                         text='У тебя нет члена (0), хаха! (0 - 25)',
+                         text='У тебя нет члена (0 см) \U0001F62C! (0 - 25)',
                          reply_to_message_id=update.message.message_id)
     elif 1 <= muh_dick <= 11:
         bot.send_photo(chat_id=update.message.chat_id,
                        photo='https://st2.depositphotos.com/1525321/9473/i/950/depositphotos_94736512-stock-photo'
                              '-funny-weak-man-lifting-biceps.jpg',
-                       caption=f"Длина твоего стручка {muh_dick} см! (0 - 25)",
+                       caption=f"Длина твоего стручка {muh_dick} см \U0001F923! (0 - 25)",
                        reply_to_message_id=update.message.message_id)
     elif 12 <= muh_dick <= 17:
         print(type(update.message))
@@ -154,6 +154,11 @@ def randomnumber(update, context):
             bot.send_message(chat_id=update.message.chat_id,
                              text='Аргументы неверны. Должны быть два числа.',
                              reply_to_message_id=update.message.message_id)
+    else:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text='Неверное использование команды.\n'
+                              'Пример: /randomnumber 10 25',
+                         reply_to_message_id=update.message.message_id)
 
 
 def dog(update, context):
