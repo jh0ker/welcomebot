@@ -23,21 +23,21 @@ logger = logging.getLogger(__name__)
 def help(update, context):
     """Help message"""
     help_text = (
-        "Пример комманды для бота: /help@random_welcome_bot\n"
+        "Пример команды для бота: /help@random_welcome_bot\n"
         "[] в самой команде не использовать.\n"
-        "/echo [сообщение]- Получить ответ своим же сообщением;\n"
         "/help - Это меню;\n"
+        "/echo [сообщение]- Получить ответ своим же сообщением;\n"
+        "/myiq - Мой IQ (0 - 200);\n"
+        "/muhdick - Длина моего шланга (0 - 25);\n"
         "\n"
         "Генераторы чисел:\n"
         "/flip - Бросить монетку (Орёл или Решка);\n"
-        "/myiq - Мой IQ (0 - 200);\n"
-        "/muhdick - Длина моего шланга (0 - 25);\n"
         "/random [число1] [число2] - Случайное число в выбранном диапазоне, включая концы."
-        )
+    )
     update.message.reply_text(text=help_text)
 
 
-def welcome(update, context):
+def welcome_user(update, context):
     """Welcome message for the user"""
     # Get the message, id, user information.
     message = update.message
@@ -53,12 +53,15 @@ def welcome(update, context):
     update.message.reply_text(text=reply)
 
 
+def welcome_bot(update, context):
+    """Welcome message for a bot"""
+
+
 def empty_message(update, context):
     """
     Empty messages could be status messages, so we check them if there is a new
     group member.
     """
-    print(update.message)
 
     # someone entered chat
     if update.message.new_chat_members is not None:
@@ -67,11 +70,13 @@ def empty_message(update, context):
             return
         # Another user joined the chat
         else:
-            return welcome(update, context)
+            return welcome_user(update, context)
 
     # думер - хуюмер
     if 'думер' in update.message.text.lower():
         update.message.reply_text(text='хуюмер')
+
+    # user removed from chat message
 
 
 def echo(update, context):
@@ -88,7 +93,7 @@ def flip(update, context):
 
 def myiq(update, context):
     """Return IQ level (0-200)"""
-    iq_level = random.randint(0, 200)
+    iq_level = dict(update.message)['from']['id'] % 201
     if iq_level < 85:
         message = f"Твой уровень IQ {iq_level}. Грустно за тебя, братишка. (0 - 200)"
     elif 85 <= iq_level <= 115:
@@ -102,11 +107,18 @@ def myiq(update, context):
 
 def muhdick(update, context):
     """Return dick size in cm (0-25)"""
-    muh_dick = random.randint(0, 25)
+    muh_dick = dict(update.message)['from']['id'] % 26
     if muh_dick == 0:
         update.message.reply_text(text='У тебя нет члена (0), хаха! (0 - 25)')
+    elif 1 <= muh_dick <= 11:
+        update.message.reply_text(text=f"Длина твоего стручка {muh_dick} см! (0 - 25)",
+                                  photo='https://st2.depositphotos.com/1525321/9473/i/950/depositphotos_94736512'
+                                        '-stock-photo-funny-weak-man-lifting-biceps.jpg')
+    elif 12 <= muh_dick <= 17:
+        update.message.reply_text(text=f"Длина твоей палочки {muh_dick} см! (0 - 25)")
     else:
-        update.message.reply_text(text=f"Длина твоего шланга {muh_dick} см! (0 - 25)")
+        update.message.reply_text(text=f"Длина твоего шланга {muh_dick} см! (0 - 25)",
+                                  photo='https://www.thewrap.com//images/2013/11/SharayHayesExhibits-300.jpg')
 
 
 def randomnumber(update, context):
