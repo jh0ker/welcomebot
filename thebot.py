@@ -5,10 +5,10 @@ Authors (telegrams) - @doitforgachi, @dovaogedot
 import logging
 import random
 from html import escape
-from os import environ
 
 import requests
 from bs4 import BeautifulSoup
+from telegram import Bot
 from telegram.ext import CommandHandler
 from telegram.ext import Filters
 from telegram.ext import MessageHandler
@@ -21,12 +21,14 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
+bot = Bot("832751678:AAFZo70Y2icygBFO9CU_I4TeJFa_WONfANU")
+
 
 def help(update, context):
     """Help message"""
     help_text = (
         "Пример команды для бота: /help@random_welcome_bot\n"
-        "[] в самой команде не использовать.\n"
+        "[ ] в самой команде не использовать.\n"
         "/help - Это меню;\n"
         "/echo [сообщение]- Получить ответ своим же сообщением;\n"
         "/myiq - Мой IQ (0 - 200);\n"
@@ -55,7 +57,9 @@ def welcome_user(update, context):
     reply_end = random.choice(['Имя, Фамилия. Изображения ног НИ В КОЕМ СЛУЧАЕ не кидать.', 'Имя, Фамилия, фото ног.'])
     reply = (f"Приветствуем вас в Думерском Чате, {message.new_chat_members[0].first_name}!\n"
              f"С вас {reply_end}")
-    update.message.reply_text(text=reply)
+    bot.send_message(chat_id=update.message.chat_id,
+                     text=reply,
+                     reply_to_message_id=update.message.message_id)
 
 
 def welcome_bot(update, context):
@@ -78,28 +82,26 @@ def empty_message(update, context):
         else:
             return welcome_user(update, context)
 
-    # думер - хуюмер
-    if 'думер' in update.message.text.lower():
-        update.message.reply_text(text='хуюмер')
-
-    # user removed from chat message
-
 
 def echo(update, context):
     """Echo back the message"""
     return_echo = update.message.text[6:]
-    update.message.reply_text(text=return_echo)
+    bot.send_message(chat_id=update.message.chat_id,
+                     text=return_echo,
+                     reply_to_message_id=update.message.message_id)
 
 
 def flip(update, context):
-    """Start message"""
+    """Flip a Coin"""
     flip_outcome = random.choice(['Орёл!', 'Решка!'])
-    update.message.reply_text(text=flip_outcome)
+    bot.send_message(chat_id=update.message.chat_id,
+                     text=flip_outcome,
+                     reply_to_message_id=update.message.message_id)
 
 
 def myiq(update, context):
     """Return IQ level (0-200)"""
-    iq_level = dict(update.message)['from']['id'] % 201
+    iq_level = update.message.chat_id % 201
     if iq_level < 85:
         message = f"Твой уровень IQ {iq_level}. Грустно за тебя, братишка. (0 - 200)"
     elif 85 <= iq_level <= 115:
@@ -108,23 +110,34 @@ def myiq(update, context):
         message = f"Твой уровень IQ {iq_level}. Ты умный, братишка! (0 - 200)"
     else:
         message = f"Твой уровень IQ {iq_level}. Ты гений, братишка! (0 - 200)"
-    update.message.reply_text(text=message)
+    bot.send_message(chat_id=update.message.chat_id,
+                     text=message,
+                     reply_to_message_id=update.message.message_id)
 
 
 def muhdick(update, context):
     """Return dick size in cm (0-25)"""
-    muh_dick = dict(update.message)['from']['id'] % 26
+    muh_dick = update.message.chat_id % 26
     if muh_dick == 0:
-        update.message.reply_text(text='У тебя нет члена (0), хаха! (0 - 25)')
+        bot.send_message(chat_id=update.message.chat_id,
+                         text='У тебя нет члена (0), хаха! (0 - 25)',
+                         reply_to_message_id=update.message.message_id)
     elif 1 <= muh_dick <= 11:
-        update.message.reply_text(text=f"Длина твоего стручка {muh_dick} см! (0 - 25)",
-                                  photo='https://st2.depositphotos.com/1525321/9473/i/950/depositphotos_94736512'
-                                        '-stock-photo-funny-weak-man-lifting-biceps.jpg')
+        bot.send_photo(chat_id=update.message.chat_id,
+                       photo='https://st2.depositphotos.com/1525321/9473/i/950/depositphotos_94736512-stock-photo'
+                             '-funny-weak-man-lifting-biceps.jpg',
+                       caption=f"Длина твоего стручка {muh_dick} см! (0 - 25)",
+                       reply_to_message_id=update.message.message_id)
     elif 12 <= muh_dick <= 17:
-        update.message.reply_text(text=f"Длина твоей палочки {muh_dick} см! (0 - 25)")
+        print(type(update.message))
+        bot.send_message(chat_id=update.message.chat_id,
+                         reply_to_message_id=update.message.message_id,
+                         text=f"Длина твоей палочки {muh_dick} см! (0 - 25)")
     else:
-        update.message.reply_text(text=f"Длина твоего шланга {muh_dick} см! (0 - 25)",
-                                  photo='https://www.thewrap.com//images/2013/11/SharayHayesExhibits-300.jpg')
+        bot.send_photo(chat_id=update.message.chat_id,
+                       photo='https://www.thewrap.com//images/2013/11/SharayHayesExhibits-300.jpg',
+                       reply_to_message_id=update.message.message_id,
+                       caption=f"Длина твоего шланга {muh_dick} см! (0 - 25)")
 
 
 def randomnumber(update, context):
@@ -134,11 +147,13 @@ def randomnumber(update, context):
         try:
             arg1, arg2 = int(args[0]), int(args[1])
             generated_number = random.randint(arg1, arg2)
-            update.message.reply_text(text=f"Выпало {generated_number}.")
+            bot.send_message(chat_id=update.message.chat_id,
+                             text=f"Выпало {generated_number}.",
+                             reply_to_message_id=update.message.message_id)
         except ValueError:
-            update.message.reply_text(text='Аргументы неверны. Должны быть два числа.')
-    else:
-        pass
+            bot.send_message(chat_id=update.message.chat_id,
+                             text='Аргументы неверны. Должны быть два числа.',
+                             reply_to_message_id=update.message.message_id)
 
 
 def dog(update, context):
@@ -147,13 +162,17 @@ def dog(update, context):
         response = requests.get('https://random.dog/woof.json').json()
         if 'mp4' not in response['url']:
             break
-    update.message.reply_text(photo=response['url'])
+    bot.send_photo(chat_id=update.message.chat_id,
+                   photo=response['url'],
+                   reply_to_message_id=update.message.message_id, )
 
 
 def cat(update, context):
     """Get a random cat image"""
     response = requests.get('http://aws.random.cat/meow').json()
-    update.message.reply_text(photo=response['url'])
+    bot.send_photo(chat_id=update.message.chat_id,
+                   photo=response['file'],
+                   reply_to_message_id=update.message.message_id)
 
 
 def dadjoke(update, context):
@@ -161,7 +180,9 @@ def dadjoke(update, context):
     response = requests.get('https://icanhazdadjoke.com/')
     soup = BeautifulSoup(response.text, "lxml")
     joke = str(soup.find_all('meta')[-5])[15:][:-30]
-    update.message.reply_text(text=joke)
+    bot.send_message(chat_id=update.message.chat_id,
+                     reply_to_message_id=update.message.message_id,
+                     text=joke)
 
 
 def error(update, context):
@@ -174,7 +195,9 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    TOKEN = environ.get("TG_BOT_TOKEN")
+    # TOKEN = environ.get("TG_BOT_TOKEN")
+    TOKEN = "832751678:AAFZo70Y2icygBFO9CU_I4TeJFa_WONfANU"
+
     updater = Updater(TOKEN, use_context=True)
 
     # Get the dispatcher to register handlers
@@ -187,8 +210,8 @@ def main():
     dp.add_handler(CommandHandler("myiq", myiq))
     dp.add_handler(CommandHandler("muhdick", muhdick))
     dp.add_handler(CommandHandler("randomnumber", randomnumber))
-    dp.add_handler(CommandHandler("randomdog", dog))
-    dp.add_handler(CommandHandler("randomcat", cat))
+    dp.add_handler(CommandHandler("dog", dog))
+    dp.add_handler(CommandHandler("cat", cat))
     dp.add_handler(CommandHandler("dadjoke", dadjoke))
 
     # add welcomer

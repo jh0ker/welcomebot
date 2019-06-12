@@ -1,35 +1,43 @@
 {
-  "message_id": 52,
-  "date": 1560276152,
-  "chat":
+  "message_id": 106, 
+  "date": 1560351308, 
+  "chat": 
   {
-    "id": -331276130,
-    "type": "group",
-    "title": "Welcome",
-    "all_members_are_administrators": True,
-  },
-  "text": "/welcome",
-  "entities":
+    "id": -345800507, 
+    "type": "group", 
+    "title": "checkbot", 
+    "all_members_are_administrators": True
+  }, 
+  "text": "/muhdick@beta_tester_bot", 
+  "entities": 
   [
     {
-      "type": "bot_command",
-      "offset": 0,
-      "length": 27,
+      "type": "bot_command", 
+      "offset": 0, 
+      "length": 24
     }
-  ],
-  "caption_entities": [],
-  "photo": [],
-  "new_chat_members": [],
-  "new_chat_photo": [],
-  "delete_chat_photo": False,
-  "group_chat_created": False,
-  "supergroup_chat_created": False,
-  "channel_chat_created": False,
-  "from":
-  {
-    "id": 255295801,
-    "first_name": "Knøx",
-    "is_bot": False,
+  ], 
+  "caption_entities": [
+    
+  ], 
+  "photo": [
+  
+], 
+  "new_chat_members": [
+    
+  ], 
+  "new_chat_photo": [
+    
+  ], 
+  "delete_chat_photo": False, 
+  "group_chat_created": False, 
+  "supergroup_chat_created": False, 
+  "channel_chat_created": False, 
+  "from": {
+    "id": 255295801, 
+    "first_name": "Knøx", 
+    "is_bot": False, 
     "username": "doitforgachi",
-    "language_code": "en"},
+    "language_code": "en"
+  },
 }
