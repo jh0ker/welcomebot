@@ -21,7 +21,8 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-bot = Bot("832751678:AAFZo70Y2icygBFO9CU_I4TeJFa_WONfANU")
+TOKEN = environ.get("TG_BOT_TOKEN")
+bot = Bot(TOKEN)
 
 
 def help(update, context):
@@ -31,13 +32,13 @@ def help(update, context):
         "[ ] в самой команде не использовать.\n"
         "/help - Это меню;\n"
         "/echo [сообщение]- Получить ответ своим же сообщением;\n"
-        "/myiq - Мой IQ (0 - 200);\n"
-        "/muhdick - Длина моего шланга (0 - 25);\n"
         "/cat - Случайное фото котика;\n"
         "/dog - Случайное фото собачки;\n"
-        "/dadjoke - Случайная dad joke;\n"
+        "/dadjoke - Случайная шутка бати;\n"
         "\n"
         "Генераторы чисел:\n"
+        "/myiq - Мой IQ (0 - 200);\n"
+        "/muhdick - Длина моего шланга (0 - 25);\n"
         "/flip - Бросить монетку (Орёл или Решка);\n"
         "/random [число1] [число2] - Случайное число в выбранном диапазоне, включая концы;"
     )
@@ -54,9 +55,8 @@ def welcome_user(update, context):
                    update.message.chat.id,
                    escape(update.message.chat.title)))
     # Generate a reply
-    reply_end = random.choice(['Имя, Фамилия. Изображения ног НИ В КОЕМ СЛУЧАЕ не кидать.', 'Имя, Фамилия, фото ног.'])
     reply = (f"Приветствуем вас в Думерском Чате, {update.message.new_chat_members[0].first_name}!\n"
-             f"С вас {reply_end}")
+             f"По традициям группы, с вас Имя, Фамилия, Фото ног.")
     bot.send_message(chat_id=update.message.chat_id,
                      text=reply,
                      reply_to_message_id=update.message.message_id)
@@ -100,7 +100,7 @@ def flip(update, context):
 
 def myiq(update, context):
     """Return IQ level (0-200)"""
-    iq_level = update.message.chat_id % 201
+    iq_level = random.randint(0, 200)
     if iq_level < 85:
         message = f"Твой уровень IQ {iq_level}. Грустно за тебя, братишка. (0 - 200)"
     elif 85 <= iq_level <= 115:
@@ -116,10 +116,10 @@ def myiq(update, context):
 
 def muhdick(update, context):
     """Return dick size in cm (0-25)"""
-    muh_dick = update.message.chat_id % 26
+    muh_dick = random.randint(0, 25)
     if muh_dick == 0:
         bot.send_message(chat_id=update.message.chat_id,
-                         text='У тебя нет члена (0 см) \U0001F62C! (0 - 25)',
+                         text='У тебя нет члена (0 см) \U0001F62C! Ты евнух, братишка. (0 - 25)',
                          reply_to_message_id=update.message.message_id)
     elif 1 <= muh_dick <= 11:
         bot.send_photo(chat_id=update.message.chat_id,
@@ -128,7 +128,6 @@ def muhdick(update, context):
                        caption=f"Длина твоего стручка {muh_dick} см \U0001F923! (0 - 25)",
                        reply_to_message_id=update.message.message_id)
     elif 12 <= muh_dick <= 17:
-        print(type(update.message))
         bot.send_message(chat_id=update.message.chat_id,
                          reply_to_message_id=update.message.message_id,
                          text=f"Длина твоей палочки {muh_dick} см! (0 - 25)")
@@ -199,7 +198,6 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    TOKEN = environ.get("TG_BOT_TOKEN")
 
     updater = Updater(TOKEN, use_context=True)
 
