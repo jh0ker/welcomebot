@@ -5,7 +5,7 @@ Authors (telegrams) - @doitforgachi, @dovaogedot
 import logging
 import random
 from html import escape
-
+from os import environ
 import requests
 from bs4 import BeautifulSoup
 from telegram import Bot
