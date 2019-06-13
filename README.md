@@ -7,5 +7,5 @@
 
 ## How to use
 * Clone the repo
-* Add/Edit the "TG_BOT_TOKEN" environement variable 
+* Add/Edit the "TG_BOT_TOKEN" environment variable 
 * Use it
