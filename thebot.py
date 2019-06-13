@@ -8,6 +8,7 @@ from html import escape
 from os import environ
 import requests
 from bs4 import BeautifulSoup
+import datetime
 from telegram import Bot
 from telegram.ext import CommandHandler
 from telegram.ext import Filters
@@ -24,6 +25,7 @@ logger = logging.getLogger(__name__)
 TOKEN = environ.get("TG_BOT_TOKEN")
 bot = Bot(TOKEN)
 
+spam_counter = {}
 
 def help(update, context):
     """Help message"""
@@ -84,108 +86,136 @@ def empty_message(update, context):
 
 def echo(update, context):
     """Echo back the message"""
-    return_echo = update.message.text[6:]
-    bot.send_message(chat_id=update.message.chat_id,
-                     text=return_echo,
-                     reply_to_message_id=update.message.message_id)
+    if notspammer(update):
+        return_echo = update.message.text[6:]
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=return_echo,
+                         reply_to_message_id=update.message.message_id)
 
 
 def flip(update, context):
     """Flip a Coin"""
-    flip_outcome = random.choice(['Орёл!', 'Решка!'])
-    bot.send_message(chat_id=update.message.chat_id,
-                     text=flip_outcome,
-                     reply_to_message_id=update.message.message_id)
+    if notspammer(update):
+        flip_outcome = random.choice(['Орёл!', 'Решка!'])
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=flip_outcome,
+                         reply_to_message_id=update.message.message_id)
 
 
 def myiq(update, context):
     """Return IQ level (0-200)"""
-    iq_level = random.randint(0, 200)
-    if iq_level < 85:
-        message = f"Твой уровень IQ {iq_level}. Грустно за тебя, братишка. (0 - 200)"
-    elif 85 <= iq_level <= 115:
-        message = f"Твой уровень IQ {iq_level}. Ты норми, братишка. (0 - 200)"
-    elif 115 < iq_level <= 125:
-        message = f"Твой уровень IQ {iq_level}. Ты умный, братишка! (0 - 200)"
-    else:
-        message = f"Твой уровень IQ {iq_level}. Ты гений, братишка! (0 - 200)"
-    bot.send_message(chat_id=update.message.chat_id,
-                     text=message,
-                     reply_to_message_id=update.message.message_id)
+    if notspammer(update):
+        iq_level = random.randint(0, 200)
+        if iq_level < 85:
+            message = f"Твой уровень IQ {iq_level}. Грустно за тебя, братишка. (0 - 200)"
+        elif 85 <= iq_level <= 115:
+            message = f"Твой уровень IQ {iq_level}. Ты норми, братишка. (0 - 200)"
+        elif 115 < iq_level <= 125:
+            message = f"Твой уровень IQ {iq_level}. Ты умный, братишка! (0 - 200)"
+        else:
+            message = f"Твой уровень IQ {iq_level}. Ты гений, братишка! (0 - 200)"
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=message,
+                         reply_to_message_id=update.message.message_id)
 
 
 def muhdick(update, context):
     """Return dick size in cm (0-25)"""
-    muh_dick = random.randint(0, 25)
-    if muh_dick == 0:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text='У тебя нет члена (0 см) \U0001F62C! Ты евнух, братишка. (0 - 25)',
-                         reply_to_message_id=update.message.message_id)
-    elif 1 <= muh_dick <= 11:
-        bot.send_photo(chat_id=update.message.chat_id,
-                       photo='https://st2.depositphotos.com/1525321/9473/i/950/depositphotos_94736512-stock-photo'
-                             '-funny-weak-man-lifting-biceps.jpg',
-                       caption=f"Длина твоего стручка {muh_dick} см \U0001F923! (0 - 25)",
-                       reply_to_message_id=update.message.message_id)
-    elif 12 <= muh_dick <= 17:
-        bot.send_message(chat_id=update.message.chat_id,
-                         reply_to_message_id=update.message.message_id,
-                         text=f"Длина твоей палочки {muh_dick} см! (0 - 25)")
-    else:
-        bot.send_photo(chat_id=update.message.chat_id,
-                       photo='https://www.thewrap.com//images/2013/11/SharayHayesExhibits-300.jpg',
-                       reply_to_message_id=update.message.message_id,
-                       caption=f"Длина твоего шланга {muh_dick} см! (0 - 25)")
+    if notspammer(update):
+        muh_dick = random.randint(0, 25)
+        if muh_dick == 0:
+            bot.send_message(chat_id=update.message.chat_id,
+                             text='У тебя нет члена (0 см) \U0001F62C! Ты евнух, братишка. (0 - 25)',
+                             reply_to_message_id=update.message.message_id)
+        elif 1 <= muh_dick <= 11:
+            bot.send_photo(chat_id=update.message.chat_id,
+                           photo='https://st2.depositphotos.com/1525321/9473/i/950/depositphotos_94736512-stock-photo'
+                                 '-funny-weak-man-lifting-biceps.jpg',
+                           caption=f"Длина твоего стручка {muh_dick} см \U0001F923! (0 - 25)",
+                           reply_to_message_id=update.message.message_id)
+        elif 12 <= muh_dick <= 17:
+            bot.send_message(chat_id=update.message.chat_id,
+                             reply_to_message_id=update.message.message_id,
+                             text=f"Длина твоей палочки {muh_dick} см! (0 - 25)")
+        else:
+            bot.send_photo(chat_id=update.message.chat_id,
+                           photo='https://www.thewrap.com//images/2013/11/SharayHayesExhibits-300.jpg',
+                           reply_to_message_id=update.message.message_id,
+                           caption=f"Длина твоего шланга {muh_dick} см! (0 - 25)")
 
 
 def randomnumber(update, context):
     """Return a random number between two integers"""
-    args = update.message.text[13:].split()
-    if len(args) == 2:
-        try:
-            arg1, arg2 = int(args[0]), int(args[1])
-            generated_number = random.randint(arg1, arg2)
+    if notspammer(update):
+        args = update.message.text[13:].split()
+        if len(args) == 2:
+            try:
+                arg1, arg2 = int(args[0]), int(args[1])
+                generated_number = random.randint(arg1, arg2)
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text=f"Выпало {generated_number}.",
+                                 reply_to_message_id=update.message.message_id)
+            except ValueError:
+                bot.send_message(chat_id=update.message.chat_id,
+                                 text='Аргументы неверны. Должны быть два числа.',
+                                 reply_to_message_id=update.message.message_id)
+        else:
             bot.send_message(chat_id=update.message.chat_id,
-                             text=f"Выпало {generated_number}.",
+                             text='Неверное использование команды.\n'
+                                  'Пример: /randomnumber 10 25',
                              reply_to_message_id=update.message.message_id)
-        except ValueError:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text='Аргументы неверны. Должны быть два числа.',
-                             reply_to_message_id=update.message.message_id)
-    else:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text='Неверное использование команды.\n'
-                              'Пример: /randomnumber 10 25',
-                         reply_to_message_id=update.message.message_id)
 
 
 def dog(update, context):
     """Get a random dog image"""
-    while True:
-        response = requests.get('https://random.dog/woof.json').json()
-        if 'mp4' not in response['url']:
-            break
-    bot.send_photo(chat_id=update.message.chat_id,
-                   photo=response['url'],
-                   reply_to_message_id=update.message.message_id, )
+    if notspammer(update):
+        while True:
+            response = requests.get('https://random.dog/woof.json').json()
+            if 'mp4' not in response['url']:
+                break
+        bot.send_photo(chat_id=update.message.chat_id,
+                       photo=response['url'],
+                       reply_to_message_id=update.message.message_id)
 
 
 def cat(update, context):
     """Get a random cat image"""
-    response = requests.get('http://aws.random.cat/meow').json()
-    bot.send_photo(chat_id=update.message.chat_id,
-                   photo=response['file'],
-                   reply_to_message_id=update.message.message_id)
+    if notspammer(update):
+        response = requests.get('http://aws.random.cat/meow').json()
+        bot.send_photo(chat_id=update.message.chat_id,
+                       photo=response['file'],
+                       reply_to_message_id=update.message.message_id)
 
 
 def dadjoke(update, context):
     """Get a random dad joke"""
-    response = requests.get('https://icanhazdadjoke.com/')
-    soup = BeautifulSoup(response.text, "lxml")
-    joke = str(soup.find_all('meta')[-5])[15:][:-30]
-    bot.send_message(chat_id=update.message.chat_id,
-                     reply_to_message_id=update.message.message_id,
-                     text=joke)
+    if notspammer(update):
+        response = requests.get('https://icanhazdadjoke.com/')
+        soup = BeautifulSoup(response.text, "lxml")
+        joke = str(soup.find_all('meta')[-5])[15:][:-30]
+        bot.send_message(chat_id=update.message.chat_id,
+                         reply_to_message_id=update.message.message_id,
+                         text=joke)
+
+def notspammer(update):
+    """Check if the user is spamming
+    Delay of 1 minute, unchangeable."""
+    message_time = datetime.datetime.now()
+    command = update.message.text
+    if update.message.from_user.id in spam_counter:
+        if spam_counter[update.message.from_user.id].get(command, None) is not None:
+            if message_time + datetime.timedelta(minutes=1) > spam_counter[update.message.from_user.id][command]:
+                return False
+            else:
+                spam_counter[update.message.from_user.id][command] = message_time
+                return True
+        else:
+            spam_counter[update.message.from_user.id][command] = message_time
+            return True
+    else:
+        spam_counter[update.message.from_user.id] = {}
+        spam_counter[update.message.from_user.id][command] = message_time
+        return True
 
 
 def error(update, context):
