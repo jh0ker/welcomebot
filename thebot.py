@@ -140,20 +140,17 @@ def muhdick(update, context):
                              text='У тебя нет члена (0 см) \U0001F62C! Ты евнух, братишка. (0 - 25)',
                              reply_to_message_id=update.message.message_id)
         elif 1 <= muh_dick <= 11:
-            bot.send_photo(chat_id=update.message.chat_id,
-                           photo='https://st2.depositphotos.com/1525321/9473/i/950/depositphotos_94736512-stock-photo'
-                                 '-funny-weak-man-lifting-biceps.jpg',
-                           caption=f"Длина твоего стручка {muh_dick} см \U0001F923! (0 - 25)",
+            bot.send_message(chat_id=update.message.chat_id,
+                           text=f"Длина твоего стручка {muh_dick} см \U0001F923! (0 - 25)",
                            reply_to_message_id=update.message.message_id)
         elif 12 <= muh_dick <= 17:
             bot.send_message(chat_id=update.message.chat_id,
                              reply_to_message_id=update.message.message_id,
                              text=f"Длина твоей палочки {muh_dick} см! (0 - 25)")
         else:
-            bot.send_photo(chat_id=update.message.chat_id,
-                           photo='https://www.thewrap.com//images/2013/11/SharayHayesExhibits-300.jpg',
+            bot.send_message(chat_id=update.message.chat_id,
                            reply_to_message_id=update.message.message_id,
-                           caption=f"Длина твоего шланга {muh_dick} см! (0 - 25)")
+                           text=f"Длина твоего шланга {muh_dick} см! (0 - 25)")
 
 
 def randomnumber(update, context):
