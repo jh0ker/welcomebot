@@ -2,13 +2,13 @@
 Authors (telegrams) - @doitforgachi, @dovaogedot
 """
 
+import datetime
 import logging
 import random
-from html import escape
 from os import environ
+
 import requests
 from bs4 import BeautifulSoup
-import datetime
 from telegram import Bot
 from telegram.ext import CommandHandler
 from telegram.ext import Filters
@@ -27,28 +27,29 @@ bot = Bot(TOKEN)
 
 spam_counter = {}
 
+
 def help(update, context):
     """Help message"""
     if notspammer(update, "/help"):
         help_text = (
-        "Пример команды для бота: /help@random_welcome_bot\n"
-        "[ ] в самой команде не использовать.\n"
-        "/help - Это меню;\n"
-        "/echo [сообщение] - Получить ответ своим же сообщением;\n"
-        "/cat - Случайное фото котика;\n"
-        "/dog - Случайное фото собачки;\n"
-        "/dadjoke - Случайная шутка бати;\n"
-        "\n"
-        "Генераторы чисел:\n"
-        "/myiq - Мой IQ (0 - 200);\n"
-        "/muhdick - Длина моего шланга (0 - 25);\n"
-        "/flip - Бросить монетку (Орёл или Решка);\n"
-        "/random [число1] [число2] - Случайное число в выбранном диапазоне, включая концы;\n"
-        "\n"
-        "Дополнительная информация:\n"
-        "1. Бот здоровается с людьми, прибывшими в чат и просит у них имя, фамилию, фото ног.\n"
-        "2. Кулдаун на каждую команду 1 минуту для индивидуального пользователя.\n"
-    )
+            "Пример команды для бота: /help@random_welcome_bot\n"
+            "[ ] в самой команде не использовать.\n"
+            "/help - Это меню;\n"
+            "/echo [сообщение] - Получить ответ своим же сообщением;\n"
+            "/cat - Случайное фото котика;\n"
+            "/dog - Случайное фото собачки;\n"
+            "/dadjoke - Случайная шутка бати;\n"
+            "\n"
+            "Генераторы чисел:\n"
+            "/myiq - Мой IQ (0 - 200);\n"
+            "/muhdick - Длина моего шланга (0 - 25);\n"
+            "/flip - Бросить монетку (Орёл или Решка);\n"
+            "/random [число1] [число2] - Случайное число в выбранном диапазоне, включая концы;\n"
+            "\n"
+            "Дополнительная информация:\n"
+            "1. Бот здоровается с людьми, прибывшими в чат и просит у них имя, фамилию, фото ног.\n"
+            "2. Кулдаун на каждую команду 1 минуту для индивидуального пользователя.\n"
+        )
         bot.send_message(chat_id=update.message.chat_id,
                          text=help_text,
                          reply_to_message_id=update.message.message_id)
@@ -85,7 +86,11 @@ def farewell(update, context):
 def reply_to_text(update, context):
     """Replies to regular text messages"""
     # If somebody said думер/doomer
-    if 'думер' in update.message.text.lower() or 'doomer' in update.message.text.lower():
+    if 'думеры' in update.message.text.lower() or 'doomers' in update.message.text.lower():
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="хуюмеры",
+                         reply_to_message_id=update.message.message_id)
+    elif 'думер' in update.message.text.lower() or 'doomer' in update.message.text.lower():
         bot.send_message(chat_id=update.message.chat_id,
                          text="хуюмер",
                          reply_to_message_id=update.message.message_id)
@@ -175,7 +180,8 @@ def randomnumber(update, context):
 
 def dog(update, context):
     """Get a random dog image"""
-    # Go to a website with a json, that contains a link, pass the link to the bot, let the server download the image/video
+    # Go to a website with a json, that contains a link, pass the link to the bot, let the server download the
+    # image/video
     if notspammer(update, "/dog"):
         response = requests.get('https://random.dog/woof.json').json()
         if 'mp4' not in response['url']:
@@ -208,6 +214,7 @@ def dadjoke(update, context):
         bot.send_message(chat_id=update.message.chat_id,
                          reply_to_message_id=update.message.message_id,
                          text=joke)
+
 
 def notspammer(update, command):
     """Check if the user is spamming
