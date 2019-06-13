@@ -153,16 +153,16 @@ def muhdick(update, context):
                              reply_to_message_id=update.message.message_id)
         elif 1 <= muh_dick <= 11:
             bot.send_message(chat_id=update.message.chat_id,
-                           text=f"Длина твоего стручка {muh_dick} см \U0001F923! (0 - 25)",
-                           reply_to_message_id=update.message.message_id)
+                             text=f"Длина твоего стручка {muh_dick} см \U0001F923! (0 - 25)",
+                             reply_to_message_id=update.message.message_id)
         elif 12 <= muh_dick <= 17:
             bot.send_message(chat_id=update.message.chat_id,
                              reply_to_message_id=update.message.message_id,
                              text=f"Длина твоей палочки {muh_dick} см! (0 - 25)")
         else:
             bot.send_message(chat_id=update.message.chat_id,
-                           reply_to_message_id=update.message.message_id,
-                           text=f"Длина твоего шланга {muh_dick} см! (0 - 25)")
+                             reply_to_message_id=update.message.message_id,
+                             text=f"Длина твоего шланга {muh_dick} см! (0 - 25)")
 
 
 def randomnumber(update, context):
@@ -224,6 +224,7 @@ def dadjoke(update, context):
                          reply_to_message_id=update.message.message_id,
                          text=joke)
 
+
 def antispammer(update):
     """
     Check if the user is spamming
@@ -249,7 +250,8 @@ def antispammer(update):
 
         # Next check if there is a user cooldown (10 minute)
         if update.message.from_user.id in spam_counter[update.message.chat_id]:
-            if message_time > (spam_counter[update.message.chat_id][update.message.from_user.id] + datetime.timedelta(minutes=10)):
+            if message_time > (
+                    spam_counter[update.message.chat_id][update.message.from_user.id] + datetime.timedelta(minutes=10)):
                 spam_counter[update.message.chat_id][update.message.from_user.id] = message_time
                 user_cooldown = False
             else:
@@ -273,12 +275,13 @@ def antispammer(update):
             spam_counter[update.message.chat_id]['last_error_message'] = message_time
             bot.send_message(chat_id=update.message.chat_id,
                              reply_to_message_id=update.message.message_id,
-                             text=(error+"Это ошибка тоже появляется минимум каждую 1 минуту.\n"))
+                             text=(error + "Это ошибка тоже появляется минимум каждую 1 минуту.\n"))
         else:
-            if message_time > (spam_counter[update.message.chat_id]['last_error_message'] + datetime.timedelta(minutes=1)):
+            if message_time > (
+                    spam_counter[update.message.chat_id]['last_error_message'] + datetime.timedelta(minutes=1)):
                 bot.send_message(chat_id=update.message.chat_id,
                                  reply_to_message_id=update.message.message_id,
-                                 text=(error+"Это ошибка тоже появляется минимум каждую 1 минуту.\n"))
+                                 text=(error + "Это ошибка тоже появляется минимум каждую 1 минуту.\n"))
         return False
 
 
