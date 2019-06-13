@@ -173,18 +173,22 @@ def randomnumber(update, context):
 
 def dog(update, context):
     """Get a random dog image"""
+    # Go to a website with a json, that contains a link, pass the link to the bot, let the server download the image/video
     if notspammer(update, "/dog"):
-        while True:
-            response = requests.get('https://random.dog/woof.json').json()
-            if 'mp4' not in response['url']:
-                break
-        bot.send_photo(chat_id=update.message.chat_id,
-                       photo=response['url'],
-                       reply_to_message_id=update.message.message_id)
+        response = requests.get('https://random.dog/woof.json').json()
+        if 'mp4' not in response['url']:
+            bot.send_photo(chat_id=update.message.chat_id,
+                           photo=response['url'],
+                           reply_to_message_id=update.message.message_id)
+        else:
+            bot.send_video(chat_id=update.message.chat_id,
+                           video=response['url'],
+                           reply_to_message_id=update.message.message_id)
 
 
 def cat(update, context):
     """Get a random cat image"""
+    # Go to a website with a json, that contains a link, pass the link to the bot, let the server download the image
     if notspammer(update, "/cat"):
         response = requests.get('http://aws.random.cat/meow').json()
         bot.send_photo(chat_id=update.message.chat_id,
@@ -195,6 +199,7 @@ def cat(update, context):
 def dadjoke(update, context):
     """Get a random dad joke"""
     if notspammer(update, "/dadjoke"):
+        # Retrieve the website source, find the hoke in the code.
         response = requests.get('https://icanhazdadjoke.com/')
         soup = BeautifulSoup(response.text, "lxml")
         joke = str(soup.find_all('meta')[-5])[15:][:-30]
@@ -205,9 +210,16 @@ def dadjoke(update, context):
 def notspammer(update, command):
     """Check if the user is spamming
     Delay of 1 minute, unchangeable."""
+    # Get the time now to compare to previous message by the user
     message_time = datetime.datetime.now()
+    # Add exception for the bot developer to be able to run tests
+    if update.message.from_user.id == 255295801:
+        return True
+    # Check if the user has sent a message before. if not, not a spammer
     if update.message.from_user.id in spam_counter:
+        # If he did, check if he has sent this command. if not, not a spammer
         if spam_counter[update.message.from_user.id].get(command, None) is not None:
+            # If he did send this command, check if it was a minute ago or less. if longer than a minute, not a spammer
             if message_time > (spam_counter[update.message.from_user.id][command] + datetime.timedelta(minutes=1)):
                 spam_counter[update.message.from_user.id][command] = message_time
                 return True
