@@ -90,6 +90,18 @@ def reply_to_text(update, context):
         bot.send_message(chat_id=update.message.chat_id,
                          text="хуюмеры",
                          reply_to_message_id=update.message.message_id)
+    elif 'думеров' in update.message.text.lower():
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="хуюмеров",
+                         reply_to_message_id=update.message.message_id)
+    elif 'думера' in update.message.text.lower():
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="хуюмера",
+                         reply_to_message_id=update.message.message_id)
+    elif 'думеру' in update.message.text.lower():
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="хуюмеру",
+                         reply_to_message_id=update.message.message_id)
     elif 'думер' in update.message.text.lower() or 'doomer' in update.message.text.lower():
         bot.send_message(chat_id=update.message.chat_id,
                          text="хуюмер",
@@ -204,7 +216,7 @@ def cat(update, context):
 def dadjoke(update, context):
     """Get a random dad joke"""
     if antispammer(update):
-        # Retrieve the website source, find the hoke in the code.
+        # Retrieve the website source, find the joke in the code.
         response = requests.get('https://icanhazdadjoke.com/')
         soup = BeautifulSoup(response.text, "lxml")
         joke = str(soup.find_all('meta')[-5])[15:][:-30]
@@ -221,10 +233,11 @@ def antispammer(update):
     # Get the time now to compare to previous messages
     message_time = datetime.datetime.now()
     # Add exception for the bot developer to be able to run tests
-    #if update.message.from_user.id == 255295801:
-    #    return True
+    if update.message.from_user.id == 255295801:
+        return True
     # Check if the bot has a cooldowns
     error = ''
+    # If the chat has been encountered before, go into its info, otherwise create chat info in spam_counter
     if update.message.chat_id in spam_counter:
         # First check if there is a chat cooldown (1 minute)
         if message_time > (spam_counter[update.message.chat_id]['last_message'] + datetime.timedelta(minutes=1)):
@@ -251,14 +264,16 @@ def antispammer(update):
         spam_counter[update.message.chat_id][update.message.from_user.id] = message_time
         return True
 
+    # If there is no user cooldown or a chat cooldown, return True to allow the commands to run
     if not user_cooldown and not chat_cooldown:
         return True
     else:
+        # If there is a cooldown, give a reply with error. The error also has a cooldown of 1 minute.
         if spam_counter[update.message.chat_id].get('last_error_message', None) is None:
             spam_counter[update.message.chat_id]['last_error_message'] = message_time
             bot.send_message(chat_id=update.message.chat_id,
                              reply_to_message_id=update.message.message_id,
-                             text=(error+"Это ошибка тоже появляется минимум каждую минуту.\n"))
+                             text=(error+"Это ошибка тоже появляется минимум каждую 1 минуту.\n"))
         else:
             if message_time > (spam_counter[update.message.chat_id]['last_error_message'] + datetime.timedelta(minutes=1)):
                 bot.send_message(chat_id=update.message.chat_id,
