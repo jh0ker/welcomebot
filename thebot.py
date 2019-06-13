@@ -30,7 +30,7 @@ spam_counter = {}
 
 def help(update, context):
     """Help message"""
-    if slowchat(update) and notspammer(update):
+    if antispammer(update):
         help_text = (
             "Пример команды для бота: /help@random_welcome_bot\n"
             "[ ] в самой команде не использовать.\n"
@@ -98,7 +98,7 @@ def reply_to_text(update, context):
 
 def echo(update, context):
     """Echo back the message"""
-    if slowchat(update) and notspammer(update):
+    if antispammer(update):
         return_echo = update.message.text[6:]
         bot.send_message(chat_id=update.message.chat_id,
                          text=return_echo,
@@ -107,7 +107,7 @@ def echo(update, context):
 
 def flip(update, context):
     """Flip a Coin"""
-    if slowchat(update) and notspammer(update):
+    if antispammer(update):
         flip_outcome = random.choice(['Орёл!', 'Решка!'])
         bot.send_message(chat_id=update.message.chat_id,
                          text=flip_outcome,
@@ -116,7 +116,7 @@ def flip(update, context):
 
 def myiq(update, context):
     """Return IQ level (0-200)"""
-    if slowchat(update) and notspammer(update):
+    if antispammer(update):
         iq_level = random.randint(0, 200)
         if iq_level < 85:
             message = f"Твой уровень IQ {iq_level}. Грустно за тебя, братишка. (0 - 200)"
@@ -133,7 +133,7 @@ def myiq(update, context):
 
 def muhdick(update, context):
     """Return dick size in cm (0-25)"""
-    if slowchat(update) and notspammer(update):
+    if antispammer(update):
         muh_dick = random.randint(0, 25)
         if muh_dick == 0:
             bot.send_message(chat_id=update.message.chat_id,
@@ -155,7 +155,7 @@ def muhdick(update, context):
 
 def randomnumber(update, context):
     """Return a random number between two integers"""
-    if slowchat(update) and notspammer(update):
+    if antispammer(update):
         args = update.message.text[13:].split()
         if len(args) == 2:
             try:
@@ -179,7 +179,7 @@ def dog(update, context):
     """Get a random dog image"""
     # Go to a website with a json, that contains a link, pass the link to the bot, let the server download the
     # image/video
-    if slowchat(update) and notspammer(update):
+    if antispammer(update):
         response = requests.get('https://random.dog/woof.json').json()
         if 'mp4' not in response['url']:
             bot.send_photo(chat_id=update.message.chat_id,
@@ -194,7 +194,7 @@ def dog(update, context):
 def cat(update, context):
     """Get a random cat image"""
     # Go to a website with a json, that contains a link, pass the link to the bot, let the server download the image
-    if slowchat(update) and notspammer(update):
+    if antispammer(update):
         response = requests.get('http://aws.random.cat/meow').json()
         bot.send_photo(chat_id=update.message.chat_id,
                        photo=response['file'],
@@ -203,7 +203,7 @@ def cat(update, context):
 
 def dadjoke(update, context):
     """Get a random dad joke"""
-    if slowchat(update) and notspammer(update):
+    if antispammer(update):
         # Retrieve the website source, find the hoke in the code.
         response = requests.get('https://icanhazdadjoke.com/')
         soup = BeautifulSoup(response.text, "lxml")
@@ -212,45 +212,59 @@ def dadjoke(update, context):
                          reply_to_message_id=update.message.message_id,
                          text=joke)
 
-def slowchat(update):
-    """Check when the last message happened"""
-    message_time = datetime.datetime.now()
-    #if update.message.from_user.id == 255295801:
-    #    return True
-    print(update.message.chat_id)
-    if update.message.chat_id in spam_counter:
-        if message_time > (spam_counter[update.message.chat_id] + datetime.timedelta(minutes=1)):
-            spam_counter[update.message.chat_id] = message_time
-            return True
-        else:
-            return False
-    else:
-        spam_counter[update.message.chat_id] = message_time
-        return True
-
-def notspammer(update):
-    """Check if the user is spamming
-    Delay of 10 minutes for individual user commands, changeable."""
-    # Get the time now to compare to previous message by the user
+def antispammer(update):
+    """
+    Check if the user is spamming
+    Delay of 1 minute for all commands toward the bot
+    Delay of 10 minutes for individual user commands, changeable.
+    """
+    # Get the time now to compare to previous messages
     message_time = datetime.datetime.now()
     # Add exception for the bot developer to be able to run tests
-    if update.message.from_user.id == 255295801:
-        return True
-    # Check if the user has sent a message before. if not, not a spammer
-    if update.message.from_user.id in spam_counter:
-        # If he did send this command, check if it was a minute ago or less. if longer than a minute, not a spammer
-        if message_time > (spam_counter[update.message.from_user.id] + datetime.timedelta(minutes=10)):
-            spam_counter[update.message.from_user.id] = message_time
-            return True
+    #if update.message.from_user.id == 255295801:
+    #    return True
+    # Check if the bot has a cooldowns
+    error = ''
+    if update.message.chat_id in spam_counter:
+        # First check if there is a chat cooldown (1 minute)
+        if message_time > (spam_counter[update.message.chat_id]['last_message'] + datetime.timedelta(minutes=1)):
+            spam_counter[update.message.chat_id]['last_message'] = message_time
+            chat_cooldown = False
         else:
-            # Give a message about the cooldown
+            error += "Бот отвечает на команды всех пользователей минимум через каждую 1 минуту.\n"
+            chat_cooldown = True
+
+        # Next check if there is a user cooldown (10 minute)
+        if update.message.from_user.id in spam_counter[update.message.chat_id]:
+            if message_time > (spam_counter[update.message.chat_id][update.message.from_user.id] + datetime.timedelta(minutes=10)):
+                spam_counter[update.message.chat_id][update.message.from_user.id] = message_time
+                user_cooldown = False
+            else:
+                error += "Ответ индивидуальным пользователям на команды минимум через каждые 10 минут.\n"
+                user_cooldown = True
+        else:
+            spam_counter[update.message.chat_id][update.message.from_user.id] = message_time
+            user_cooldown = False
+    else:
+        spam_counter[update.message.chat_id] = {}
+        spam_counter[update.message.chat_id]['last_message'] = message_time
+        spam_counter[update.message.chat_id][update.message.from_user.id] = message_time
+        return True
+
+    if not user_cooldown and not chat_cooldown:
+        return True
+    else:
+        if spam_counter[update.message.chat_id].get('last_error_message', None) is None:
+            spam_counter[update.message.chat_id]['last_error_message'] = message_time
             bot.send_message(chat_id=update.message.chat_id,
                              reply_to_message_id=update.message.message_id,
-                             text="Между одинаковыми запросами пользователя задержка 10 минута. Не спамьте, пожалуйста.")
-            return False
-    else:
-        spam_counter[update.message.from_user.id] = message_time
-        return True
+                             text=(error+"Это ошибка тоже появляется минимум каждую минуту.\n"))
+        else:
+            if message_time > (spam_counter[update.message.chat_id]['last_error_message'] + datetime.timedelta(minutes=1)):
+                bot.send_message(chat_id=update.message.chat_id,
+                                 reply_to_message_id=update.message.message_id,
+                                 text=(error+"Это ошибка тоже появляется минимум каждую 1 минуту.\n"))
+        return False
 
 
 def error(update, context):
