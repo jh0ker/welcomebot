@@ -29,7 +29,8 @@ spam_counter = {}
 
 def help(update, context):
     """Help message"""
-    help_text = (
+    if notspammer(update, "/help"):
+        help_text = (
         "Пример команды для бота: /help@random_welcome_bot\n"
         "[ ] в самой команде не использовать.\n"
         "/help - Это меню;\n"
@@ -48,9 +49,9 @@ def help(update, context):
         "1. Бот здоровается с людьми, прибывшими в чат и просит у них имя, фамилию, фото ног.\n"
         "2. Кулдаун на каждую команду 1 минуту для индивидуального пользователя.\n"
     )
-    bot.send_message(chat_id=update.message.chat_id,
-                     text=help_text,
-                     reply_to_message_id=update.message.message_id)
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=help_text,
+                         reply_to_message_id=update.message.message_id)
 
 
 def welcome_user(update, context):
@@ -90,7 +91,7 @@ def empty_message(update, context):
 
 def echo(update, context):
     """Echo back the message"""
-    if notspammer(update):
+    if notspammer(update, "/echo"):
         return_echo = update.message.text[6:]
         bot.send_message(chat_id=update.message.chat_id,
                          text=return_echo,
@@ -99,7 +100,7 @@ def echo(update, context):
 
 def flip(update, context):
     """Flip a Coin"""
-    if notspammer(update):
+    if notspammer(update, "/flip"):
         flip_outcome = random.choice(['Орёл!', 'Решка!'])
         bot.send_message(chat_id=update.message.chat_id,
                          text=flip_outcome,
@@ -108,7 +109,7 @@ def flip(update, context):
 
 def myiq(update, context):
     """Return IQ level (0-200)"""
-    if notspammer(update):
+    if notspammer(update, "/myiq"):
         iq_level = random.randint(0, 200)
         if iq_level < 85:
             message = f"Твой уровень IQ {iq_level}. Грустно за тебя, братишка. (0 - 200)"
@@ -125,7 +126,7 @@ def myiq(update, context):
 
 def muhdick(update, context):
     """Return dick size in cm (0-25)"""
-    if notspammer(update):
+    if notspammer(update, "/muhdick"):
         muh_dick = random.randint(0, 25)
         if muh_dick == 0:
             bot.send_message(chat_id=update.message.chat_id,
@@ -150,7 +151,7 @@ def muhdick(update, context):
 
 def randomnumber(update, context):
     """Return a random number between two integers"""
-    if notspammer(update):
+    if notspammer(update, "/randomnumber"):
         args = update.message.text[13:].split()
         if len(args) == 2:
             try:
@@ -172,7 +173,7 @@ def randomnumber(update, context):
 
 def dog(update, context):
     """Get a random dog image"""
-    if notspammer(update):
+    if notspammer(update, "/dog"):
         while True:
             response = requests.get('https://random.dog/woof.json').json()
             if 'mp4' not in response['url']:
@@ -184,7 +185,7 @@ def dog(update, context):
 
 def cat(update, context):
     """Get a random cat image"""
-    if notspammer(update):
+    if notspammer(update, "/cat"):
         response = requests.get('http://aws.random.cat/meow').json()
         bot.send_photo(chat_id=update.message.chat_id,
                        photo=response['file'],
@@ -193,7 +194,7 @@ def cat(update, context):
 
 def dadjoke(update, context):
     """Get a random dad joke"""
-    if notspammer(update):
+    if notspammer(update, "/dadjoke"):
         response = requests.get('https://icanhazdadjoke.com/')
         soup = BeautifulSoup(response.text, "lxml")
         joke = str(soup.find_all('meta')[-5])[15:][:-30]
@@ -201,18 +202,17 @@ def dadjoke(update, context):
                          reply_to_message_id=update.message.message_id,
                          text=joke)
 
-def notspammer(update):
+def notspammer(update, command):
     """Check if the user is spamming
     Delay of 1 minute, unchangeable."""
     message_time = datetime.datetime.now()
-    command = update.message.text
     if update.message.from_user.id in spam_counter:
         if spam_counter[update.message.from_user.id].get(command, None) is not None:
-            if message_time + datetime.timedelta(minutes=1) > spam_counter[update.message.from_user.id][command]:
-                return False
-            else:
+            if message_time > (spam_counter[update.message.from_user.id][command] + datetime.timedelta(minutes=1)):
                 spam_counter[update.message.from_user.id][command] = message_time
                 return True
+            else:
+                return False
         else:
             spam_counter[update.message.from_user.id][command] = message_time
             return True
