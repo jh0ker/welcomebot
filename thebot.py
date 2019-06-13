@@ -85,7 +85,7 @@ def farewell(update, context):
 
 def reply_to_text(update, context):
     """Replies to regular text messages"""
-    # If somebody said думер/doomer
+    # If somebody said думер(ы)/doomer(s)
     if 'думеры' in update.message.text.lower() or 'doomers' in update.message.text.lower():
         bot.send_message(chat_id=update.message.chat_id,
                          text="хуюмеры",
@@ -233,6 +233,10 @@ def notspammer(update, command):
                 spam_counter[update.message.from_user.id][command] = message_time
                 return True
             else:
+                # Give a message about the cooldown
+                bot.send_message(chat_id=update.message.chat_id,
+                                 reply_to_message_id=update.message.message_id,
+                                 text="Между одинаковыми запросами задержка 1 минута. Не спамьте, пожалуйста.")
                 return False
         else:
             spam_counter[update.message.from_user.id][command] = message_time
