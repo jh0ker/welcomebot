@@ -54,39 +54,41 @@ def help(update, context):
                          reply_to_message_id=update.message.message_id)
 
 
-def welcome_user(update, context):
-    """Welcome message for the user"""
-    # Get the message, id, user information.
-    logger.info('%s joined to chat %d (%s)'
-                % (escape(update.message.new_chat_members[0].first_name),
-                   update.message.chat.id,
-                   escape(update.message.chat.title)))
-    # Generate a reply
-    reply = (f"Приветствуем вас в Думерском Чате, {update.message.new_chat_members[0].first_name}!\n"
-             f"По традициям группы, с вас Имя, Фамилия, Фото ног.")
-    bot.send_message(chat_id=update.message.chat_id,
-                     text=reply,
-                     reply_to_message_id=update.message.message_id)
-
-
-def welcome_bot(update, context):
-    """Welcome message for a bot"""
-    pass
-
-
-def empty_message(update, context):
+def welcomer(update, context):
     """
     Empty messages could be status messages, so we check them if there is a new
     group member.
     """
-    # someone entered chat
-    if update.message.new_chat_members is not None:
-        # update was added to a group chat
-        if update.message.new_chat_members[0].is_bot is True:
-            return
-        # Another user joined the chat
-        else:
-            return welcome_user(update, context)
+    # A bot entered the chat
+    if update.message.new_chat_members[0].is_bot:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="УХОДИ, НАМ БОЛЬШЕ БОТОВ НЕ НАДО. БАН ЕМУ.",
+                         reply_to_message_id=update.message.message_id)
+    # Another user joined the chat
+    else:
+        reply = (f"Приветствуем вас в Думерском Чате, {update.message.new_chat_members[0].first_name}!\n"
+                 f"По традициям группы, с вас Имя, Фамилия, Фото ног.")
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=reply,
+                         reply_to_message_id=update.message.message_id)
+
+
+def farewell(update, context):
+    """Goodbye message"""
+    # A a bot was removed
+    if update.message.left_chat_member.is_bot:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=f"{update.message.left_chat_member.first_name}'a убили, красиво. Уважаю.",
+                         reply_to_message_id=update.message.message_id)
+
+
+def reply_to_text(update, context):
+    """Replies to regular text messages"""
+    # If somebody said думер/doomer
+    if 'думер' in update.message.text.lower() or 'doomer' in update.message.text.lower():
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="хуюмер",
+                         reply_to_message_id=update.message.message_id)
 
 
 def echo(update, context):
@@ -261,8 +263,10 @@ def main():
     dp.add_handler(CommandHandler("cat", cat))
     dp.add_handler(CommandHandler("dadjoke", dadjoke))
 
-    # add welcomer
-    dp.add_handler(MessageHandler(Filters.status_update.new_chat_members, empty_message))
+    # add message handlers
+    dp.add_handler(MessageHandler(Filters.status_update.new_chat_members, welcomer))
+    dp.add_handler(MessageHandler(Filters.status_update.left_chat_member, farewell))
+    dp.add_handler(MessageHandler(Filters.text, reply_to_text))
 
     # log all errors
     dp.add_error_handler(error)
