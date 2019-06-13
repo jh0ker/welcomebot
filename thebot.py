@@ -93,7 +93,10 @@ def reply_to_text(update, context):
         elif 'думеров' in update.message.text.lower():
             reply += 'ов'
         elif 'думера' in update.message.text.lower():
-            reply += 'а'
+            if 'думерам' in update.message.text.lower():
+                reply += 'ам'
+            else:
+                reply += 'а'
         elif 'думеру' in update.message.text.lower():
             reply += 'у'
         bot.send_message(chat_id=update.message.chat_id,
