@@ -86,20 +86,19 @@ def farewell(update, context):
 def reply_to_text(update, context):
     """Replies to regular text messages"""
     # If somebody said думер(ы)/doomer(s)
-    reply = 'хуюмер'
-    if 'думеры' in update.message.text.lower() or 'doomers' in update.message.text.lower():
-        reply += 'ы'
-    elif 'думеров' in update.message.text.lower():
-        reply += 'ов'
-    elif 'думера' in update.message.text.lower():
-        reply += 'а'
-    elif 'думеру' in update.message.text.lower():
-        reply += 'у'
-    elif 'думер' in update.message.text.lower() or 'doomer' in update.message.text.lower():
-        reply += ''
-    bot.send_message(chat_id=update.message.chat_id,
-                     text=reply,
-                     reply_to_message_id=update.message.message_id)
+    if 'думер' in update.message.text.lower() or 'doomer' in update.message.text.lower():
+        reply = 'хуюмер'
+        if 'думеры' in update.message.text.lower() or 'doomers' in update.message.text.lower():
+            reply += 'ы'
+        elif 'думеров' in update.message.text.lower():
+            reply += 'ов'
+        elif 'думера' in update.message.text.lower():
+            reply += 'а'
+        elif 'думеру' in update.message.text.lower():
+            reply += 'у'
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=reply,
+                         reply_to_message_id=update.message.message_id)
 
 
 def echo(update, context):
