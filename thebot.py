@@ -191,13 +191,18 @@ def dog(update, context):
     # image/video
     if antispammer(update):
         response = requests.get('https://random.dog/woof.json').json()
-        if 'mp4' not in response['url']:
-            bot.send_photo(chat_id=update.message.chat_id,
-                           photo=response['url'],
-                           reply_to_message_id=update.message.message_id)
-        else:
+        print(response)
+        if 'mp4' in response['url']:
             bot.send_video(chat_id=update.message.chat_id,
                            video=response['url'],
+                           reply_to_message_id=update.message.message_id)
+        elif 'gif' in response['url']:
+            bot.send_animation(chat_id=update.message.chat_id,
+                               animation=response['url'],
+                               reply_to_message_id=update.message.message_id)
+        else:
+            bot.send_photo(chat_id=update.message.chat_id,
+                           photo=response['url'],
                            reply_to_message_id=update.message.message_id)
 
 
