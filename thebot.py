@@ -87,7 +87,7 @@ def farewell(update, context):
 
 def reply_to_text(update, context):
     """Replies to regular text messages"""
-    # If somebody said думер(ы)/doomer(s)
+    # Handle the word doomer
     if 'думер' in update.message.text.lower() or 'doomer' in update.message.text.lower():
         reply = 'хуюмер'
         if 'думеры' in update.message.text.lower() or 'doomers' in update.message.text.lower():
@@ -101,6 +101,14 @@ def reply_to_text(update, context):
                 reply += 'а'
         elif 'думеру' in update.message.text.lower():
             reply += 'у'
+        elif 'думерки' in update.message.text.lower():
+            reply += 'ки'
+        elif 'думерчики' in update.message.text.lower():
+            reply += 'чики'
+        elif 'думерки' in update.message.text.lower():
+            reply += 'ки'
+        elif 'думерята' in update.message.text.lower():
+            reply += 'ята'
         bot.send_message(chat_id=update.message.chat_id,
                          text=reply,
                          reply_to_message_id=update.message.message_id)
@@ -188,10 +196,9 @@ def randomnumber(update, context):
 def dog(update, context):
     """Get a random dog image"""
     # Go to a website with a json, that contains a link, pass the link to the bot, let the server download the
-    # image/video
+    # image/video/gif
     if antispammer(update):
         response = requests.get('https://random.dog/woof.json').json()
-        print(response)
         if 'mp4' in response['url']:
             bot.send_video(chat_id=update.message.chat_id,
                            video=response['url'],
@@ -237,7 +244,7 @@ def antispammer(update):
     # Get the time now to compare to previous messages
     message_time = datetime.datetime.now()
     # Add exception for the bot developer to be able to run tests
-    if update.message.from_user.id == 255295801:
+    if update.message.from_user.id == 255295801 or update.message.from_user.id == 413327053:
         return True
     # Create a holder for errors
     error = ''
@@ -321,6 +328,7 @@ def main():
     dp.add_handler(CommandHandler("dog", dog))
     dp.add_handler(CommandHandler("cat", cat))
     dp.add_handler(CommandHandler("dadjoke", dadjoke))
+
 
     # add message handlers
     dp.add_handler(MessageHandler(Filters.status_update.new_chat_members, welcomer))
