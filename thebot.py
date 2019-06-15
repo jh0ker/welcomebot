@@ -87,13 +87,14 @@ def farewell(update, context):
 
 def reply_to_text(update, context):
     """Replies to regular text messages"""
-    # Handle the word doomer
-    if 'думер' in update.message.text.lower():
-        word_start = update.message.text.lower().find('думер')
-        reply = update.message.text.lower()[word_start:].replace('думер', 'хуюмер').split()[0]
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=reply,
-                         reply_to_message_id=update.message.message_id)
+    # Handle the word doomer if the message is not edited
+    if update.message is not None:
+        if 'думер' in update.message.text.lower():
+            word_start = update.message.text.lower().find('думер')
+            reply = update.message.text.lower()[word_start:].replace('думер', 'хуюмер').split()[0]
+            bot.send_message(chat_id=update.message.chat_id,
+                             text=reply,
+                             reply_to_message_id=update.message.message_id)
 
 
 def echo(update, context):
