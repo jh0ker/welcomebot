@@ -88,27 +88,9 @@ def farewell(update, context):
 def reply_to_text(update, context):
     """Replies to regular text messages"""
     # Handle the word doomer
-    if 'думер' in update.message.text.lower() or 'doomer' in update.message.text.lower():
-        reply = 'хуюмер'
-        if 'думеры' in update.message.text.lower() or 'doomers' in update.message.text.lower():
-            reply += 'ы'
-        elif 'думеров' in update.message.text.lower():
-            reply += 'ов'
-        elif 'думера' in update.message.text.lower():
-            if 'думерам' in update.message.text.lower():
-                reply += 'ам'
-            else:
-                reply += 'а'
-        elif 'думеру' in update.message.text.lower():
-            reply += 'у'
-        elif 'думерки' in update.message.text.lower():
-            reply += 'ки'
-        elif 'думерчики' in update.message.text.lower():
-            reply += 'чики'
-        elif 'думерки' in update.message.text.lower():
-            reply += 'ки'
-        elif 'думерята' in update.message.text.lower():
-            reply += 'ята'
+    if 'думер' in update.message.text.lower():
+        word_start = update.message.text.lower().find('думер')
+        reply = update.message.text.lower()[word_start:].replace('думер', 'хуюмер').split()[0]
         bot.send_message(chat_id=update.message.chat_id,
                          text=reply,
                          reply_to_message_id=update.message.message_id)
