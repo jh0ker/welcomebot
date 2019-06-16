@@ -5,8 +5,9 @@ Authors (telegrams) - @doitforgachi, @dovaogedot
 import datetime
 import logging
 import random
-from os import environ
 import re
+from os import environ
+
 import requests
 from bs4 import BeautifulSoup
 from telegram import Bot
@@ -30,12 +31,14 @@ spam_counter = {}
 antispammer_exceptions = {
     255295801: "doitforricardo",
     413327053: "comradesanya",
+    205762941: "dovaogedot",
     }
 
 # Delays in minutes for the bot
 individual_user_delay = 1
 error_delay = 1
 chat_delay = 10
+
 
 def help(update, context):
     """Help message"""
@@ -46,6 +49,7 @@ def help(update, context):
             "/help - Это меню;\n"
             "/cat - Случайное фото котика;\n"
             "/dog - Случайное фото собачки;\n"
+            "/image [тематика] - Случайное фото. Можно задать тематику на английском;\n"
             "/dadjoke - Случайная шутка бати;\n"
             "\n"
             "Генераторы чисел:\n"
@@ -203,6 +207,54 @@ def cat(update, context):
                        reply_to_message_id=update.message.message_id)
 
 
+def image(update, context):
+    if antispammer(update):
+        # Get user request, remove the bot command
+        user_request = update.message.text.split()
+        user_request.pop(0)
+        # Use a random source
+        if random.randint(0, 1) == 0:
+            image_pixabay(user_request, update)
+        else:
+            image_unsplash(user_request, update)
+        # Get feedback
+
+
+def image_unsplash(user_request, update):
+    # Create a user request
+    user_request = ','.join(user_request)
+    # Ask the server
+    response = requests.get(f'https://source.unsplash.com/500x700/?{user_request}')
+    # Reply the response with the photo
+    bot.send_photo(chat_id=update.message.chat_id,
+                   photo=response.url,
+                   reply_to_message_id=update.message.message_id)
+
+
+def image_pixabay(user_request, update):
+    # Create a user request
+    user_request = '+'.join(user_request)
+    # Request the server for the dictionary with links to images
+    response = requests.get('https://pixabay.com/api/',
+                            params={
+                                'key': '12793256-08bafec09c832951d5d3366f1',
+                                'q': user_request,
+                                "safesearch": "false",
+                                "lang": "en"
+                                }).json()
+    # If there are hits, reply with photo
+    if response['totalHits'] != 0:
+        photo = random.choice(response['hits'])['largeImageURL']
+        bot.send_photo(chat_id=update.message.chat_id,
+                       photo=photo,
+                       reply_to_message_id=update.message.message_id)
+    # If no hits, give an error
+    else:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text='Фото по запросу не найдено.',
+                         reply_to_message_id=update.message.message_id)
+
+
 def dadjoke(update, context):
     """Get a random dad joke"""
     if antispammer(update):
@@ -270,11 +322,11 @@ def antispammer(update):
                 spam_counter[update.message.chat_id]['last_error'] = message_time
                 bot.send_message(chat_id=update.message.chat_id,
                                  reply_to_message_id=update.message.message_id,
-                                 text=error+"Эта ошибка тоже появляется минимум каждую 1 минуту.\n")
+                                 text=error + "Эта ошибка тоже появляется минимум каждую 1 минуту.\n")
         else:
             bot.send_message(chat_id=update.message.chat_id,
                              reply_to_message_id=update.message.message_id,
-                             text=error+"Эта ошибка тоже появляется минимум каждую 1 минуту.\n")
+                             text=error + "Эта ошибка тоже появляется минимум каждую 1 минуту.\n")
             spam_counter[update.message.chat_id]['last_error'] = message_time
         return False
 
@@ -282,6 +334,7 @@ def antispammer(update):
 def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
+
 
 def main():
     """Start the bot."""
@@ -302,8 +355,8 @@ def main():
     dp.add_handler(CommandHandler("randomnumber", randomnumber))
     dp.add_handler(CommandHandler("dog", dog))
     dp.add_handler(CommandHandler("cat", cat))
+    dp.add_handler(CommandHandler("image", image))
     dp.add_handler(CommandHandler("dadjoke", dadjoke))
-
 
     # add message handlers
     dp.add_handler(MessageHandler(Filters.status_update.new_chat_members, welcomer))
