@@ -62,8 +62,8 @@ def help(update, context):
             "1. Бот здоровается с людьми, прибывшими в чат и просит у них имя, фамилию, фото ног.\n"
             "2. Кулдаун бота на любые команды 1 минута.\n"
             "3. Кулдаун на каждую команду 10 минуту для индивидуального пользователя.\n"
-            "4. Ошибка о кулдауме даётся минимум через каждую 1 минуту."
-            )
+            "4. Ошибка о кулдауне даётся минимум через каждую 1 минуту."
+        )
         bot.send_message(chat_id=update.message.chat_id,
                          text=help_text,
                          reply_to_message_id=update.message.message_id)
@@ -209,6 +209,42 @@ def cat(update, context):
 
 def image(update, context):
     """Create a command for random images"""
+
+    def image_unsplash(user_request, update):
+        """Function that gets random images from unsplash.com"""
+        # Create a user request
+        user_request = ','.join(user_request)
+        # Ask the server
+        response = requests.get(f'https://source.unsplash.com/500x700/?{user_request}')
+        # Reply the response with the photo
+        bot.send_photo(chat_id=update.message.chat_id,
+                       photo=response.url,
+                       reply_to_message_id=update.message.message_id)
+
+    def image_pixabay(user_request, update):
+        """Function that gets random images from pixabay.com"""
+        # Create a user request
+        user_request = '+'.join(user_request)
+        # Request the server for the dictionary with links to images
+        response = requests.get('https://pixabay.com/api/',
+                                params={
+                                    'key': '12793256-08bafec09c832951d5d3366f1',
+                                    'q': user_request,
+                                    "safesearch": "false",
+                                    "lang": "en"
+                                    }).json()
+        # If there are hits, reply with photo
+        if response['totalHits'] != 0:
+            photo = random.choice(response['hits'])['largeImageURL']
+            bot.send_photo(chat_id=update.message.chat_id,
+                           photo=photo,
+                           reply_to_message_id=update.message.message_id)
+        # If no hits, give an error
+        else:
+            bot.send_message(chat_id=update.message.chat_id,
+                             text='Фото по запросу не найдено.',
+                             reply_to_message_id=update.message.message_id)
+
     if antispammer(update):
         # Get user request, remove the bot command
         user_request = update.message.text.split()
@@ -218,44 +254,6 @@ def image(update, context):
             image_pixabay(user_request, update)
         else:
             image_unsplash(user_request, update)
-        # Get feedback
-
-
-def image_unsplash(user_request, update):
-    """Function that gets random images from unsplash"""
-    # Create a user request
-    user_request = ','.join(user_request)
-    # Ask the server
-    response = requests.get(f'https://source.unsplash.com/500x700/?{user_request}')
-    # Reply the response with the photo
-    bot.send_photo(chat_id=update.message.chat_id,
-                   photo=response.url,
-                   reply_to_message_id=update.message.message_id)
-
-
-def image_pixabay(user_request, update):
-    """Function that gets random images from pixabay"""
-    # Create a user request
-    user_request = '+'.join(user_request)
-    # Request the server for the dictionary with links to images
-    response = requests.get('https://pixabay.com/api/',
-                            params={
-                                'key': '12793256-08bafec09c832951d5d3366f1',
-                                'q': user_request,
-                                "safesearch": "false",
-                                "lang": "en"
-                                }).json()
-    # If there are hits, reply with photo
-    if response['totalHits'] != 0:
-        photo = random.choice(response['hits'])['largeImageURL']
-        bot.send_photo(chat_id=update.message.chat_id,
-                       photo=photo,
-                       reply_to_message_id=update.message.message_id)
-    # If no hits, give an error
-    else:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text='Фото по запросу не найдено.',
-                         reply_to_message_id=update.message.message_id)
 
 
 def dadjoke(update, context):
