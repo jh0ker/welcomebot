@@ -28,16 +28,16 @@ bot = Bot(TOKEN)
 
 # Antispammer variables
 spam_counter = {}
-antispammer_exceptions = {
+ANTISPAMMER_EXCEPTIONS = {
     255295801: "doitforricardo",
     413327053: "comradesanya",
     205762941: "dovaogedot",
     }
 
 # Delays in minutes for the bot
-individual_user_delay = 1
-error_delay = 1
-chat_delay = 10
+INDIVIDUAL_USER_DELAY = 1
+ERROR_DELAY = 1
+CHAT_DELAY = 10
 
 
 def help(update, context):
@@ -63,7 +63,7 @@ def help(update, context):
             "2. Кулдаун бота на любые команды 1 минута.\n"
             "3. Кулдаун на каждую команду 10 минуту для индивидуального пользователя.\n"
             "4. Ошибка о кулдауме даётся минимум через каждую 1 минуту."
-        )
+            )
         bot.send_message(chat_id=update.message.chat_id,
                          text=help_text,
                          reply_to_message_id=update.message.message_id)
@@ -208,6 +208,7 @@ def cat(update, context):
 
 
 def image(update, context):
+    """Create a command for random images"""
     if antispammer(update):
         # Get user request, remove the bot command
         user_request = update.message.text.split()
@@ -221,6 +222,7 @@ def image(update, context):
 
 
 def image_unsplash(user_request, update):
+    """Function that gets random images from unsplash"""
     # Create a user request
     user_request = ','.join(user_request)
     # Ask the server
@@ -232,6 +234,7 @@ def image_unsplash(user_request, update):
 
 
 def image_pixabay(user_request, update):
+    """Function that gets random images from pixabay"""
     # Create a user request
     user_request = '+'.join(user_request)
     # Request the server for the dictionary with links to images
@@ -276,30 +279,29 @@ def antispammer(update):
     # Get the time now to compare to previous messages
     message_time = datetime.datetime.now()
     # Add exception for the bot developer to be able to run tests
-    if update.message.from_user.id in antispammer_exceptions:
+    if update.message.from_user.id in ANTISPAMMER_EXCEPTIONS:
         return True
     # Create a holder for errors
-    error = ''
+    error_message = ''
     # If the chat has been encountered before, go into its info, otherwise create chat info in spam_counter
     if update.message.chat_id in spam_counter:
         # First check if there is a chat cooldown (1 minute)
-        if message_time > (spam_counter[update.message.chat_id]['last_chat_message'] + datetime.timedelta(
-                minutes=individual_user_delay)):
+        if message_time > (spam_counter[update.message.chat_id]['last_chat_message']
+                           + datetime.timedelta(minutes=INDIVIDUAL_USER_DELAY)):
             spam_counter[update.message.chat_id]['last_chat_message'] = message_time
             chat_cooldown = False
         else:
-            error += "Бот отвечает на команды всех пользователей минимум через каждую 1 минуту.\n"
+            error_message += "Бот отвечает на команды пользователей минимум через каждую 1 минуту.\n"
             chat_cooldown = True
 
         # Next check if there is a user cooldown (10 minute)
         if update.message.from_user.id in spam_counter[update.message.chat_id]:
-            if message_time > (
-                    spam_counter[update.message.chat_id][update.message.from_user.id] + datetime.timedelta(
-                minutes=chat_delay)):
+            if message_time > (spam_counter[update.message.chat_id][update.message.from_user.id]
+                               + datetime.timedelta(minutes=CHAT_DELAY)):
                 spam_counter[update.message.chat_id][update.message.from_user.id] = message_time
                 user_cooldown = False
             else:
-                error += "Ответ индивидуальным пользователям на команды минимум через каждые 10 минут.\n"
+                error_message += "Ответ индивидуальным пользователям на команды минимум через каждые 10 минут.\n"
                 user_cooldown = True
         else:
             spam_counter[update.message.chat_id][update.message.from_user.id] = message_time
@@ -316,17 +318,16 @@ def antispammer(update):
     else:
         # Give error at minimum every 1 minute
         if 'last_error' in spam_counter[update.message.chat_id]:
-            if message_time > (
-                    spam_counter[update.message.chat_id][update.message.from_user.id] + datetime.timedelta(
-                minutes=error_delay)):
+            if message_time > (spam_counter[update.message.chat_id][update.message.from_user.id]
+                               + datetime.timedelta(minutes=ERROR_DELAY)):
                 spam_counter[update.message.chat_id]['last_error'] = message_time
                 bot.send_message(chat_id=update.message.chat_id,
                                  reply_to_message_id=update.message.message_id,
-                                 text=error + "Эта ошибка тоже появляется минимум каждую 1 минуту.\n")
+                                 text=error_message + "Эта ошибка тоже появляется минимум каждую 1 минуту.\n")
         else:
             bot.send_message(chat_id=update.message.chat_id,
                              reply_to_message_id=update.message.message_id,
-                             text=error + "Эта ошибка тоже появляется минимум каждую 1 минуту.\n")
+                             text=error_message + "Эта ошибка тоже появляется минимум каждую 1 минуту.\n")
             spam_counter[update.message.chat_id]['last_error'] = message_time
         return False
 
@@ -345,26 +346,26 @@ def main():
     updater = Updater(token=TOKEN, use_context=True)
 
     # Get the dispatcher to register handlers
-    dp = updater.dispatcher
+    dispatcher = updater.dispatcher
 
     # on different commands - answer in Telegram
-    dp.add_handler(CommandHandler("help", help))
-    dp.add_handler(CommandHandler("flip", flip))
-    dp.add_handler(CommandHandler("myiq", myiq))
-    dp.add_handler(CommandHandler("muhdick", muhdick))
-    dp.add_handler(CommandHandler("randomnumber", randomnumber))
-    dp.add_handler(CommandHandler("dog", dog))
-    dp.add_handler(CommandHandler("cat", cat))
-    dp.add_handler(CommandHandler("image", image))
-    dp.add_handler(CommandHandler("dadjoke", dadjoke))
+    dispatcher.add_handler(CommandHandler("help", help))
+    dispatcher.add_handler(CommandHandler("flip", flip))
+    dispatcher.add_handler(CommandHandler("myiq", myiq))
+    dispatcher.add_handler(CommandHandler("muhdick", muhdick))
+    dispatcher.add_handler(CommandHandler("randomnumber", randomnumber))
+    dispatcher.add_handler(CommandHandler("dog", dog))
+    dispatcher.add_handler(CommandHandler("cat", cat))
+    dispatcher.add_handler(CommandHandler("image", image))
+    dispatcher.add_handler(CommandHandler("dadjoke", dadjoke))
 
     # add message handlers
-    dp.add_handler(MessageHandler(Filters.status_update.new_chat_members, welcomer))
-    dp.add_handler(MessageHandler(Filters.status_update.left_chat_member, farewell))
-    dp.add_handler(MessageHandler(Filters.text, reply_to_text))
+    dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, welcomer))
+    dispatcher.add_handler(MessageHandler(Filters.status_update.left_chat_member, farewell))
+    dispatcher.add_handler(MessageHandler(Filters.text, reply_to_text))
 
     # log all errors
-    dp.add_error_handler(error)
+    dispatcher.add_error_handler(error)
 
     # Start the Bot
     updater.start_polling()
