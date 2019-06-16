@@ -6,7 +6,7 @@ import datetime
 import logging
 import random
 from os import environ
-
+import re
 import requests
 from bs4 import BeautifulSoup
 from telegram import Bot
@@ -89,9 +89,12 @@ def reply_to_text(update, context):
     """Replies to regular text messages"""
     # Handle the word doomer if the message is not edited
     if update.message is not None:
+        # Find the word start
         doomer_word_start = update.message.text.lower().find('думер')
         if doomer_word_start != -1:
-            reply = update.message.text.lower()[doomer_word_start:].replace('думер', 'хуюмер').split()[0]
+            # Get the word with symbol, strip symbols using re and send the reply
+            word_with_symbols = update.message.text.lower()[doomer_word_start:].replace('думер', 'хуюмер').split()[0]
+            reply = re.sub(r'[^\w]', '', word_with_symbols)
             bot.send_message(chat_id=update.message.chat_id,
                              text=reply,
                              reply_to_message_id=update.message.message_id)
