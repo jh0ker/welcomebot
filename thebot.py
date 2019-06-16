@@ -19,14 +19,23 @@ from telegram.ext import Updater
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
-
 logger = logging.getLogger(__name__)
 
+# Bot initiatlization
 TOKEN = environ.get("TG_BOT_TOKEN")
 bot = Bot(TOKEN)
 
+# Antispammer variables
 spam_counter = {}
+antispammer_exceptions = {
+    255295801: "doitforricardo",
+    413327053: "comradesanya",
+    }
 
+# Delays in minutes for the bot
+individual_user_delay = 1
+error_delay = 1
+chat_delay = 10
 
 def help(update, context):
     """Help message"""
@@ -35,7 +44,6 @@ def help(update, context):
             "Пример команды для бота: /help@random_welcome_bot\n"
             "[ ] в самой команде не использовать.\n"
             "/help - Это меню;\n"
-            "/echo [сообщение] - Получить ответ своим же сообщением;\n"
             "/cat - Случайное фото котика;\n"
             "/dog - Случайное фото собачки;\n"
             "/dadjoke - Случайная шутка бати;\n"
@@ -44,7 +52,7 @@ def help(update, context):
             "/myiq - Мой IQ (0 - 200);\n"
             "/muhdick - Длина моего шланга (0 - 25);\n"
             "/flip - Бросить монетку (Орёл или Решка);\n"
-            "/random [число1] [число2] - Случайное число в выбранном диапазоне, включая концы;\n"
+            "/randomnumber [число1] [число2] - Случайное число в выбранном диапазоне, включая концы;\n"
             "\n"
             "Дополнительная информация:\n"
             "1. Бот здоровается с людьми, прибывшими в чат и просит у них имя, фамилию, фото ног.\n"
@@ -100,15 +108,6 @@ def reply_to_text(update, context):
                              reply_to_message_id=update.message.message_id)
 
 
-def echo(update, context):
-    """Echo back the message"""
-    if antispammer(update):
-        return_echo = update.message.text[6:]
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=return_echo,
-                         reply_to_message_id=update.message.message_id)
-
-
 def flip(update, context):
     """Flip a Coin"""
     if antispammer(update):
@@ -140,21 +139,16 @@ def muhdick(update, context):
     if antispammer(update):
         muh_dick = random.randint(0, 25)
         if muh_dick == 0:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text='У тебя нет члена (0 см) \U0001F62C! Ты евнух, братишка. (0 - 25)',
-                             reply_to_message_id=update.message.message_id)
+            reply = f"У тебя нет члена (0 см) \U0001F62C! Ты евнух, братишка. (0 - 25)"
         elif 1 <= muh_dick <= 11:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text=f"Длина твоего стручка {muh_dick} см \U0001F923! (0 - 25)",
-                             reply_to_message_id=update.message.message_id)
+            reply = f"Длина твоего стручка {muh_dick} см \U0001F923! (0 - 25)"
         elif 12 <= muh_dick <= 17:
-            bot.send_message(chat_id=update.message.chat_id,
-                             reply_to_message_id=update.message.message_id,
-                             text=f"Длина твоей палочки {muh_dick} см! (0 - 25)")
+            reply = f"Длина твоей палочки {muh_dick} см! (0 - 25)"
         else:
-            bot.send_message(chat_id=update.message.chat_id,
-                             reply_to_message_id=update.message.message_id,
-                             text=f"Длина твоего шланга {muh_dick} см! (0 - 25)")
+            reply = f"Длина твоего шланга {muh_dick} см! (0 - 25)"
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=reply,
+                         reply_to_message_id=update.message.message_id)
 
 
 def randomnumber(update, context):
@@ -230,14 +224,10 @@ def antispammer(update):
     # Get the time now to compare to previous messages
     message_time = datetime.datetime.now()
     # Add exception for the bot developer to be able to run tests
-    if update.message.from_user.id == 255295801 or update.message.from_user.id == 413327053:
+    if update.message.from_user.id in antispammer_exceptions:
         return True
     # Create a holder for errors
     error = ''
-    # Delays in minutes
-    individual_user_delay = 1
-    error_delay = 1
-    chat_delay = 10
     # If the chat has been encountered before, go into its info, otherwise create chat info in spam_counter
     if update.message.chat_id in spam_counter:
         # First check if there is a chat cooldown (1 minute)
@@ -293,21 +283,19 @@ def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 
-
 def main():
     """Start the bot."""
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
 
-    updater = Updater(TOKEN, use_context=True)
+    updater = Updater(token=TOKEN, use_context=True)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
     # on different commands - answer in Telegram
     dp.add_handler(CommandHandler("help", help))
-    dp.add_handler(CommandHandler("echo", echo))
     dp.add_handler(CommandHandler("flip", flip))
     dp.add_handler(CommandHandler("myiq", myiq))
     dp.add_handler(CommandHandler("muhdick", muhdick))
