@@ -94,7 +94,7 @@ def reply_to_text(update, context):
         if doomer_word_start != -1:
             # Get the word with symbol, strip symbols using re and send the reply
             word_with_symbols = update.message.text.lower()[doomer_word_start:].replace('думер', 'хуюмер').split()[0]
-            reply = re.sub(r'[^\w]', '', word_with_symbols)
+            reply = re.sub(r'[^\w]', '', word_with_symbols).strip('01234556789')
             bot.send_message(chat_id=update.message.chat_id,
                              text=reply,
                              reply_to_message_id=update.message.message_id)
