@@ -241,9 +241,9 @@ def antispammer(update):
     # If the chat has been encountered before, go into its info, otherwise create chat info in spam_counter
     if update.message.chat_id in spam_counter:
         # First check if there is a chat cooldown (1 minute)
-        if message_time > (spam_counter[update.message.chat_id]['last_message'] + datetime.timedelta(
+        if message_time > (spam_counter[update.message.chat_id]['last_chat_message'] + datetime.timedelta(
                 minutes=individual_user_delay)):
-            spam_counter[update.message.chat_id]['last_message'] = message_time
+            spam_counter[update.message.chat_id]['last_chat_message'] = message_time
             chat_cooldown = False
         else:
             error += "Бот отвечает на команды всех пользователей минимум через каждую 1 минуту.\n"
@@ -264,27 +264,28 @@ def antispammer(update):
             user_cooldown = False
     else:
         spam_counter[update.message.chat_id] = {}
-        spam_counter[update.message.chat_id]['last_message'] = message_time
+        spam_counter[update.message.chat_id]['last_chat_message'] = message_time
         spam_counter[update.message.chat_id][update.message.from_user.id] = message_time
         return True
 
     # If there is no user cooldown or a chat cooldown, return True to allow the commands to run
-    if not user_cooldown and not chat_cooldown:
+    if not chat_cooldown and not user_cooldown:
         return True
     else:
-        # If there is a cooldown, give a reply with error. The error also has a cooldown of 1 minute.
-        if spam_counter[update.message.chat_id].get('last_error_message', None) is None:
-            spam_counter[update.message.chat_id]['last_error_message'] = message_time
-            bot.send_message(chat_id=update.message.chat_id,
-                             reply_to_message_id=update.message.message_id,
-                             text=(error + "Это ошибка тоже появляется минимум каждую 1 минуту.\n"))
-        else:
+        # Give error at minimum every 1 minute
+        if 'last_error' in spam_counter[update.message.chat_id]:
             if message_time > (
-                    spam_counter[update.message.chat_id]['last_error_message'] + datetime.timedelta(
+                    spam_counter[update.message.chat_id][update.message.from_user.id] + datetime.timedelta(
                 minutes=error_delay)):
+                spam_counter[update.message.chat_id]['last_error'] = message_time
                 bot.send_message(chat_id=update.message.chat_id,
                                  reply_to_message_id=update.message.message_id,
-                                 text=(error + "Это ошибка тоже появляется минимум каждую 1 минуту.\n"))
+                                 text=error+"Эта ошибка тоже появляется минимум каждую 1 минуту.\n")
+        else:
+            bot.send_message(chat_id=update.message.chat_id,
+                             reply_to_message_id=update.message.message_id,
+                             text=error+"Эта ошибка тоже появляется минимум каждую 1 минуту.\n")
+            spam_counter[update.message.chat_id]['last_error'] = message_time
         return False
 
 
