@@ -35,9 +35,9 @@ ANTISPAMMER_EXCEPTIONS = {
     }
 
 # Delays in minutes for the bot
-INDIVIDUAL_USER_DELAY = 1
+CHAT_DELAY = 1
 ERROR_DELAY = 1
-CHAT_DELAY = 10
+INDIVIDUAL_USER_DELAY = 10
 
 
 def help(update, context):
@@ -285,7 +285,7 @@ def antispammer(update):
     if update.message.chat_id in spam_counter:
         # First check if there is a chat cooldown (1 minute)
         if message_time > (spam_counter[update.message.chat_id]['last_chat_message']
-                           + datetime.timedelta(minutes=INDIVIDUAL_USER_DELAY)):
+                           + datetime.timedelta(minutes=CHAT_DELAY)):
             spam_counter[update.message.chat_id]['last_chat_message'] = message_time
             chat_cooldown = False
         else:
@@ -295,7 +295,7 @@ def antispammer(update):
         # Next check if there is a user cooldown (10 minute)
         if update.message.from_user.id in spam_counter[update.message.chat_id]:
             if message_time > (spam_counter[update.message.chat_id][update.message.from_user.id]
-                               + datetime.timedelta(minutes=CHAT_DELAY)):
+                               + datetime.timedelta(minutes=INDIVIDUAL_USER_DELAY)):
                 spam_counter[update.message.chat_id][update.message.from_user.id] = message_time
                 user_cooldown = False
             else:
