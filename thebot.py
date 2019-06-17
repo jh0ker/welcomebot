@@ -316,7 +316,7 @@ def antispammer(update):
     else:
         # Give error at minimum every 1 minute
         if 'last_error' in spam_counter[update.message.chat_id]:
-            if message_time > (spam_counter[update.message.chat_id][update.message.from_user.id]
+            if message_time > (spam_counter[update.message.chat_id]['last_error']
                                + datetime.timedelta(minutes=ERROR_DELAY)):
                 spam_counter[update.message.chat_id]['last_error'] = message_time
                 bot.send_message(chat_id=update.message.chat_id,
