@@ -102,8 +102,23 @@ def reply_to_text(update, context):
     # Handle the word doomer if the message is not edited
     if update.message is not None:
         # Find the word start
-        doomer_word_start = update.message.text.lower().find('думер')
-        if doomer_word_start != -1:
+        haystick = update.message.text.lower()
+        the_d_word = 'думер'
+        mapping = {'у': 'y', 'е': 'e', 'р': 'p'}
+        needles = [
+                the_d_word,
+                *[the_d_word.replace(k, v) for k, v in mapping.items()]
+        ]
+
+        doomer_word_start = None
+
+        for needle in needles:
+            pos = haystick.find(needle)    
+            if pos != -1:
+                doomer_word_start = pos
+                break
+
+        if doomer_word_start is not None:
             # Get the word with symbol, strip symbols using re and send the reply
             word_with_symbols = update.message.text.lower()[doomer_word_start:].replace('думер', 'хуюмер').split()[0]
             reply = re.sub(r'[^\w]', '', word_with_symbols).strip('01234556789')
