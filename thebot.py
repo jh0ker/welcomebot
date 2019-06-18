@@ -101,26 +101,25 @@ def reply_to_text(update, context):
     """Replies to regular text messages"""
     # Handle the word doomer if the message is not edited
     if update.message is not None:
-        # Find the word start
-        haystick = update.message.text.lower()
-        the_d_word = 'думер'
-        mapping = {'у': 'y', 'е': 'e', 'р': 'p'}
+        # Make the preparations with variations of the word with latin letters
+        doomer_word, correct_word = 'думер', 'думер'
+        mapping = {'у': 'y', 'е': 'e', 'р': 'p', 'ер': 'ep'}
         needles = [
-                the_d_word,
-                *[the_d_word.replace(k, v) for k, v in mapping.items()]
+                doomer_word,
+                *[doomer_word.replace(cyrillic, latin) for cyrillic, latin in mapping.items()]
         ]
-
-        doomer_word_start = None
-
+        doomer_word_start = -1
+        # Check if any of the variations are in the text, if there are break
         for needle in needles:
-            pos = haystick.find(needle)    
-            if pos != -1:
-                doomer_word_start = pos
+            position = update.message.text.lower().find(needle)
+            if position != -1:
+                correct_word = needle
+                doomer_word_start = position
                 break
-
-        if doomer_word_start is not None:
+        # If any of the variations have been found, give a reply
+        if doomer_word_start != -1:
             # Get the word with symbol, strip symbols using re and send the reply
-            word_with_symbols = update.message.text.lower()[doomer_word_start:].replace('думер', 'хуюмер').split()[0]
+            word_with_symbols = update.message.text.lower()[doomer_word_start:].replace(correct_word, 'хуюмер').split()[0]
             reply = re.sub(r'[^\w]', '', word_with_symbols).strip('01234556789')
             bot.send_message(chat_id=update.message.chat_id,
                              text=reply,
