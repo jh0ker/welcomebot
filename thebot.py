@@ -74,18 +74,19 @@ def welcomer(update, context):
     Empty messages could be status messages, so we check them if there is a new
     group member.
     """
-    # A bot entered the chat
-    if update.message.new_chat_members[0].is_bot:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text="УХОДИ, НАМ БОЛЬШЕ БОТОВ НЕ НАДО. БАН ЕМУ.",
-                         reply_to_message_id=update.message.message_id)
+    # A bot entered the chat, and not this bot
+    if update.message.new_chat_members[0].is_bot and update.message.new_chat_members[0].id != 705781870:
+        reply="УХОДИ, НАМ БОЛЬШЕ БОТОВ НЕ НАДО. БАН ЕМУ.",
+    # This bot joined the chat
+    elif update.message.new_chat_members[0].id == 705781870:
+        reply="Думер бот в чате. Для помощи используйте /help."
     # Another user joined the chat
     else:
         reply = (f"Приветствуем вас в Думерском Чате, {update.message.new_chat_members[0].first_name}!\n"
                  f"По традициям группы, с вас Имя, Фамилия, Фото ног.")
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=reply,
-                         reply_to_message_id=update.message.message_id)
+    bot.send_message(chat_id=update.message.chat_id,
+                     text=reply,
+                     reply_to_message_id=update.message.message_id)
 
 
 def farewell(update, context):
@@ -108,7 +109,7 @@ def reply_to_text(update, context):
                 doomer_word,
                 *[doomer_word.replace(cyrillic, latin) for cyrillic, latin in mapping.items()]
         ]
-        doomer_word_start = -1
+        doomer_word_start = None
         # Check if any of the variations are in the text, if there are break
         for needle in needles:
             position = update.message.text.lower().find(needle)
@@ -117,7 +118,7 @@ def reply_to_text(update, context):
                 doomer_word_start = position
                 break
         # If any of the variations have been found, give a reply
-        if doomer_word_start != -1:
+        if doomer_word_start is not None:
             # Get the word with symbol, strip symbols using re and send the reply
             word_with_symbols = update.message.text.lower()[doomer_word_start:].replace(correct_word, 'хуюмер').split()[0]
             reply = re.sub(r'[^\w]', '', word_with_symbols).strip('01234556789')
@@ -177,18 +178,15 @@ def randomnumber(update, context):
             try:
                 arg1, arg2 = int(args[0]), int(args[1])
                 generated_number = random.randint(arg1, arg2)
-                bot.send_message(chat_id=update.message.chat_id,
-                                 text=f"Выпало {generated_number}.",
-                                 reply_to_message_id=update.message.message_id)
+                reply=f"Выпало {generated_number}."
             except ValueError:
-                bot.send_message(chat_id=update.message.chat_id,
-                                 text='Аргументы неверны. Должны быть два числа.',
-                                 reply_to_message_id=update.message.message_id)
+                reply='Аргументы неверны. Должны быть два числа.'
         else:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text='Неверное использование команды.\n'
-                                  'Пример: /randomnumber 10 25',
-                             reply_to_message_id=update.message.message_id)
+            reply=('Неверное использование команды.\n'
+                   'Пример: /randomnumber 10 25\n')
+        bot.send_message(chat_id=update.message.chat_id,
+                         text=reply,
+                         reply_to_message_id=update.message.message_id)
 
 
 def dog(update, context):
