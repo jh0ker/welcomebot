@@ -51,6 +51,7 @@ def help(update, context):
             "/dog - Случайное фото собачки;\n"
             "/image [тематика] - Случайное фото. Можно задать тематику на английском;\n"
             "/dadjoke - Случайная шутка бати;\n"
+            "/slap [@имя пользователя] - Кого-то унизить;\n"
             "\n"
             "Генераторы чисел:\n"
             "/myiq - Мой IQ (0 - 200);\n"
@@ -76,14 +77,14 @@ def welcomer(update, context):
     """
     # A bot entered the chat, and not this bot
     if update.message.new_chat_members[0].is_bot and update.message.new_chat_members[0].id != 705781870:
-        reply="УХОДИ, НАМ БОЛЬШЕ БОТОВ НЕ НАДО. БАН ЕМУ.",
+        reply = "УХОДИ, НАМ БОЛЬШЕ БОТОВ НЕ НАДО. БАН ЕМУ.",
     # This bot joined the chat
     elif update.message.new_chat_members[0].id == 705781870:
-        reply="Думер бот в чате. Для помощи используйте /help."
+        reply = "Думер бот в чате. Для помощи используйте /help."
     # Another user joined the chat
     else:
         reply = (f"Приветствуем вас в Думерском Чате, {update.message.new_chat_members[0].first_name}!\n"
-                 f"По традициям группы, с вас Имя, Фамилия, Фото ног.")
+                 f"По традициям группы, с вас фото своих ног.\n")
     bot.send_message(chat_id=update.message.chat_id,
                      text=reply,
                      reply_to_message_id=update.message.message_id)
@@ -104,24 +105,25 @@ def reply_to_text(update, context):
     if update.message is not None:
         # Make the preparations with variations of the word with latin letters
         doomer_word, correct_word = 'думер', 'думер'
-        mapping = {'у': 'y', 'е': 'e', 'р': 'p', 'ер': 'ep'}
-        needles = [
-                doomer_word,
-                *[doomer_word.replace(cyrillic, latin) for cyrillic, latin in mapping.items()]
-        ]
+        cyrillic_to_latin_mappings = {'у': 'y', 'е': 'e', 'р': 'p', 'ер': 'ep'}
+        variations = [
+            doomer_word,
+            *[doomer_word.replace(cyrillic, latin) for cyrillic, latin in cyrillic_to_latin_mappings.items()]
+            ]
         doomer_word_start = None
         # Check if any of the variations are in the text, if there are break
-        for needle in needles:
-            position = update.message.text.lower().find(needle)
+        for variation in variations:
+            position = update.message.text.lower().find(variation)
             if position != -1:
-                correct_word = needle
+                correct_word = variation
                 doomer_word_start = position
                 break
         # If any of the variations have been found, give a reply
         if doomer_word_start is not None:
             # Get the word with symbol, strip symbols using re and send the reply
-            word_with_symbols = update.message.text.lower()[doomer_word_start:].replace(correct_word, 'хуюмер').split()[0]
-            reply = re.sub(r'[^\w]', '', word_with_symbols).strip('01234556789')
+            word_with_symbols = update.message.text.lower()[doomer_word_start:].replace(correct_word, 'хуюмер').split()[
+                0]
+            reply = re.match(r'[\w]*', word_with_symbols).group(0).strip('0123456789')
             bot.send_message(chat_id=update.message.chat_id,
                              text=reply,
                              reply_to_message_id=update.message.message_id)
@@ -178,12 +180,12 @@ def randomnumber(update, context):
             try:
                 arg1, arg2 = int(args[0]), int(args[1])
                 generated_number = random.randint(arg1, arg2)
-                reply=f"Выпало {generated_number}."
+                reply = f"Выпало {generated_number}."
             except ValueError:
-                reply='Аргументы неверны. Должны быть два числа.'
+                reply = 'Аргументы неверны. Должны быть два числа.'
         else:
-            reply=('Неверное использование команды.\n'
-                   'Пример: /randomnumber 10 25\n')
+            reply = ('Неверное использование команды.\n'
+                     'Пример: /randomnumber 10 25\n')
         bot.send_message(chat_id=update.message.chat_id,
                          text=reply,
                          reply_to_message_id=update.message.message_id)
@@ -222,26 +224,26 @@ def cat(update, context):
 def image(update, context):
     """Create a command for random images"""
 
-    def image_unsplash(user_request, update):
+    def image_unsplash(user_theme, update):
         """Function that gets random images from unsplash.com"""
         # Create a user request
-        user_request = ','.join(user_request)
+        user_theme = ','.join(user_theme)
         # Ask the server
-        response = requests.get(f'https://source.unsplash.com/500x700/?{user_request}')
+        response = requests.get(f'https://source.unsplash.com/500x700/?{user_theme}')
         # Reply the response with the photo
         bot.send_photo(chat_id=update.message.chat_id,
                        photo=response.url,
                        reply_to_message_id=update.message.message_id)
 
-    def image_pixabay(user_request, update):
+    def image_pixabay(user_theme, update):
         """Function that gets random images from pixabay.com"""
         # Create a user request
-        user_request = '+'.join(user_request)
+        user_theme = '+'.join(user_theme)
         # Request the server for the dictionary with links to images
         response = requests.get('https://pixabay.com/api/',
                                 params={
                                     'key': '12793256-08bafec09c832951d5d3366f1',
-                                    'q': user_request,
+                                    'q': user_theme,
                                     "safesearch": "false",
                                     "lang": "en"
                                     }).json()
@@ -279,6 +281,18 @@ def dadjoke(update, context):
                          reply_to_message_id=update.message.message_id,
                          text=joke)
 
+def slap(update, context):
+    """Slap with random item"""
+    if antispammer(update):
+        if len(update.message.text.split()) == 1:
+            reply = 'Кого унижать то будем?'
+        else:
+            target_user = update.message.text.split()[1]
+            hit_item = ['писюном', 'бутылкой']
+            reply = f"@{update.message.from_user.username} ударил {target_user} {random.choice(hit_item)}."
+        bot.send_message(chat_id=update.message.chat_id,
+                         reply_to_message_id=update.message.message_id,
+                         text=reply)
 
 def antispammer(update):
     """
@@ -368,6 +382,7 @@ def main():
     dispatcher.add_handler(CommandHandler("cat", cat))
     dispatcher.add_handler(CommandHandler("image", image))
     dispatcher.add_handler(CommandHandler("dadjoke", dadjoke))
+    dispatcher.add_handler(CommandHandler("slap", slap))
 
     # add message handlers
     dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, welcomer))
