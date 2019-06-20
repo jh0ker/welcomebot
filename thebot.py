@@ -42,7 +42,7 @@ INDIVIDUAL_USER_DELAY = 10
 
 def help(update, context):
     """Help message"""
-    if antispammer(update):
+    if antispammer_check_passed(update):
         help_text = (
             "Пример команды для бота: /help@random_welcome_bot\n"
             "[ ] в самой команде не использовать.\n"
@@ -131,7 +131,7 @@ def reply_to_text(update, context):
 
 def flip(update, context):
     """Flip a Coin"""
-    if antispammer(update):
+    if antispammer_check_passed(update):
         flip_outcome = random.choice(['Орёл!', 'Решка!'])
         bot.send_message(chat_id=update.message.chat_id,
                          text=flip_outcome,
@@ -140,7 +140,7 @@ def flip(update, context):
 
 def myiq(update, context):
     """Return IQ level (0-200)"""
-    if antispammer(update):
+    if antispammer_check_passed(update):
         iq_level = random.randint(0, 200)
         if iq_level < 85:
             message = f"Твой уровень IQ {iq_level}. Грустно за тебя, братишка. (0 - 200)"
@@ -157,7 +157,7 @@ def myiq(update, context):
 
 def muhdick(update, context):
     """Return dick size in cm (0-25)"""
-    if antispammer(update):
+    if antispammer_check_passed(update):
         muh_dick = random.randint(0, 25)
         if muh_dick == 0:
             reply = f"У тебя нет члена (0 см) \U0001F62C! Ты евнух, братишка. (0 - 25)"
@@ -174,7 +174,7 @@ def muhdick(update, context):
 
 def randomnumber(update, context):
     """Return a random number between two integers"""
-    if antispammer(update):
+    if antispammer_check_passed(update):
         args = update.message.text[13:].split()
         if len(args) == 2:
             try:
@@ -195,7 +195,7 @@ def dog(update, context):
     """Get a random dog image"""
     # Go to a website with a json, that contains a link, pass the link to the bot, let the server download the
     # image/video/gif
-    if antispammer(update):
+    if antispammer_check_passed(update):
         response = requests.get('https://random.dog/woof.json').json()
         if 'mp4' in response['url']:
             bot.send_video(chat_id=update.message.chat_id,
@@ -214,7 +214,7 @@ def dog(update, context):
 def cat(update, context):
     """Get a random cat image"""
     # Go to a website with a json, that contains a link, pass the link to the bot, let the server download the image
-    if antispammer(update):
+    if antispammer_check_passed(update):
         response = requests.get('http://aws.random.cat/meow').json()
         bot.send_photo(chat_id=update.message.chat_id,
                        photo=response['file'],
@@ -259,7 +259,7 @@ def image(update, context):
                              text='Фото по запросу не найдено.',
                              reply_to_message_id=update.message.message_id)
 
-    if antispammer(update):
+    if antispammer_check_passed(update):
         # Get user request, remove the bot command
         user_request = update.message.text.split()
         user_request.pop(0)
@@ -272,7 +272,7 @@ def image(update, context):
 
 def dadjoke(update, context):
     """Get a random dad joke"""
-    if antispammer(update):
+    if antispammer_check_passed(update):
         # Retrieve the website source, find the joke in the code.
         response = requests.get('https://icanhazdadjoke.com/')
         soup = BeautifulSoup(response.text, "lxml")
@@ -281,9 +281,10 @@ def dadjoke(update, context):
                          reply_to_message_id=update.message.message_id,
                          text=joke)
 
+
 def slap(update, context):
     """Slap with random item"""
-    if antispammer(update):
+    if antispammer_check_passed(update):
         if len(update.message.text.split()) == 1:
             reply = 'Кого унижать то будем?'
         else:
@@ -294,12 +295,14 @@ def slap(update, context):
                          reply_to_message_id=update.message.message_id,
                          text=reply)
 
-def antispammer(update):
+
+def antispammer_check_passed(update):
     """
     Check if the user is spamming
     Delay of 1 minute for all commands toward the bot
     Delay of 10 minutes for individual user commands, changeable.
     """
+    print(update.message)
     # Get the time now to compare to previous messages
     message_time = datetime.datetime.now()
     # Add exception for the bot developer to be able to run tests
@@ -328,7 +331,8 @@ def antispammer(update):
                 error_message += "Ответ индивидуальным пользователям на команды минимум через каждые 10 минут.\n"
                 user_cooldown = True
         else:
-            spam_counter[update.message.chat_id][update.message.from_user.id] = message_time
+            if not chat_cooldown:
+                spam_counter[update.message.chat_id][update.message.from_user.id] = message_time
             user_cooldown = False
     else:
         spam_counter[update.message.chat_id] = {}
@@ -347,13 +351,25 @@ def antispammer(update):
                 spam_counter[update.message.chat_id]['last_error'] = message_time
                 bot.send_message(chat_id=update.message.chat_id,
                                  reply_to_message_id=update.message.message_id,
-                                 text=error_message + "Эта ошибка тоже появляется минимум каждую 1 минуту.\n")
+                                 text=error_message + "Эта ошибка тоже появляется минимум каждую 1 минуту.\nЗапросы "
+                                                      "во время кулдауна будут удаляться.")
+            else:
+                _try_to_delete_message(update)
         else:
             bot.send_message(chat_id=update.message.chat_id,
                              reply_to_message_id=update.message.message_id,
-                             text=error_message + "Эта ошибка тоже появляется минимум каждую 1 минуту.\n")
+                             text=error_message + "Эта ошибка тоже появляется минимум каждую 1 минуту.\nЗапросы во "
+                                                  "время кулдауна будут удаляться.")
             spam_counter[update.message.chat_id]['last_error'] = message_time
         return False
+
+
+def _try_to_delete_message(update):
+    try:
+        bot.delete_message(chat_id=update.message.chat_id,
+                           message_id=update.message.message_id)
+    except:
+        pass
 
 
 def error(update, context):
