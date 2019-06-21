@@ -284,13 +284,26 @@ def dadjoke(update, context):
 
 def slap(update, context):
     """Slap with random item"""
-    if antispammer_check_passed(update):
-        if len(update.message.text.split()) == 1:
-            reply = 'Кого унижать то будем?'
+    def _get_target_user(update):
+        if update.message.reply_to_message is not None:
+            target_user = update.message.reply_to_message.from_user.username
         else:
-            target_user = update.message.text.split()[1]
-            hit_item = ['писюном', 'бутылкой']
-            reply = f"@{update.message.from_user.username} ударил {target_user} {random.choice(hit_item)}."
+            target_user = update.message.text.split()[1].strip('@')
+        return target_user
+
+    if antispammer_check_passed(update):
+        hit_item = ['писюном', 'бутылкой']
+        if len(update.message.text.split()) == 1 and update.message.reply_to_message is None:
+            reply = 'Кого унижать то будем?'
+        elif len(update.message.text.split()) == 2 and update.message.reply_to_message is not None:
+            if update.message.text.split()[1].strip('@').lower() != update.message.reply_to_message.from_user.username:
+                reply = 'Ты потерялся? Команда не так работает.'
+            else:
+                target_user = _get_target_user(update)
+                reply = f"@{update.message.from_user.username} ударил @{target_user} {random.choice(hit_item)}."
+        else:
+            target_user = _get_target_user(update)
+            reply = f"@{update.message.from_user.username} ударил @{target_user} {random.choice(hit_item)}."
         bot.send_message(chat_id=update.message.chat_id,
                          reply_to_message_id=update.message.message_id,
                          text=reply)
@@ -302,7 +315,6 @@ def antispammer_check_passed(update):
     Delay of 1 minute for all commands toward the bot
     Delay of 10 minutes for individual user commands, changeable.
     """
-    print(update.message)
     # Get the time now to compare to previous messages
     message_time = datetime.datetime.now()
     # Add exception for the bot developer to be able to run tests
