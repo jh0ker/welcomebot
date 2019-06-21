@@ -286,7 +286,10 @@ def slap(update, context):
     """Slap with random item"""
     def _get_target_user(update):
         if update.message.reply_to_message is not None:
-            target_user = update.message.reply_to_message.from_user.username
+            if update.message.reply_to_message.from_user.username is not None:
+                target_user = update.message.reply_to_message.from_user.username
+            else:
+                target_user = update.message.reply_to_message.from_user.first_name
         else:
             target_user = update.message.text.split()[1].strip('@')
         return target_user
