@@ -300,7 +300,10 @@ def slap(update, context):
 
     if antispammer_check_passed(update):
         # List the items that the target will be slapped with
-        hit_item = ['писюном', 'бутылкой']
+        action_items = {
+            'ударил': ['писюном', 'бутылкой'],
+            'обтер лицо' : ['яйцами'],
+            }
         # Check if the user has indicated the target
         if len(update.message.text.split()) == 1 and update.message.reply_to_message is None:
             reply = 'Кого унижать то будем?'
@@ -310,10 +313,12 @@ def slap(update, context):
                 reply = 'Ты потерялся? Команда не так работает.'
             else:
                 target_user = _get_target_user(update)
-                reply = f"@{update.message.from_user.username} ударил @{target_user} {random.choice(hit_item)}."
+                action = random.choice(list(action_items.keys()))
+                reply = f"@{update.message.from_user.username} {action} @{target_user} {random.choice(action_items[action])}."
         else:
             target_user = _get_target_user(update)
-            reply = f"@{update.message.from_user.username} ударил @{target_user} {random.choice(hit_item)}."
+            action = random.choice(list(action_items.keys()))
+            reply = f"@{update.message.from_user.username} {action} @{target_user} {random.choice(action_items[action])}."
         bot.send_message(chat_id=update.message.chat_id,
                          reply_to_message_id=update.message.message_id,
                          text=reply)
