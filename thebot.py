@@ -329,11 +329,11 @@ def antispammer_check_passed(update):
     Delay of 1 minute for all commands toward the bot
     Delay of 10 minutes for individual user commands, changeable.
     """
-    # Get the time now to compare to previous messages
-    message_time = datetime.datetime.now()
     # Add exception for the bot developer to be able to run tests
     if update.message.from_user.id in ANTISPAMMER_EXCEPTIONS:
         return True
+    # Get the time now to compare to previous messages
+    message_time = datetime.datetime.now()
     # Create a holder for errors
     error_message = ''
     # If the chat has been encountered before, go into its info, otherwise create chat info in spam_counter
