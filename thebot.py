@@ -284,47 +284,25 @@ def dadjoke(update, context):
 
 def slap(update, context):
     """Slap with random item"""
-
-    def _get_target_user(update):
-        """Get the username or the first name of the user who is the target of the slap"""
-        # Check if it was a reply
-        if update.message.reply_to_message is not None:
-            # If username exists, take it, otherwise take the first name
-            if update.message.reply_to_message.from_user.username is not None:
-                target_user = update.message.reply_to_message.from_user.username
-            else:
-                target_user = update.message.reply_to_message.from_user.first_name
-        # If not a reply, take the argument
-        else:
-            target_user = update.message.text.split()[1].strip('@')
-        return target_user
-
     if antispammer_check_passed(update):
         # List the items that the target will be slapped with
         action_items = {
             'ударил': ['писюном', 'бутылкой'],
             'обтер лицо': ['яйцами'],
             }
-        # Check if the user has indicated the target
-        if len(update.message.text.split()) == 1 and update.message.reply_to_message is None:
+        # Check if the user has indicated the target by making his message a reply
+        if  update.message.reply_to_message is None:
             reply = 'Кого унижать то будем?'
-        # Check if the user has given two different targets
-        elif len(update.message.text.split()) == 2 and update.message.reply_to_message is not None:
-            if update.message.text.split()[1].strip('@').lower() != update.message.reply_to_message.from_user.username:
-                reply = 'Ты потерялся? Команда не так работает.'
-            else:
-                target_user = _get_target_user(update)
-                action = random.choice(list(action_items.keys()))
-                reply = f"@{update.message.from_user.username} {action} " \
-                    f"@{target_user} {random.choice(action_items[action])}."
         else:
-            target_user = _get_target_user(update)
+            # Generate the answer + create the reply using markdown
             action = random.choice(list(action_items.keys()))
-            reply = f"@{update.message.from_user.username} {action} " \
-                f"@{target_user} {random.choice(action_items[action])}."
+            reply = f"@[{update.message.from_user.first_name}](tg://user?id={update.message.from_user.id}) {action} " \
+                f"@{update.message.reply_to_message.from_user.first_name}(tg://user?id={update.message.reply_to_message.from_user.id}) " \
+                f"{random.choice(action_items[action])}."
         bot.send_message(chat_id=update.message.chat_id,
                          reply_to_message_id=update.message.message_id,
-                         text=reply)
+                         text=reply,
+                         parse_mode='Markdown')
 
 
 def antispammer_check_passed(update):
