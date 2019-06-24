@@ -304,7 +304,7 @@ def slap(update, context):
                          text=reply,
                          parse_mode='Markdown')
 
-def google(update, context)
+def google(update, context):
     """Return a google link"""
     if antispammer_check_passed(update):
         user_search_request = update.message.text.split()
@@ -415,6 +415,7 @@ def main():
     dispatcher.add_handler(CommandHandler("image", image))
     dispatcher.add_handler(CommandHandler("dadjoke", dadjoke))
     dispatcher.add_handler(CommandHandler("slap", slap))
+    dispatcher.add_handler(CommandHandler("google", google))
 
     # add message handlers
     dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, welcomer))
