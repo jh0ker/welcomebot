@@ -22,7 +22,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Bot initiatlization
+# Bot initialization
 TOKEN = environ.get("TG_BOT_TOKEN")
 bot = Bot(TOKEN)
 
@@ -395,6 +395,7 @@ def antispammer_check_passed(update):
 
 
 def _try_to_delete_message(update):
+    """Try to delete user message using admin rights. If no rights, pass."""
     try:
         bot.delete_message(chat_id=update.message.chat_id,
                            message_id=update.message.message_id)
@@ -410,9 +411,6 @@ def error(update, context):
 def main():
     """Start the bot."""
     # Create the Updater and pass it your bot's token.
-    # Make sure to set use_context=True to use the new context based callbacks
-    # Post version 12 this will no longer be necessary
-
     updater = Updater(token=TOKEN, use_context=True)
 
     # Get the dispatcher to register handlers
