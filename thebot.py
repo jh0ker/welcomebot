@@ -9,7 +9,6 @@ import re
 from os import environ
 
 import requests
-from bs4 import BeautifulSoup
 from telegram import Bot
 from telegram.ext import CommandHandler
 from telegram.ext import Filters
@@ -64,7 +63,7 @@ def help(update, context):
             "2. Кулдаун бота на любые команды 1 минута.\n"
             "3. Кулдаун на каждую команду 10 минуту для индивидуального пользователя.\n"
             "4. Ошибка о кулдауне даётся минимум через каждую 1 минуту."
-        )
+            )
         bot.send_message(chat_id=update.message.chat_id,
                          text=help_text,
                          reply_to_message_id=update.message.message_id)
@@ -274,12 +273,13 @@ def dadjoke(update, context):
     """Get a random dad joke"""
     if antispammer_check_passed(update):
         # Retrieve the website source, find the joke in the code.
-        response = requests.get('https://icanhazdadjoke.com/')
-        soup = BeautifulSoup(response.text, "lxml")
-        joke = str(soup.find_all('meta')[-5])[15:][:-30]
+        headers = {
+            'Accept': 'application/json',
+            }
+        response = requests.get('https://icanhazdadjoke.com/', headers=headers).json()
         bot.send_message(chat_id=update.message.chat_id,
                          reply_to_message_id=update.message.message_id,
-                         text=joke)
+                         text=response['joke'])
 
 
 def slap(update, context):
@@ -304,6 +304,7 @@ def slap(update, context):
                          text=reply,
                          parse_mode='Markdown')
 
+
 def google(update, context):
     """Return a google link"""
     if antispammer_check_passed(update):
@@ -314,6 +315,7 @@ def google(update, context):
         bot.send_message(chat_id=update.message.chat_id,
                          reply_to_message_id=update.message.message_id,
                          text=f'https://www.google.com/search?q={user_search_request}')
+
 
 def antispammer_check_passed(update):
     """
