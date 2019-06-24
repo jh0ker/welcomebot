@@ -309,12 +309,18 @@ def google(update, context):
     """Return a google link"""
     if antispammer_check_passed(update):
         user_search_request = update.message.text.split()
-        # Remove command
+        # Remove the command
         user_search_request.pop(0)
-        user_search_request = '+'.join(user_search_request)
+        # Check if there was a search request
+        if len(user_search_request) == 0:
+            reply = 'Какой запрос-то?'
+        # Join the words in a way that the query needs
+        else:
+            user_search_request = '+'.join(user_search_request)
+            reply = f'https://www.google.com/search?q={user_search_request}'
         bot.send_message(chat_id=update.message.chat_id,
-                         reply_to_message_id=update.message.message_id,
-                         text=f'https://www.google.com/search?q={user_search_request}')
+                        reply_to_message_id=update.message.message_id,
+                        text=reply)
 
 
 def antispammer_check_passed(update):
