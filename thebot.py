@@ -296,8 +296,8 @@ def slap(update, context):
         else:
             # Generate the answer + create the reply using markdown
             action = random.choice(list(action_items.keys()))
-            reply = f"@[{update.message.from_user.first_name}](tg://user?id={update.message.from_user.id}) {action} " \
-                f"@[{update.message.reply_to_message.from_user.first_name}](tg://user?id={update.message.reply_to_message.from_user.id}) " \
+            reply = f"[{update.message.from_user.first_name}](tg://user?id={update.message.from_user.id}) {action} " \
+                f"[{update.message.reply_to_message.from_user.first_name}](tg://user?id={update.message.reply_to_message.from_user.id}) " \
                 f"{random.choice(action_items[action])}."
         bot.send_message(chat_id=update.message.chat_id,
                          reply_to_message_id=update.message.message_id,
