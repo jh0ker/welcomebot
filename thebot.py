@@ -284,6 +284,7 @@ def dadjoke(update, context):
 
 def slap(update, context):
     """Slap with random item"""
+
     def _get_target_user(update):
         """Get the username or the first name of the user who is the target of the slap"""
         # Check if it was a reply
@@ -302,7 +303,7 @@ def slap(update, context):
         # List the items that the target will be slapped with
         action_items = {
             'ударил': ['писюном', 'бутылкой'],
-            'обтер лицо' : ['яйцами'],
+            'обтер лицо': ['яйцами'],
             }
         # Check if the user has indicated the target
         if len(update.message.text.split()) == 1 and update.message.reply_to_message is None:
@@ -314,11 +315,13 @@ def slap(update, context):
             else:
                 target_user = _get_target_user(update)
                 action = random.choice(list(action_items.keys()))
-                reply = f"@{update.message.from_user.username} {action} @{target_user} {random.choice(action_items[action])}."
+                reply = f"@{update.message.from_user.username} {action} " \
+                    f"@{target_user} {random.choice(action_items[action])}."
         else:
             target_user = _get_target_user(update)
             action = random.choice(list(action_items.keys()))
-            reply = f"@{update.message.from_user.username} {action} @{target_user} {random.choice(action_items[action])}."
+            reply = f"@{update.message.from_user.username} {action} " \
+                f"@{target_user} {random.choice(action_items[action])}."
         bot.send_message(chat_id=update.message.chat_id,
                          reply_to_message_id=update.message.message_id,
                          text=reply)
@@ -401,7 +404,7 @@ def _try_to_delete_message(update):
 
 def error(update, context):
     """Log Errors caused by Updates."""
-    logger.warning('Update "%s" caused error "%s"', update, context.error)
+    logger.warning('Error "%s" caused by update "%s"', context.error, update)
 
 
 def main():
