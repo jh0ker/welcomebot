@@ -292,7 +292,7 @@ def slap(update, context):
             }
         # Check if the user has indicated the target by making his message a reply
         if update.message.reply_to_message is None:
-            reply = 'Кого унижать то будем?'
+            reply = 'Кого унижать то будем? Чтобы унизить, надо чтобы вы ответили вашей жертве.'
         else:
             # Generate the answer + create the reply using markdown
             action = random.choice(list(action_items.keys()))
@@ -304,6 +304,14 @@ def slap(update, context):
                          text=reply,
                          parse_mode='Markdown')
 
+def google(update, context)
+    """Return a google link"""
+    if antispammer_check_passed(update):
+        user_search_request = update.message.text.split()
+        user_search_request = '+'.join(user_search_request)
+        bot.send_message(chat_id=update.message.chat_id,
+                         reply_to_message_id=update.message.message_id,
+                         text=f'https://www.google.com/search?q={user_search_request}')
 
 def antispammer_check_passed(update):
     """
