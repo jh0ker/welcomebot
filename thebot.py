@@ -107,6 +107,7 @@ def reply_to_text(update, context):
         cyrillic_to_latin_mappings = {'у': 'y', 'е': 'e', 'р': 'p', 'ер': 'ep'}
         variations = [
             doomer_word,
+            'дyмep',
             *[doomer_word.replace(cyrillic, latin) for cyrillic, latin in cyrillic_to_latin_mappings.items()]
             ]
         doomer_word_start = None
