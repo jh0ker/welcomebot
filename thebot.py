@@ -56,7 +56,6 @@ def help(update, context):
             "/myiq - Мой IQ (0 - 200);\n"
             "/muhdick - Длина моего шланга (0 - 25);\n"
             "/flip - Бросить монетку (Орёл или Решка);\n"
-            "/randomnumber [число1] [число2] - Случайное число в выбранном диапазоне, включая концы;\n"
             "\n"
             "Дополнительная информация:\n"
             "1. Бот здоровается с людьми, прибывшими в чат и просит у них имя, фамилию, фото ног.\n"
@@ -76,7 +75,7 @@ def welcomer(update, context):
     """
     # A bot entered the chat, and not this bot
     if update.message.new_chat_members[0].is_bot and update.message.new_chat_members[0].id != 705781870:
-        reply = "УХОДИ, НАМ БОЛЬШЕ БОТОВ НЕ НАДО. БАН ЕМУ.",
+        reply = "Уходи, нам больше ботов не надо."
     # This bot joined the chat
     elif update.message.new_chat_members[0].id == 705781870:
         reply = "Думер бот в чате. Для помощи используйте /help."
@@ -103,29 +102,32 @@ def reply_to_text(update, context):
     # Handle the word doomer if the message is not edited
     if update.message is not None:
         # Make the preparations with variations of the word with latin letters
-        doomer_word, correct_word = 'думер', 'думер'
-        cyrillic_to_latin_mappings = {'у': 'y', 'е': 'e', 'р': 'p', 'ер': 'ep'}
-        variations = [
-            doomer_word,
-            'дyмep',
-            *[doomer_word.replace(cyrillic, latin) for cyrillic, latin in cyrillic_to_latin_mappings.items()]
+        variations_with_latin_letters = [
+            'думер', 'дyмер', 'дyмeр', 'дyмep', 'думeр', 'думep', 'думеp'
             ]
         doomer_word_start = None
         # Check if any of the variations are in the text, if there are break
-        for variation in variations:
+        for variation in variations_with_latin_letters:
             position = update.message.text.lower().find(variation)
             if position != -1:
-                correct_word = variation
+                found_word = variation
                 doomer_word_start = position
                 break
         # If any of the variations have been found, give a reply
         if doomer_word_start is not None:
-            # Get the word with symbol, strip symbols using re and send the reply
-            word_with_symbols = update.message.text.lower()[doomer_word_start:].replace(correct_word, 'хуюмер').split()[
+            # Find the word in the message, get the word and all adjucent symbol
+            word_with_symbols = update.message.text.lower()[doomer_word_start:].replace(found_word, 'хуюмер').split()[
                 0]
-            reply = re.match(r'[\w]*', word_with_symbols).group(0).strip('0123456789')
+            reply_word = ''
+            # Get only the word, until any number or non alpha sumbol is encountered
+            for i in word_with_symbols:
+                if i.isalpha():
+                    reply_word += i
+                else:
+                    break
+            # Send reply
             bot.send_message(chat_id=update.message.chat_id,
-                             text=reply,
+                             text=reply_word,
                              reply_to_message_id=update.message.message_id)
 
 
@@ -167,25 +169,6 @@ def muhdick(update, context):
             reply = f"Длина твоей палочки {muh_dick} см! (0 - 25)"
         else:
             reply = f"Длина твоего шланга {muh_dick} см! (0 - 25)"
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=reply,
-                         reply_to_message_id=update.message.message_id)
-
-
-def randomnumber(update, context):
-    """Return a random number between two integers"""
-    if antispammer_check_passed(update):
-        args = update.message.text[13:].split()
-        if len(args) == 2:
-            try:
-                arg1, arg2 = int(args[0]), int(args[1])
-                generated_number = random.randint(arg1, arg2)
-                reply = f"Выпало {generated_number}."
-            except ValueError:
-                reply = 'Аргументы неверны. Должны быть два числа.'
-        else:
-            reply = ('Неверное использование команды.\n'
-                     'Пример: /randomnumber 10 25\n')
         bot.send_message(chat_id=update.message.chat_id,
                          text=reply,
                          reply_to_message_id=update.message.message_id)
@@ -288,8 +271,11 @@ def slap(update, context):
     if antispammer_check_passed(update):
         # List the items that the target will be slapped with
         action_items = {
-            'ударил': ['писюном', 'бутылкой'],
+            'ударил': ['писюном', 'бутылкой', 'карасиком'],
             'обтер лицо': ['яйцами'],
+            'пукнул': ['в лицо'],
+            'резнул': ['заточкой'],
+            'дал': ['пощечину'],
             }
         # Check if the user has indicated the target by making his message a reply
         if update.message.reply_to_message is None:
@@ -304,24 +290,6 @@ def slap(update, context):
                          reply_to_message_id=update.message.message_id,
                          text=reply,
                          parse_mode='Markdown')
-
-
-def google(update, context):
-    """Return a google link"""
-    if antispammer_check_passed(update):
-        user_search_request = update.message.text.split()
-        # Remove the command
-        user_search_request.pop(0)
-        # Check if there was a search request
-        if len(user_search_request) == 0:
-            reply = 'Какой запрос-то?'
-        # Join the words in a way that the query needs
-        else:
-            user_search_request = '+'.join(user_search_request)
-            reply = f'https://www.google.com/search?q={user_search_request}'
-        bot.send_message(chat_id=update.message.chat_id,
-                        reply_to_message_id=update.message.message_id,
-                        text=reply)
 
 
 def antispammer_check_passed(update):
@@ -418,13 +386,11 @@ def main():
     dispatcher.add_handler(CommandHandler("flip", flip))
     dispatcher.add_handler(CommandHandler("myiq", myiq))
     dispatcher.add_handler(CommandHandler("muhdick", muhdick))
-    dispatcher.add_handler(CommandHandler("randomnumber", randomnumber))
     dispatcher.add_handler(CommandHandler("dog", dog))
     dispatcher.add_handler(CommandHandler("cat", cat))
     dispatcher.add_handler(CommandHandler("image", image))
     dispatcher.add_handler(CommandHandler("dadjoke", dadjoke))
     dispatcher.add_handler(CommandHandler("slap", slap))
-    dispatcher.add_handler(CommandHandler("google", google))
 
     # add message handlers
     dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, welcomer))
