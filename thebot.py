@@ -15,7 +15,6 @@ from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
 
-
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -31,7 +30,7 @@ ANTISPAMMER_EXCEPTIONS = {
     255295801: "doitforricardo",
     413327053: "comradesanya",
     205762941: "dovaogedot",
-    }
+}
 
 # Delays in minutes for the bot
 CHAT_DELAY = 1
@@ -50,20 +49,19 @@ def help(update, context):
             "/dog - Случайное фото собачки;\n"
             "/image [тематика] - Случайное фото. Можно задать тематику на английском;\n"
             "/dadjoke - Случайная шутка бати;\n"
-            "/slap [@имя пользователя] - Кого-то унизить;\n"
+            "/slap - Кого-то унизить (надо ответить жертве, чтобы бот понял кого бить);\n"
             "\n"
             "Генераторы чисел:\n"
             "/myiq - Мой IQ (0 - 200);\n"
             "/muhdick - Длина моего шланга (0 - 25);\n"
             "/flip - Бросить монетку (Орёл или Решка);\n"
-            "/randomnumber [число1] [число2] - Случайное число в выбранном диапазоне, включая концы;\n"
             "\n"
             "Дополнительная информация:\n"
             "1. Бот здоровается с людьми, прибывшими в чат и просит у них имя, фамилию, фото ног.\n"
             "2. Кулдаун бота на любые команды 1 минута.\n"
             "3. Кулдаун на каждую команду 10 минуту для индивидуального пользователя.\n"
-            "4. Ошибка о кулдауне даётся минимум через каждую 1 минуту."
-            )
+            "4. Ошибка о кулдауне даётся минимум через каждую 1 минуту. Спам удаляется.\n"
+        )
         bot.send_message(chat_id=update.message.chat_id,
                          text=help_text,
                          reply_to_message_id=update.message.message_id)
@@ -76,7 +74,7 @@ def welcomer(update, context):
     """
     # A bot entered the chat, and not this bot
     if update.message.new_chat_members[0].is_bot and update.message.new_chat_members[0].id != 705781870:
-        reply = "УХОДИ, НАМ БОЛЬШЕ БОТОВ НЕ НАДО. БАН ЕМУ.",
+        reply = "Уходи, нам больше ботов не надо."
     # This bot joined the chat
     elif update.message.new_chat_members[0].id == 705781870:
         reply = "Думер бот в чате. Для помощи используйте /help."
@@ -103,29 +101,32 @@ def reply_to_text(update, context):
     # Handle the word doomer if the message is not edited
     if update.message is not None:
         # Make the preparations with variations of the word with latin letters
-        doomer_word, correct_word = 'думер', 'думер'
-        cyrillic_to_latin_mappings = {'у': 'y', 'е': 'e', 'р': 'p', 'ер': 'ep'}
-        variations = [
-            doomer_word,
-            'дyмep',
-            *[doomer_word.replace(cyrillic, latin) for cyrillic, latin in cyrillic_to_latin_mappings.items()]
-            ]
+        variations_with_latin_letters = [
+            'думер', 'дyмер', 'дyмeр', 'дyмep', 'думeр', 'думep', 'думеp'
+        ]
         doomer_word_start = None
         # Check if any of the variations are in the text, if there are break
-        for variation in variations:
+        for variation in variations_with_latin_letters:
             position = update.message.text.lower().find(variation)
             if position != -1:
-                correct_word = variation
+                found_word = variation
                 doomer_word_start = position
                 break
         # If any of the variations have been found, give a reply
         if doomer_word_start is not None:
-            # Get the word with symbol, strip symbols using re and send the reply
-            word_with_symbols = update.message.text.lower()[doomer_word_start:].replace(correct_word, 'хуюмер').split()[
+            # Find the word in the message, get the word and all adjucent symbol
+            word_with_symbols = update.message.text.lower()[doomer_word_start:].replace(found_word, 'хуюмер').split()[
                 0]
-            reply = re.match(r'[\w]*', word_with_symbols).group(0).strip('0123456789')
+            reply_word = ''
+            # Get only the word, until any number or non alpha sumbol is encountered
+            for i in word_with_symbols:
+                if i.isalpha():
+                    reply_word += i
+                else:
+                    break
+            # Send reply
             bot.send_message(chat_id=update.message.chat_id,
-                             text=reply,
+                             text=reply_word,
                              reply_to_message_id=update.message.message_id)
 
 
@@ -172,25 +173,6 @@ def muhdick(update, context):
                          reply_to_message_id=update.message.message_id)
 
 
-def randomnumber(update, context):
-    """Return a random number between two integers"""
-    if antispammer_check_passed(update):
-        args = update.message.text[13:].split()
-        if len(args) == 2:
-            try:
-                arg1, arg2 = int(args[0]), int(args[1])
-                generated_number = random.randint(arg1, arg2)
-                reply = f"Выпало {generated_number}."
-            except ValueError:
-                reply = 'Аргументы неверны. Должны быть два числа.'
-        else:
-            reply = ('Неверное использование команды.\n'
-                     'Пример: /randomnumber 10 25\n')
-        bot.send_message(chat_id=update.message.chat_id,
-                         text=reply,
-                         reply_to_message_id=update.message.message_id)
-
-
 def dog(update, context):
     """Get a random dog image"""
     # Go to a website with a json, that contains a link, pass the link to the bot, let the server download the
@@ -229,7 +211,8 @@ def image(update, context):
         # Create a user request
         user_theme = ','.join(user_theme)
         # Ask the server
-        response = requests.get(f'https://source.unsplash.com/500x700/?{user_theme}')
+        response = requests.get(
+            f'https://source.unsplash.com/500x700/?{user_theme}')
         # Reply the response with the photo
         bot.send_photo(chat_id=update.message.chat_id,
                        photo=response.url,
@@ -246,7 +229,7 @@ def image(update, context):
                                     'q': user_theme,
                                     "safesearch": "false",
                                     "lang": "en"
-                                    }).json()
+                                }).json()
         # If there are hits, reply with photo
         if response['totalHits'] != 0:
             photo = random.choice(response['hits'])['largeImageURL']
@@ -276,8 +259,9 @@ def dadjoke(update, context):
         # Retrieve the website source, find the joke in the code.
         headers = {
             'Accept': 'application/json',
-            }
-        response = requests.get('https://icanhazdadjoke.com/', headers=headers).json()
+        }
+        response = requests.get(
+            'https://icanhazdadjoke.com/', headers=headers).json()
         bot.send_message(chat_id=update.message.chat_id,
                          reply_to_message_id=update.message.message_id,
                          text=response['joke'])
@@ -288,9 +272,12 @@ def slap(update, context):
     if antispammer_check_passed(update):
         # List the items that the target will be slapped with
         action_items = {
-            'ударил': ['писюном', 'бутылкой'],
+            'ударил': ['писюном', 'бутылкой', 'carasiqueом'],
             'обтер лицо': ['яйцами'],
-            }
+            'пукнул': ['в лицо'],
+            'резнул': ['заточкой'],
+            'дал': ['пощечину'],
+        }
         # Check if the user has indicated the target by making his message a reply
         if update.message.reply_to_message is None:
             reply = 'Кого унижать то будем? Чтобы унизить, надо чтобы вы ответили вашей жертве.'
@@ -306,22 +293,16 @@ def slap(update, context):
                          parse_mode='Markdown')
 
 
-def google(update, context):
-    """Return a google link"""
-    if antispammer_check_passed(update):
-        user_search_request = update.message.text.split()
-        # Remove the command
-        user_search_request.pop(0)
-        # Check if there was a search request
-        if len(user_search_request) == 0:
-            reply = 'Какой запрос-то?'
-        # Join the words in a way that the query needs
-        else:
-            user_search_request = '+'.join(user_search_request)
-            reply = f'https://www.google.com/search?q={user_search_request}'
-        bot.send_message(chat_id=update.message.chat_id,
-                        reply_to_message_id=update.message.message_id,
-                        text=reply)
+def rules(update, context):
+    """Reply to the user with the rules of the chat"""
+    reply = ("1. Не быть зумером, не сообщать зумерам о думском клубе;\n"
+             "2. Всяк сюда входящий, с того фото ножек;\n"
+             "3. Никаких гей-гифок;\n"
+             "4. За спам - ноги;\n"
+             "5. Думерскую историю рассказать;")
+    bot.send_message(chat_id=update.message.chat_id,
+                     reply_to_message_id=update.message.message_id,
+                     text=reply)
 
 
 def antispammer_check_passed(update):
@@ -418,18 +399,20 @@ def main():
     dispatcher.add_handler(CommandHandler("flip", flip))
     dispatcher.add_handler(CommandHandler("myiq", myiq))
     dispatcher.add_handler(CommandHandler("muhdick", muhdick))
-    dispatcher.add_handler(CommandHandler("randomnumber", randomnumber))
     dispatcher.add_handler(CommandHandler("dog", dog))
     dispatcher.add_handler(CommandHandler("cat", cat))
     dispatcher.add_handler(CommandHandler("image", image))
     dispatcher.add_handler(CommandHandler("dadjoke", dadjoke))
     dispatcher.add_handler(CommandHandler("slap", slap))
-    dispatcher.add_handler(CommandHandler("google", google))
+    dispatcher.add_handler(CommandHandler("rules", rules))
 
     # add message handlers
-    dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, welcomer))
-    dispatcher.add_handler(MessageHandler(Filters.status_update.left_chat_member, farewell))
-    dispatcher.add_handler(MessageHandler(Filters.text, reply_to_text))
+    dispatcher.add_handler(MessageHandler(
+        Filters.status_update.new_chat_members, welcomer))
+    dispatcher.add_handler(MessageHandler(
+        Filters.status_update.left_chat_member, farewell))
+    dispatcher.add_handler(MessageHandler(
+        Filters.text, reply_to_text))
 
     # log all errors
     dispatcher.add_error_handler(error)
