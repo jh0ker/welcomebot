@@ -15,7 +15,6 @@ from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
 
-
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -31,7 +30,7 @@ ANTISPAMMER_EXCEPTIONS = {
     255295801: "doitforricardo",
     413327053: "comradesanya",
     205762941: "dovaogedot",
-    }
+}
 
 # Delays in minutes for the bot
 CHAT_DELAY = 1
@@ -50,7 +49,7 @@ def help(update, context):
             "/dog - Случайное фото собачки;\n"
             "/image [тематика] - Случайное фото. Можно задать тематику на английском;\n"
             "/dadjoke - Случайная шутка бати;\n"
-            "/slap [@имя пользователя] - Кого-то унизить;\n"
+            "/slap - Кого-то унизить (надо ответить жертве, чтобы бот понял кого бить);\n"
             "\n"
             "Генераторы чисел:\n"
             "/myiq - Мой IQ (0 - 200);\n"
@@ -61,8 +60,8 @@ def help(update, context):
             "1. Бот здоровается с людьми, прибывшими в чат и просит у них имя, фамилию, фото ног.\n"
             "2. Кулдаун бота на любые команды 1 минута.\n"
             "3. Кулдаун на каждую команду 10 минуту для индивидуального пользователя.\n"
-            "4. Ошибка о кулдауне даётся минимум через каждую 1 минуту."
-            )
+            "4. Ошибка о кулдауне даётся минимум через каждую 1 минуту. Спам удаляется.\n"
+        )
         bot.send_message(chat_id=update.message.chat_id,
                          text=help_text,
                          reply_to_message_id=update.message.message_id)
@@ -104,7 +103,7 @@ def reply_to_text(update, context):
         # Make the preparations with variations of the word with latin letters
         variations_with_latin_letters = [
             'думер', 'дyмер', 'дyмeр', 'дyмep', 'думeр', 'думep', 'думеp'
-            ]
+        ]
         doomer_word_start = None
         # Check if any of the variations are in the text, if there are break
         for variation in variations_with_latin_letters:
@@ -212,7 +211,8 @@ def image(update, context):
         # Create a user request
         user_theme = ','.join(user_theme)
         # Ask the server
-        response = requests.get(f'https://source.unsplash.com/500x700/?{user_theme}')
+        response = requests.get(
+            f'https://source.unsplash.com/500x700/?{user_theme}')
         # Reply the response with the photo
         bot.send_photo(chat_id=update.message.chat_id,
                        photo=response.url,
@@ -229,7 +229,7 @@ def image(update, context):
                                     'q': user_theme,
                                     "safesearch": "false",
                                     "lang": "en"
-                                    }).json()
+                                }).json()
         # If there are hits, reply with photo
         if response['totalHits'] != 0:
             photo = random.choice(response['hits'])['largeImageURL']
@@ -259,8 +259,9 @@ def dadjoke(update, context):
         # Retrieve the website source, find the joke in the code.
         headers = {
             'Accept': 'application/json',
-            }
-        response = requests.get('https://icanhazdadjoke.com/', headers=headers).json()
+        }
+        response = requests.get(
+            'https://icanhazdadjoke.com/', headers=headers).json()
         bot.send_message(chat_id=update.message.chat_id,
                          reply_to_message_id=update.message.message_id,
                          text=response['joke'])
@@ -271,12 +272,12 @@ def slap(update, context):
     if antispammer_check_passed(update):
         # List the items that the target will be slapped with
         action_items = {
-            'ударил': ['писюном', 'бутылкой', 'карасиком'],
+            'ударил': ['писюном', 'бутылкой', 'carasiqueом'],
             'обтер лицо': ['яйцами'],
             'пукнул': ['в лицо'],
             'резнул': ['заточкой'],
             'дал': ['пощечину'],
-            }
+        }
         # Check if the user has indicated the target by making his message a reply
         if update.message.reply_to_message is None:
             reply = 'Кого унижать то будем? Чтобы унизить, надо чтобы вы ответили вашей жертве.'
@@ -290,6 +291,18 @@ def slap(update, context):
                          reply_to_message_id=update.message.message_id,
                          text=reply,
                          parse_mode='Markdown')
+
+
+def rules(update, context):
+    """Reply to the user with the rules of the chat"""
+    reply = ("1. Не быть зумером, не сообщать зумерам о думском клубе;\n"
+             "2. Всяк сюда входящий, с того фото ножек;\n"
+             "3. Никаких гей-гифок;\n"
+             "4. За спам - ноги;\n"
+             "5. Думерскую историю рассказать;")
+    bot.send_message(chat_id=update.message.chat_id,
+                     reply_to_message_id=update.message.message_id,
+                     text=reply)
 
 
 def antispammer_check_passed(update):
@@ -391,11 +404,15 @@ def main():
     dispatcher.add_handler(CommandHandler("image", image))
     dispatcher.add_handler(CommandHandler("dadjoke", dadjoke))
     dispatcher.add_handler(CommandHandler("slap", slap))
+    dispatcher.add_handler(CommandHandler("rules", rules))
 
     # add message handlers
-    dispatcher.add_handler(MessageHandler(Filters.status_update.new_chat_members, welcomer))
-    dispatcher.add_handler(MessageHandler(Filters.status_update.left_chat_member, farewell))
-    dispatcher.add_handler(MessageHandler(Filters.text, reply_to_text))
+    dispatcher.add_handler(MessageHandler(
+        Filters.status_update.new_chat_members, welcomer))
+    dispatcher.add_handler(MessageHandler(
+        Filters.status_update.left_chat_member, farewell))
+    dispatcher.add_handler(MessageHandler(
+        Filters.text, reply_to_text))
 
     # log all errors
     dispatcher.add_error_handler(error)
