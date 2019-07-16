@@ -189,11 +189,11 @@ def dog(update, context):
     if antispammer_check_passed(update):
         try:
             response = requests.get('https://random.dog/woof.json', timeout=1).json()
-            if 'mp4' in response['url']:
+            if 'mp4' in response['url'].split('.')[-1]:
                 bot.send_video(chat_id=update.message.chat_id,
                                video=response['url'],
                                reply_to_message_id=update.message.message_id)
-            elif 'gif' in response['url']:
+            elif 'gif' in response['url'].split('.')[-1]:
                 bot.send_animation(chat_id=update.message.chat_id,
                                    animation=response['url'],
                                    reply_to_message_id=update.message.message_id)
