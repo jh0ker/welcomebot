@@ -21,6 +21,7 @@ logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         , level=logging.INFO
         )
+
 logger = logging.getLogger(__name__)
 
 
@@ -133,7 +134,6 @@ async def _(msg):
         await msg.reply(f"{msg.left_chat_member.first_name}'a убили, "
                         "красиво. Уважаю.")
 
-
 @handle(commands=['roll'])
 @antispam
 async def _(msg):
@@ -141,7 +141,6 @@ async def _(msg):
         await msg.reply(choice(['Да', 'Нет']))
     else:
         await msg.reply_to_message.reply(choice(['Да', 'Нет']))
-
 
 for c, a, l in [('iq', md5, 200), ('dick', sha256, 25)]:
     calc_hash = lambda alg, id_: int(a(str(id_).encode()).hexdigest(), 16)
