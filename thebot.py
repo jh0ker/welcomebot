@@ -163,9 +163,10 @@ def muhdick(update, context):
         muh_dick = random.randint(1, 25)
         reply_text = f"Длина твоей палочки {muh_dick} см! "
         if 1 <= muh_dick <= 11:
-            reply_text += "\U0001F92D (1 - 25)"
+            reply_text += "\U0001F92D "
         elif 21 <= muh_dick <= 25:
-            reply_text += "\U0001F631 (1 - 25)"
+            reply_text += "\U0001F631 "
+        reply_text += "(1 - 25)"
         _send_message(update, reply_text)
 
 
