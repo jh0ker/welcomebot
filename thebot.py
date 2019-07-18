@@ -74,6 +74,16 @@ def help(update, context):
         _send_message(update, help_text)
 
 
+def rules(update, context):
+    """Reply to the user with the rules of the chat"""
+    reply_text = ("1. Не быть зумером, не сообщать зумерам о думском клубе;\n"
+                  "2. Всяк сюда входящий, с того фото ножек;\n"
+                  "3. Никаких гей-гифок;\n"
+                  "4. За спам - ноги;\n"
+                  "5. Думерскую историю рассказать;\n")
+    _send_message(update, reply_text)
+
+
 def welcomer(update, context):
     """
     Empty messages could be status messages, so we check them if there is a new
@@ -252,16 +262,6 @@ def slap(update, context):
                 f"[{update.message.reply_to_message.from_user.first_name}](tg://user?id={update.message.reply_to_message.from_user.id}) " \
                 f"{random.choice(action_items[action])}."
         _send_message(update, reply_text, parse_mode='Markdown')
-
-
-def rules(update, context):
-    """Reply to the user with the rules of the chat"""
-    reply_text = ("1. Не быть зумером, не сообщать зумерам о думском клубе;\n"
-                  "2. Всяк сюда входящий, с того фото ножек;\n"
-                  "3. Никаких гей-гифок;\n"
-                  "4. За спам - ноги;\n"
-                  "5. Думерскую историю рассказать;\n")
-    _send_message(update, reply_text)
 
 
 def antispammer_check_passed(update):
