@@ -302,33 +302,44 @@ def _command_antispammer_passed(update):
     # otherwise create chat info in SPAM_COUNTER
     if update.message.chat_id in SPAM_COUNTER:
         # First check if there is a chat cooldown (1 minute)
-        if message_time > (SPAM_COUNTER[update.message.chat_id]['last_chat_message']
-                           + datetime.timedelta(minutes=CHAT_DELAY)):
-            SPAM_COUNTER[update.message.chat_id]['last_chat_message'] = message_time
-            chat_cooldown = False
+        if 'last_chat_command' in SPAM_COUNTER[update.message.chat_id]:
+            if message_time > (SPAM_COUNTER[update.message.chat_id]['last_chat_command']
+                               + datetime.timedelta(minutes=CHAT_DELAY)):
+                SPAM_COUNTER[update.message.chat_id]['last_chat_command'] = message_time
+                chat_cooldown = False
+            else:
+                error_message += \
+                    f"Бот отвечает на команды пользователей минимум через каждую {CHAT_DELAY} минуту.\n"
+                chat_cooldown = True
         else:
-            error_message += \
-                f"Бот отвечает на команды пользователей минимум через каждую {CHAT_DELAY} минуту.\n"
-            chat_cooldown = True
+            SPAM_COUNTER[update.message.chat_id]['last_chat_command'] = message_time
+            SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]['command_replied'] = message_time
+            return True
 
         # Next check if there is a user cooldown (INDIVIDUAL_USER_DELAY minute)
         if update.message.from_user.id in SPAM_COUNTER[update.message.chat_id]:
-            if message_time > (SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]
-                               + datetime.timedelta(minutes=INDIVIDUAL_USER_DELAY)):
-                SPAM_COUNTER[update.message.chat_id][update.message.from_user.id] = message_time
-                user_cooldown = False
+            if 'command_replied' in SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]:
+                if message_time > (SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]['command_replied']
+                                   + datetime.timedelta(minutes=INDIVIDUAL_USER_DELAY)):
+                    SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]['command_replied'] = message_time
+                    user_cooldown = False
+                else:
+                    error_message += \
+                        f"Ответ индивидуальным пользователям на команды минимум через каждые {INDIVIDUAL_USER_DELAY} минут.\n"
+                    user_cooldown = True
             else:
-                error_message += \
-                    f"Ответ индивидуальным пользователям на команды минимум через каждые {INDIVIDUAL_USER_DELAY} минут.\n"
-                user_cooldown = True
+                if not chat_cooldown:
+                    SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]['command_replied'] = message_time
+                user_cooldown = False
         else:
             if not chat_cooldown:
-                SPAM_COUNTER[update.message.chat_id][update.message.from_user.id] = message_time
+                SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]['command_replied'] = message_time
             user_cooldown = False
     else:
         SPAM_COUNTER[update.message.chat_id] = {}
-        SPAM_COUNTER[update.message.chat_id]['last_chat_message'] = message_time
-        SPAM_COUNTER[update.message.chat_id][update.message.from_user.id] = message_time
+        SPAM_COUNTER[update.message.chat_id][update.message.from_user.id] = {}
+        SPAM_COUNTER[update.message.chat_id]['last_chat_command'] = message_time
+        SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]['command_replied'] = message_time
         return True
 
     # If there is no user cooldown or a chat cooldown, return True to allow the commands to run
@@ -381,6 +392,7 @@ def _text_antispammer_passed(update):
         SPAM_COUNTER[update.message.chat_id] = {}
         SPAM_COUNTER[update.message.chat_id][update.message.from_user.id] = {}
         SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]['text_replied'] = message_time
+        SPAM_COUNTER[update.message.chat_id]['last_chat_reply'] = message_time
         return True
 
 
