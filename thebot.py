@@ -354,6 +354,12 @@ def _command_antispammer_passed(update):
 
 def _text_antispammer_passed(update):
     """Checks if somebody is spamming reply_all words"""
+    # Turn off antispam for private conversations
+    if update.message.chat.type == 'private':
+        return True
+    # Add exception for the bot developer to be able to run tests
+    if update.message.from_user.id in ANTISPAMMER_EXCEPTIONS:
+        return True
     message_time = datetime.datetime.now()
     if update.message.chat_id in SPAM_COUNTER:
         if update.message.from_user.id in SPAM_COUNTER[update.message.chat_id]:
