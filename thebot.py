@@ -23,6 +23,7 @@ bot = Bot(TOKEN)
 # Antispammer variables
 SPAM_COUNTER = {}
 ANTISPAMMER_EXCEPTIONS = {
+    255295801: "doitforricardo",
     413327053: "comradesanya",
     205762941: "dovaogedot",
     185500059: "melancholiak",
