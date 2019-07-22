@@ -17,13 +17,12 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 # Bot initialization
-TOKEN = environ.get("TG_BOT_TOKEN")
+TOKEN = "824227677:AAEXWiwnYPI3M6cZ1MTN2_pzmCdOpGqW6ic"
 bot = Bot(TOKEN)
 
 # Antispammer variables
 SPAM_COUNTER = {}
 ANTISPAMMER_EXCEPTIONS = {
-    255295801: "doitforricardo",
     413327053: "comradesanya",
     205762941: "dovaogedot",
     185500059: "melancholiak",
@@ -354,19 +353,13 @@ def _command_antispammer_passed(update):
 
 def _text_antispammer_passed(update):
     """Checks if somebody is spamming reply_all words"""
-    # Turn off antispam for private conversations
-    if update.message.chat.type == 'private':
-        return True
-    # Add exception for the bot developer to be able to run tests
-    if update.message.from_user.id in ANTISPAMMER_EXCEPTIONS:
-        return True
     message_time = datetime.datetime.now()
     if update.message.chat_id in SPAM_COUNTER:
         if update.message.from_user.id in SPAM_COUNTER[update.message.chat_id]:
             if 'text_replied' in SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]:
                 if message_time > (SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]['text_replied'] +
                                    datetime.timedelta(minutes=INDIVIDUAL_USER_DELAY)):
-                    SPAM_COUNTER[update.message.chat_id]['text_replied'] = message_time
+                    SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]['text_replied'] = message_time
                     return True
                 else:
                     return False
