@@ -1,5 +1,5 @@
 """
-Authors (telegrams) - @doitforgachi, @dovaogedot
+Authors (telegrams) - @doitforgachi, @dovaogedot...
 """
 
 import datetime
