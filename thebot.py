@@ -8,13 +8,8 @@ import random
 from os import environ
 
 import requests
-from telegram import Bot
-from telegram import TelegramError
-from telegram.ext import CommandHandler
-from telegram.ext import Filters
-from telegram.ext import MessageHandler
-from telegram.ext import Updater
-
+from telegram import Bot, TelegramError
+from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -22,7 +17,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 # Bot initialization
-TOKEN = environ.get("TG_BOT_TOKEN")
+TOKEN = "824227677:AAEXWiwnYPI3M6cZ1MTN2_pzmCdOpGqW6ic"
 bot = Bot(TOKEN)
 
 # Antispammer variables
@@ -113,36 +108,59 @@ def farewell(update, context):
 
 
 def reply_to_text(update, context):
-    """Replies to regular text messages"""
-    # Handle the word doomer if the message is not edited
+    """Replies to regular text messages
+    Думер > Земляночка > """
     if update.message is not None:
-        # Make the preparations with variations of the word with latin letters
-        variations_with_latin_letters = [
-            'думер', 'дyмер', 'дyмeр', 'дyмep', 'думeр', 'думep', 'думеp'
-        ]
-        doomer_word_start = None
-        # Check if any of the variations are in the text, if there are break
-        for variation in variations_with_latin_letters:
-            position = update.message.text.lower().find(variation)
-            if position != -1:
-                found_word = variation
-                doomer_word_start = position
+        # Handle the word doomer
+        if _doomer_word_handler(update)[0]:
+            _send_message(update, _doomer_word_handler(update)[1])
+        # Handle землянoчкy
+        elif _anprim_word_handler(update):
+            bot.send_photo(chat_id=update.message.chat_id,
+                           photo='http://masterokblog.ru/wp-content/uploads/0_1e5f5d_b67a598d_XXL.jpg',
+                           caption='Эх, жить бы подальше от общества как анприм и там думить...',
+                           reply_to_message_id=update.message.message_id)
+
+
+def _doomer_word_handler(update):
+    # Make the preparations with variations of the word with latin letters
+    variations_with_latin_letters = [
+        'думер', 'дyмер', 'дyмeр', 'дyмep', 'думeр', 'думep', 'думеp'
+    ]
+    doomer_word_start = None
+    # Check if any of the variations are in the text, if there are break
+    for variation in variations_with_latin_letters:
+        position = update.message.text.lower().find(variation)
+        if position != -1:
+            found_word = variation
+            doomer_word_start = position
+            break
+    # If any of the variations have been found, give a reply
+    if doomer_word_start is not None:
+        # Find the word in the message, get the word and all adjacent symbol
+        word_with_symbols = \
+            update.message.text.lower()[doomer_word_start:].replace(
+                found_word, 'хуюмер').split()[0]
+        reply_word = ''
+        # Get only the word, until any number or non alpha symbol is encountered
+        for i in word_with_symbols:
+            if i.isalpha():
+                reply_word += i
+            else:
                 break
-        # If any of the variations have been found, give a reply
-        if doomer_word_start is not None:
-            # Find the word in the message, get the word and all adjacent symbol
-            word_with_symbols = \
-                update.message.text.lower()[doomer_word_start:].replace(
-                    found_word, 'хуюмер').split()[0]
-            reply_word = ''
-            # Get only the word, until any number or non alpha symbol is encountered
-            for i in word_with_symbols:
-                if i.isalpha():
-                    reply_word += i
-                else:
-                    break
-            # Send reply
-            _send_message(update, reply_word)
+        # Return the reply word
+        return (True, reply_word)
+    else:
+        return (False, )
+
+
+def _anprim_word_handler(update):
+    """Image of earth hut"""
+    variations = ['земляночку бы', 'земляночкy бы', 'землянoчку бы', 'зeмляночку бы',
+                  'землянoчкy бы', 'зeмляночкy бы', 'зeмлянoчку бы', 'зeмлянoчкy бы']
+    for variation in variations:
+        if variation in update.message.text.lower():
+            return True
 
 
 def flip(update, context):
