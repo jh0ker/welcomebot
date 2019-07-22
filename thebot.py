@@ -17,12 +17,13 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 # Bot initialization
-TOKEN = "824227677:AAEXWiwnYPI3M6cZ1MTN2_pzmCdOpGqW6ic"
+TOKEN = environ.get("TG_BOT_TOKEN")
 bot = Bot(TOKEN)
 
 # Antispammer variables
 SPAM_COUNTER = {}
 ANTISPAMMER_EXCEPTIONS = {
+    255295801: "doitforricardo",
     413327053: "comradesanya",
     205762941: "dovaogedot",
     185500059: "melancholiak",
