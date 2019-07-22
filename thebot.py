@@ -1,5 +1,5 @@
 """
-Authors (telegrams) - @doitforgachi, @dovaogedot...
+Authors (telegrams) - @doitforgachi, @dovaogedot
 """
 
 import datetime
@@ -23,7 +23,6 @@ bot = Bot(TOKEN)
 # Antispammer variables
 SPAM_COUNTER = {}
 ANTISPAMMER_EXCEPTIONS = {
-    255295801: "doitforricardo",
     413327053: "comradesanya",
     205762941: "dovaogedot",
     185500059: "melancholiak",
@@ -43,7 +42,7 @@ REQUEST_TIMEOUT = 1.2
 
 def help(update, context):
     """Help message"""
-    if antispammer_check_passed(update):
+    if _command_antispammer_passed(update):
         help_text = (
             "Пример команды для бота: /help@random_welcome_bot\n"
             "[ ] в самой команде не использовать.\n"
@@ -110,7 +109,7 @@ def farewell(update, context):
 def reply_to_text(update, context):
     """Replies to regular text messages
     Думер > Земляночка > """
-    if update.message is not None:
+    if update.message is not None and _text_antispammer_passed(update):
         # Handle the word doomer
         if _doomer_word_handler(update)[0]:
             _send_message(update, _doomer_word_handler(update)[1])
@@ -165,13 +164,13 @@ def _anprim_word_handler(update):
 
 def flip(update, context):
     """Flip a Coin"""
-    if antispammer_check_passed(update):
+    if _command_antispammer_passed(update):
         _send_message(update, random.choice(['Орёл!', 'Решка!']))
 
 
 def myiq(update, context):
     """Return IQ level (1 - 200)"""
-    if antispammer_check_passed(update):
+    if _command_antispammer_passed(update):
         iq_level = random.randint(1, 200)
         reply_text = f"Твой уровень IQ {iq_level}. "
         if iq_level < 85:
@@ -187,7 +186,7 @@ def myiq(update, context):
 
 def muhdick(update, context):
     """Return dick size in cm (1 - 25)"""
-    if antispammer_check_passed(update):
+    if _command_antispammer_passed(update):
         muh_dick = random.randint(1, 25)
         reply_text = f"Длина твоей палочки {muh_dick} см! "
         if 1 <= muh_dick <= 11:
@@ -202,7 +201,7 @@ def dog(update, context):
     """Get a random dog image"""
     # Go to a website with a json, that contains a link, pass the link to the bot,
     # let the server download the image/video/gif
-    if antispammer_check_passed(update):
+    if _command_antispammer_passed(update):
         try:
             response = requests.get(
                 'https://random.dog/woof.json', timeout=REQUEST_TIMEOUT).json()
@@ -229,7 +228,7 @@ def cat(update, context):
     """Get a random cat image"""
     # Go to a website with a json, that contains a link, pass the link to the bot,
     # let the server download the image
-    if antispammer_check_passed(update):
+    if _command_antispammer_passed(update):
         try:
             response = requests.get(
                 'http://aws.random.cat/meow', timeout=REQUEST_TIMEOUT).json()
@@ -242,7 +241,7 @@ def cat(update, context):
 
 def dadjoke(update, context):
     """Get a random dad joke"""
-    if antispammer_check_passed(update):
+    if _command_antispammer_passed(update):
         # Retrieve the website source, find the joke in the code.
         headers = {
             'Accept': 'application/json',
@@ -257,7 +256,7 @@ def dadjoke(update, context):
 
 def slap(update, context):
     """Slap with random item"""
-    if antispammer_check_passed(update):
+    if _command_antispammer_passed(update):
         # List the items that the target will be slapped with
         action_items = {
             'ударил': ['писюном', 'бутылкой', 'carasiqueом'],
@@ -282,7 +281,7 @@ def slap(update, context):
         _send_message(update, reply_text, parse_mode='Markdown')
 
 
-def antispammer_check_passed(update):
+def _command_antispammer_passed(update):
     """
     Check if the user is spamming
     Delay of CHAT_DELAY minute(s) for all commands toward the bot
@@ -350,6 +349,32 @@ def antispammer_check_passed(update):
         _send_message(update, error_message)
         SPAM_COUNTER[update.message.chat_id]['last_error'] = message_time
     return False
+
+
+def _text_antispammer_passed(update):
+    """Checks if somebody is spamming reply_all words"""
+    message_time = datetime.datetime.now()
+    if update.message.chat_id in SPAM_COUNTER:
+        if update.message.from_user.id in SPAM_COUNTER[update.message.chat_id]:
+            if 'text_replied' in SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]:
+                if message_time > (SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]['text_replied'] +
+                                   datetime.timedelta(minutes=INDIVIDUAL_USER_DELAY)):
+                    SPAM_COUNTER[update.message.chat_id]['text_replied'] = message_time
+                    return True
+                else:
+                    return False
+            else:
+                SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]['text_replied'] = message_time
+                return True
+        else:
+            SPAM_COUNTER[update.message.chat_id][update.message.from_user.id] = {}
+            SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]['text_replied'] = message_time
+            return True
+    else:
+        SPAM_COUNTER[update.message.chat_id] = {}
+        SPAM_COUNTER[update.message.chat_id][update.message.from_user.id] = {}
+        SPAM_COUNTER[update.message.chat_id][update.message.from_user.id]['text_replied'] = message_time
+        return True
 
 
 def _try_to_delete_message(update):
