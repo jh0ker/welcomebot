@@ -8,8 +8,16 @@ import random
 from os import environ
 
 import requests
-from telegram import Bot, TelegramError
-from telegram.ext import CommandHandler, Filters, MessageHandler, Updater
+from telegram import Bot
+from telegram import TelegramError
+from telegram.ext import CommandHandler
+from telegram.ext import Filters
+from telegram.ext import MessageHandler
+from telegram.ext import Updater
+
+from huts import HUTS
+from slaps import SLAPS
+
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -22,8 +30,10 @@ bot = Bot(TOKEN)
 
 # Antispammer variables
 SPAM_COUNTER = {}
+MUTED = []
+DEVELOPER_ID = 255295801
 ANTISPAMMER_EXCEPTIONS = {
-    255295801: "doitforricardo",
+    DEVELOPER_ID: "doitforricardo",
     413327053: "comradesanya",
     205762941: "dovaogedot",
     185500059: "melancholiak",
@@ -112,17 +122,21 @@ def reply_to_text(update, context):
     """Replies to regular text messages
     Думер > Земляночка > """
     if update.message is not None:
+        # If user is muted, delete his message
+        if update.message.from_user.id in MUTED and \
+                update.message.from_user.id not in ANTISPAMMER_EXCEPTIONS:
+            _try_to_delete_message(update)
         # Handle the word doomer
-        if _doomer_word_handler(update)[0]:
+        elif _doomer_word_handler(update)[0]:
             if _text_antispammer_passed(update):
                 _send_message(update, _doomer_word_handler(update)[1])
         # Handle землянoчкy
         elif _anprim_word_handler(update):
             if _text_antispammer_passed(update):
                 bot.send_photo(chat_id=update.message.chat_id,
-                           photo='http://masterokblog.ru/wp-content/uploads/0_1e5f5d_b67a598d_XXL.jpg',
-                           caption='Эх, жить бы подальше от общества как анприм и там думить...',
-                           reply_to_message_id=update.message.message_id)
+                               photo=random.choice(HUTS),
+                               caption='Эх, жить бы подальше от общества как анприм и там думить...',
+                               reply_to_message_id=update.message.message_id)
 
 
 def _doomer_word_handler(update):
@@ -153,17 +167,20 @@ def _doomer_word_handler(update):
                 break
         # Return the reply word
         return (True, reply_word)
-    else:
-        return (False, )
+    # If the word is not found, return False
+    return (False, )
 
 
 def _anprim_word_handler(update):
     """Image of earth hut"""
     variations = ['земляночку бы', 'земляночкy бы', 'землянoчку бы', 'зeмляночку бы',
                   'землянoчкy бы', 'зeмляночкy бы', 'зeмлянoчку бы', 'зeмлянoчкy бы']
+    # If the word is found, return true
     for variation in variations:
         if variation in update.message.text.lower():
             return True
+    # If the word is not found, return false
+    return False
 
 
 def flip(update, context):
@@ -262,13 +279,6 @@ def slap(update, context):
     """Slap with random item"""
     if _command_antispammer_passed(update):
         # List the items that the target will be slapped with
-        action_items = {
-            'ударил': ['писюном', 'бутылкой', 'carasiqueом'],
-            'обтер лицо': ['яйцами'],
-            'пукнул': ['в лицо'],
-            'резнул': ['заточкой'],
-            'дал': ['пощечину'],
-        }
         # Check if the user has indicated the target by making his message a reply
         if update.message.reply_to_message is None:
             reply_text = ('Кого унижать то будем? '
@@ -276,14 +286,25 @@ def slap(update, context):
         else:
             # Generate the answer + create the reply using markdown. Use weighted actions.
             weighted_keys = []
-            for action, items in action_items.items():
+            for action, items in SLAPS.items():
                 weighted_keys += [action] * len(items)
             action = random.choice(weighted_keys)
             reply_text = f"[{update.message.from_user.first_name}](tg://user?id={update.message.from_user.id}) {action} " \
                 f"[{update.message.reply_to_message.from_user.first_name}](tg://user?id={update.message.reply_to_message.from_user.id}) " \
-                f"{random.choice(action_items[action])}."
+                f"{random.choice(SLAPS[action])}."
         _send_message(update, reply_text, parse_mode='Markdown')
 
+
+def mute(update, context):
+    """Autodelete messages of a user (only usable by the developer)"""
+    if update.message.from_user.id == DEVELOPER_ID:
+        MUTED.append(update.message.reply_to_message.from_user.id)
+
+
+def unmute(update, context):
+    """Stop autodeletion of messages of a user (only usable by the developer)"""
+    if update.message.from_user.id == DEVELOPER_ID:
+        MUTED.remove(update.message.reply_to_message.from_user.id)
 
 def _command_antispammer_passed(update):
     """
@@ -291,19 +312,22 @@ def _command_antispammer_passed(update):
     Delay of CHAT_DELAY minute(s) for all commands toward the bot
     Delay of INDIVIDUAL_USER_DELAY minute(s) for individual user commands, changeable.
     """
+    # Shorten code
+    chatid = update.message.chat_id
+    userid = update.message.from_user.id
     # Turn off antispam for private conversations
     if update.message.chat.type == 'private':
         return True
     # Add exception for the bot developer to be able to run tests
-    if update.message.from_user.id in ANTISPAMMER_EXCEPTIONS:
+    if userid in ANTISPAMMER_EXCEPTIONS:
         return True
+    # Remove messages from muted users
+    if userid in MUTED:
+        _try_to_delete_message(userid)
     # Get the time now to compare to previous messages
     message_time = datetime.datetime.now()
     # Create a holder for errors
     error_message = ''
-    # Shorten code
-    chatid = update.message.chat_id
-    userid = update.message.from_user.id
     # If the chat has been encountered before, go into its info,
     # otherwise create chat info in SPAM_COUNTER
     if chatid in SPAM_COUNTER:
@@ -326,7 +350,8 @@ def _command_antispammer_passed(update):
         # Next check if there is a user cooldown (INDIVIDUAL_USER_DELAY minute)
         if userid in SPAM_COUNTER[chatid]:
             if 'command_replied' in SPAM_COUNTER[chatid][userid]:
-                if message_time > (SPAM_COUNTER[chatid][userid]['command_replied'] + datetime.timedelta(seconds=INDIVIDUAL_USER_DELAY)):
+                if message_time > (SPAM_COUNTER[chatid][userid]['command_replied'] +
+                                   datetime.timedelta(seconds=INDIVIDUAL_USER_DELAY)):
                     SPAM_COUNTER[chatid][userid]['command_replied'] = message_time
                     user_cooldown = False
                 else:
@@ -357,8 +382,8 @@ def _command_antispammer_passed(update):
     if 'last_error' in SPAM_COUNTER[chatid]:
         if message_time > (SPAM_COUNTER[chatid]['last_error'] + datetime.timedelta(seconds=ERROR_DELAY)):
             SPAM_COUNTER[chatid]['last_error'] = message_time
-            error_message += (f"Эта ошибка тоже появляется минимум каждую {ERROR_DELAY // 60} минуту.\n"
-                              f"Запросы во время кулдауна ошибки будут удаляться.")
+            error_message += (f"Эта ошибка тоже появляется минимум каждую {ERROR_DELAY // 60} "
+                              f"минуту.\nЗапросы во время кулдауна ошибки будут удаляться.")
             _send_message(update, error_message)
         else:
             _try_to_delete_message(update)
@@ -446,6 +471,8 @@ def main():
     dispatcher.add_handler(CommandHandler("dadjoke", dadjoke))
     dispatcher.add_handler(CommandHandler("slap", slap))
     dispatcher.add_handler(CommandHandler("rules", rules))
+    dispatcher.add_handler(CommandHandler('mute', mute))
+    dispatcher.add_handler(CommandHandler('unmute', unmute))
 
     # add message handlers
     dispatcher.add_handler(MessageHandler(
