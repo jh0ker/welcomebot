@@ -111,13 +111,15 @@ def farewell(update, context):
 def reply_to_text(update, context):
     """Replies to regular text messages
     Думер > Земляночка > """
-    if update.message is not None and _text_antispammer_passed(update):
+    if update.message is not None:
         # Handle the word doomer
         if _doomer_word_handler(update)[0]:
-            _send_message(update, _doomer_word_handler(update)[1])
+            if _text_antispammer_passed(update):
+                _send_message(update, _doomer_word_handler(update)[1])
         # Handle землянoчкy
         elif _anprim_word_handler(update):
-            bot.send_photo(chat_id=update.message.chat_id,
+            if _text_antispammer_passed(update):
+                bot.send_photo(chat_id=update.message.chat_id,
                            photo='http://masterokblog.ru/wp-content/uploads/0_1e5f5d_b67a598d_XXL.jpg',
                            caption='Эх, жить бы подальше от общества как анприм и там думить...',
                            reply_to_message_id=update.message.message_id)
