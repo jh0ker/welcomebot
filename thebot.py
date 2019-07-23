@@ -29,10 +29,11 @@ ANTISPAMMER_EXCEPTIONS = {
     185500059: "melancholiak",
 }
 
-# Delays in minutes for the bot
-CHAT_DELAY = 1
-INDIVIDUAL_USER_DELAY = 10
-ERROR_DELAY = 1
+# Delays in seconds for the bot
+CHAT_DELAY = 1 * 60                # One minute
+INDIVIDUAL_USER_DELAY = 10 * 60    # Ten minutes
+INDIVIDUAL_REPLY_DELAY = 5 * 60    # Five minutes
+ERROR_DELAY = 1 * 60               # One minute
 
 # Bot ID
 BOT_ID = 705781870
@@ -60,10 +61,10 @@ def help(update, context):
             "\n"
             "Дополнительная информация:\n"
             "1. Бот здоровается с людьми, прибывшими в чат и просит у них имя, фамилию, фото ног.\n"
-            f"2. Кулдаун бота на любые команды {CHAT_DELAY} минута.\n"
-            f"3. Кулдаун на каждую команду {INDIVIDUAL_USER_DELAY} минуту для "
+            f"2. Кулдаун бота на любые команды {CHAT_DELAY // 60} минута.\n"
+            f"3. Кулдаун на каждую команду {INDIVIDUAL_USER_DELAY // 60} минуту для "
             f"индивидуального пользователя.\n"
-            f"4. Ошибка о кулдауне даётся минимум через каждую {ERROR_DELAY} минуту. "
+            f"4. Ошибка о кулдауне даётся минимум через каждую {ERROR_DELAY // 60} минуту. "
             f"Спам удаляется.\n"
         )
         _send_message(update, help_text)
@@ -306,12 +307,13 @@ def _command_antispammer_passed(update):
     if chatid in SPAM_COUNTER:
         # First check if there is a chat cooldown (1 minute)
         if 'last_chat_command' in SPAM_COUNTER[chatid]:
-            if message_time > (SPAM_COUNTER[chatid]['last_chat_command'] + datetime.timedelta(minutes=CHAT_DELAY)):
+            if message_time > (SPAM_COUNTER[chatid]['last_chat_command'] + datetime.timedelta(seconds=CHAT_DELAY)):
                 SPAM_COUNTER[chatid]['last_chat_command'] = message_time
                 chat_cooldown = False
             else:
                 error_message += \
-                    f"Бот отвечает на команды пользователей минимум через каждую {CHAT_DELAY} минуту.\n"
+                    f"Бот отвечает на команды пользователей минимум через " \
+                        f"каждую {CHAT_DELAY // 60} минуту.\n"
                 chat_cooldown = True
         else:
             SPAM_COUNTER[chatid]['last_chat_command'] = message_time
@@ -322,12 +324,13 @@ def _command_antispammer_passed(update):
         # Next check if there is a user cooldown (INDIVIDUAL_USER_DELAY minute)
         if userid in SPAM_COUNTER[chatid]:
             if 'command_replied' in SPAM_COUNTER[chatid][userid]:
-                if message_time > (SPAM_COUNTER[chatid][userid]['command_replied'] + datetime.timedelta(minutes=INDIVIDUAL_USER_DELAY)):
+                if message_time > (SPAM_COUNTER[chatid][userid]['command_replied'] + datetime.timedelta(seconds=INDIVIDUAL_USER_DELAY)):
                     SPAM_COUNTER[chatid][userid]['command_replied'] = message_time
                     user_cooldown = False
                 else:
                     error_message += \
-                        f"Ответ индивидуальным пользователям на команды минимум через каждые {INDIVIDUAL_USER_DELAY} минут.\n"
+                        f"Ответ индивидуальным пользователям на команды минимум через " \
+                            f"каждые {INDIVIDUAL_USER_DELAY // 60} минут.\n"
                     user_cooldown = True
             else:
                 if not chat_cooldown:
@@ -350,15 +353,15 @@ def _command_antispammer_passed(update):
         return True
     # Give error at minimum every 1 minute (ERROR_DELAY)
     if 'last_error' in SPAM_COUNTER[chatid]:
-        if message_time > (SPAM_COUNTER[chatid]['last_error'] + datetime.timedelta(minutes=ERROR_DELAY)):
+        if message_time > (SPAM_COUNTER[chatid]['last_error'] + datetime.timedelta(seconds=ERROR_DELAY)):
             SPAM_COUNTER[chatid]['last_error'] = message_time
-            error_message += (f"Эта ошибка тоже появляется минимум каждую {ERROR_DELAY} минуту.\n"
+            error_message += (f"Эта ошибка тоже появляется минимум каждую {ERROR_DELAY // 60} минуту.\n"
                               f"Запросы во время кулдауна ошибки будут удаляться.")
             _send_message(update, error_message)
         else:
             _try_to_delete_message(update)
     else:
-        error_message += (f"Эта ошибка тоже появляется минимум каждую {ERROR_DELAY} минуту.\n"
+        error_message += (f"Эта ошибка тоже появляется минимум каждую {ERROR_DELAY // 60} минуту.\n"
                           f"Запросы во время кулдауна ошибки будут удаляться.")
         _send_message(update, error_message)
         SPAM_COUNTER[chatid]['last_error'] = message_time
@@ -381,7 +384,7 @@ def _text_antispammer_passed(update):
         if userid in SPAM_COUNTER[chatid]:
             if 'text_replied' in SPAM_COUNTER[chatid][userid]:
                 if message_time > (SPAM_COUNTER[chatid][userid]['text_replied'] +
-                                   datetime.timedelta(minutes=INDIVIDUAL_USER_DELAY)):
+                                   datetime.timedelta(seconds=INDIVIDUAL_REPLY_DELAY)):
                     SPAM_COUNTER[chatid][userid]['text_replied'] = message_time
                     return True
                 else:
