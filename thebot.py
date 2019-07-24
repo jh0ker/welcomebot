@@ -333,6 +333,11 @@ def mute(update, context):
                 if update.message.reply_to_message.from_user.last_name:
                     MUTED[update.message.chat_id][
                         to_mute_id] += f' {update.message.reply_to_message.from_user.last_name}'
+            # Send photo and explanation to the silenced person
+            BOT.send_photo(chat_id=update.message.chat_id,
+                           photo='https://www.dropbox.com/s/m1ek8cgis4echn9/silence.jpg?raw=1',
+                           caption='Теперь ты под салом и не можешь писать в чат.',
+                           reply_to_message_id=update.message.reply_to_message.message_id)
             # Record to database
             with open('muted.py', 'wb') as muted_storer:
                 pickle.dump(MUTED, muted_storer)
@@ -347,6 +352,7 @@ def unmute(update, context):
     if update.message.from_user.id == DEVELOPER_ID:
         # Create to enable unmute by reply and id
         to_unmute_id = None
+        chat_id = update.message.chat_id
         # Check for arguments in form of the id
         if len(update.message.text.split()) > 1 and len(str(update.message.text.split()[1])) == 9:
             # Try to get id
@@ -366,14 +372,18 @@ def unmute(update, context):
         # Only if the user is in the MUTED list
         if to_unmute_id is not None:
             # If the chat doesn't exist, then the user was never muted
-            if update.message.chat_id in MUTED:
-                # If was muted, unmute
-                if to_unmute_id in MUTED[update.message.chat_id]:
-                    MUTED[update.message.chat_id].pop(to_unmute_id)
+            if chat_id in MUTED:
+                # If was muted, unmute and notify of success
+                if to_unmute_id in MUTED[chat_id]:
+                    _send_reply(update, f'Успешно снял сало с '
+                                f'[{MUTED[chat_id][to_unmute_id]}](tg://user?id={to_unmute_id}).',
+                                parse_mode='Markdown')
+                    MUTED[chat_id].pop(to_unmute_id)
                     # If there are no more muted people in the chat, remove the chat instance
                     # This is garbage collection
-                    if len(MUTED[update.message.chat_id]) == 0:
-                        MUTED.pop(update.message.chat_id)
+                    if len(MUTED[chat_id]) == 0:
+                        MUTED.pop(chat_id)
+                    # Store in database
                     with open('muted.py', 'wb') as muted_storer:
                         pickle.dump(MUTED, muted_storer)
                 else:
