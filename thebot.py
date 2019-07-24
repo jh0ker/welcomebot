@@ -7,6 +7,7 @@ import logging
 import random
 from os import environ
 
+import pickle
 import requests
 from telegram import Bot
 from telegram import TelegramError
@@ -15,69 +16,76 @@ from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
 
+# Import huts, slaps
 from huts import HUTS
 from slaps import SLAPS
+# Import list of muted people, if fails to import, create a new list
+try:
+    with open('muted.py', 'rb') as muted_storer:
+        MUTED = pickle.load(muted_storer)
+except EOFError:
+    MUTED = []
 
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 # Bot initialization
 TOKEN = environ.get("TG_BOT_TOKEN")
-bot = Bot(TOKEN)
+BOT = Bot(TOKEN)
 
 # Antispammer variables
 SPAM_COUNTER = {}
-MUTED = []
 DEVELOPER_ID = 255295801
-ANTISPAMMER_EXCEPTIONS = {
+ANTISPAM_EXCEPTIONS = {
     DEVELOPER_ID: "doitforricardo",
     413327053: "comradesanya",
     205762941: "dovaogedot",
     185500059: "melancholiak",
 }
 
-# Delays in seconds for the bot
+# Delays in seconds for the BOT
 CHAT_DELAY = 1 * 60                # One minute
 INDIVIDUAL_USER_DELAY = 10 * 60    # Ten minutes
 INDIVIDUAL_REPLY_DELAY = 5 * 60    # Five minutes
 ERROR_DELAY = 1 * 60               # One minute
 
-# Bot ID
-BOT_ID = 705781870
-
 # Request timeout time in seconds
 REQUEST_TIMEOUT = 1.2
+
+def start(update, context):
+    """Send out a start message"""
+    _send_reply(update, 'Думер бот в чате. Для списка функций используйте /help.')
 
 
 def help(update, context):
     """Help message"""
-    if _command_antispammer_passed(update):
+    if _command_antispam_passed(update):
         help_text = (
-            "Пример команды для бота: /help@random_welcome_bot\n"
-            "[ ] в самой команде не использовать.\n"
+            f"<b>Пример команды для бота:</b> /help@{BOT.username}\n"
             "/help - Это меню;\n"
             "/cat - Случайное фото котика;\n"
             "/dog - Случайное фото собачки;\n"
             "/dadjoke - Случайная шутка бати;\n"
             "/slap - Кого-то унизить (надо ответить жертве, чтобы бот понял кого бить);\n"
+            "/rules - Правила думерского чата;\n"
             "\n"
-            "Генераторы чисел:\n"
+            "<b>Генераторы чисел:</b>\n"
             "/myiq - Мой IQ (1 - 200);\n"
             "/muhdick - Длина моего шланга (1 - 25);\n"
-            "/flip - Бросить монетку (Орёл или Решка);\n"
+            "/flip - Бросить монетку (Орёл/Решка);\n"
             "\n"
-            "Дополнительная информация:\n"
+            "<b>Дополнительная информация:</b>\n"
             "1. Бот здоровается с людьми, прибывшими в чат и просит у них имя, фамилию, фото ног.\n"
             f"2. Кулдаун бота на любые команды {CHAT_DELAY // 60} минута.\n"
             f"3. Кулдаун на каждую команду {INDIVIDUAL_USER_DELAY // 60} минуту для "
             f"индивидуального пользователя.\n"
             f"4. Ошибка о кулдауне даётся минимум через каждую {ERROR_DELAY // 60} минуту. "
-            f"Спам удаляется.\n"
+            f"Спам команд во время кд удаляется.\n"
         )
-        _send_message(update, help_text)
+        _send_reply(update, help_text, parse_mode='HTML')
 
 
 def rules(update, context):
@@ -87,7 +95,7 @@ def rules(update, context):
                   "3. Никаких гей-гифок;\n"
                   "4. За спам - ноги;\n"
                   "5. Думерскую историю рассказать;\n")
-    _send_message(update, reply_text)
+    _send_reply(update, reply_text)
 
 
 def welcomer(update, context):
@@ -95,47 +103,48 @@ def welcomer(update, context):
     Empty messages could be status messages, so we check them if there is a new
     group member.
     """
-    # A bot entered the chat, and not this bot
+    # A BOT entered the chat, and not this BOT
     if update.message.new_chat_members[0].is_bot and \
-            update.message.new_chat_members[0].id != BOT_ID:
-        reply_text = "Уходи, нам больше ботов не надо."
-    # This bot joined the chat
-    elif update.message.new_chat_members[0].id == BOT_ID:
-        reply_text = "Думер бот в чате. Для помощи используйте /help."
+            update.message.new_chat_members[0].id != BOT.id:
+        reply_text = f"Уходи, {update.message.new_chat_members[0].first_name}, нам больше ботов не надо."
+    # This BOT joined the chat
+    elif update.message.new_chat_members[0].id == BOT.id:
+        reply_text = "Думер бот в чате. Для списка функций используйте /help."
     # Another user joined the chat
     else:
         new_member = update.message.new_chat_members[0].first_name
         reply_text = (f"Приветствуем вас в Думерском Чате, {new_member}!\n"
                       f"По традициям группы, с вас фото своих ног.\n")
-    _send_message(update, reply_text)
+    _send_reply(update, reply_text)
 
 
 def farewell(update, context):
     """Goodbye message"""
-    # A a bot was removed
+    # A a BOT was removed
     if update.message.left_chat_member.is_bot:
-        _send_message(
-            update, f"{update.message.left_chat_member.first_name}'a убили, красиво. Уважаю.")
+        _send_reply(
+            update, f"{update.message.left_chat_member.first_name}'a убили, красиво, уважаю.")
 
 
 def reply_to_text(update, context):
     """Replies to regular text messages
     Думер > Земляночка > """
     if update.message is not None:
-        # If user is muted, delete his message
+        # If user is in the muted list, delete his message unless he is in exceptions
+        # to avoid possible self-mutes
         if update.message.from_user.id in MUTED and \
-                update.message.from_user.id not in ANTISPAMMER_EXCEPTIONS:
+                update.message.from_user.id not in ANTISPAM_EXCEPTIONS:
             _try_to_delete_message(update)
         # Handle the word doomer
         elif _doomer_word_handler(update)[0]:
-            if _text_antispammer_passed(update):
-                _send_message(update, _doomer_word_handler(update)[1])
+            if _text_antispam_passed(update):
+                _send_reply(update, _doomer_word_handler(update)[1])
         # Handle землянoчкy
         elif _anprim_word_handler(update):
-            if _text_antispammer_passed(update):
-                bot.send_photo(chat_id=update.message.chat_id,
+            if _text_antispam_passed(update):
+                BOT.send_photo(chat_id=update.message.chat_id,
                                photo=random.choice(HUTS),
-                               caption='Эх, жить бы подальше от общества как анприм и там думить...',
+                               caption='Эх, жить бы подальше от общества как анприм и там думить..',
                                reply_to_message_id=update.message.message_id)
 
 
@@ -185,13 +194,13 @@ def _anprim_word_handler(update):
 
 def flip(update, context):
     """Flip a Coin"""
-    if _command_antispammer_passed(update):
-        _send_message(update, random.choice(['Орёл!', 'Решка!']))
+    if _command_antispam_passed(update):
+        _send_reply(update, random.choice(['Орёл!', 'Решка!']))
 
 
 def myiq(update, context):
     """Return IQ level (1 - 200)"""
-    if _command_antispammer_passed(update):
+    if _command_antispam_passed(update):
         iq_level = random.randint(1, 200)
         reply_text = f"Твой уровень IQ {iq_level}. "
         if iq_level < 85:
@@ -202,12 +211,12 @@ def myiq(update, context):
             reply_text += "Ты умный, братишка! (1 - 200)"
         else:
             reply_text += "Ты гений, братишка! (1 - 200)"
-        _send_message(update, reply_text)
+        _send_reply(update, reply_text)
 
 
 def muhdick(update, context):
     """Return dick size in cm (1 - 25)"""
-    if _command_antispammer_passed(update):
+    if _command_antispam_passed(update):
         muh_dick = random.randint(1, 25)
         reply_text = f"Длина твоей палочки {muh_dick} см! "
         if 1 <= muh_dick <= 11:
@@ -215,54 +224,54 @@ def muhdick(update, context):
         elif 21 <= muh_dick <= 25:
             reply_text += "\U0001F631 "
         reply_text += "(1 - 25)"
-        _send_message(update, reply_text)
+        _send_reply(update, reply_text)
 
 
 def dog(update, context):
     """Get a random dog image"""
-    # Go to a website with a json, that contains a link, pass the link to the bot,
+    # Go to a website with a json, that contains a link, pass the link to the BOT,
     # let the server download the image/video/gif
-    if _command_antispammer_passed(update):
+    if _command_antispam_passed(update):
         try:
             response = requests.get(
                 'https://random.dog/woof.json', timeout=REQUEST_TIMEOUT).json()
             # Get the file extension of the file
             file_extension = response['url'].split('.')[-1]
-            # Depending on the file extension, use the proper bot method
+            # Depending on the file extension, use the proper BOT method
             if 'mp4' in file_extension:
-                bot.send_video(chat_id=update.message.chat_id,
+                BOT.send_video(chat_id=update.message.chat_id,
                                video=response['url'],
                                reply_to_message_id=update.message.message_id)
             elif 'gif' in file_extension:
-                bot.send_animation(chat_id=update.message.chat_id,
+                BOT.send_animation(chat_id=update.message.chat_id,
                                    animation=response['url'],
                                    reply_to_message_id=update.message.message_id)
             else:
-                bot.send_photo(chat_id=update.message.chat_id,
+                BOT.send_photo(chat_id=update.message.chat_id,
                                photo=response['url'],
                                reply_to_message_id=update.message.message_id)
         except requests.exceptions.ReadTimeout:
-            _send_message(update, 'Думер умер на пути к серверу.')
+            _send_reply(update, 'Думер умер на пути к серверу.')
 
 
 def cat(update, context):
     """Get a random cat image"""
-    # Go to a website with a json, that contains a link, pass the link to the bot,
+    # Go to a website with a json, that contains a link, pass the link to the BOT,
     # let the server download the image
-    if _command_antispammer_passed(update):
+    if _command_antispam_passed(update):
         try:
             response = requests.get(
                 'http://aws.random.cat/meow', timeout=REQUEST_TIMEOUT).json()
-            bot.send_photo(chat_id=update.message.chat_id,
+            BOT.send_photo(chat_id=update.message.chat_id,
                            photo=response['file'],
                            reply_to_message_id=update.message.message_id)
         except requests.exceptions.ReadTimeout:
-            _send_message(update, 'Думер умер на пути к серверу.')
+            _send_reply(update, 'Думер умер на пути к серверу.')
 
 
 def dadjoke(update, context):
     """Get a random dad joke"""
-    if _command_antispammer_passed(update):
+    if _command_antispam_passed(update):
         # Retrieve the website source, find the joke in the code.
         headers = {
             'Accept': 'application/json',
@@ -270,46 +279,57 @@ def dadjoke(update, context):
         try:
             response = requests.get(
                 'https://icanhazdadjoke.com/', headers=headers, timeout=REQUEST_TIMEOUT).json()
-            _send_message(update, response['joke'])
+            _send_reply(update, response['joke'])
         except requests.exceptions.ReadTimeout:
-            _send_message(update, 'Думер умер на пути к серверу.')
+            _send_reply(update, 'Думер умер на пути к серверу.')
 
 
 def slap(update, context):
     """Slap with random item"""
-    if _command_antispammer_passed(update):
+    if _command_antispam_passed(update):
         # List the items that the target will be slapped with
         # Check if the user has indicated the target by making his message a reply
         if update.message.reply_to_message is None:
             reply_text = ('Кого унижать то будем? '
                           'Чтобы унизить, надо чтобы вы ответили вашей жертве.')
         else:
+            # Shorten code
+            initiator = update.message.from_user.first_name
+            target = update.message.reply_to_message.from_user.first_name
             # Generate the answer + create the reply using markdown. Use weighted actions.
             weighted_keys = []
             for action, items in SLAPS.items():
                 weighted_keys += [action] * len(items)
             action = random.choice(weighted_keys)
-            reply_text = f"[{update.message.from_user.first_name}](tg://user?id={update.message.from_user.id}) {action} " \
-                f"[{update.message.reply_to_message.from_user.first_name}](tg://user?id={update.message.reply_to_message.from_user.id}) " \
+            # Slap using markdown, as some people don't have usernames to use them for notification
+            reply_text = f"[{initiator}](tg://user?id={update.message.from_user.id}) {action} " \
+                f"[{target}](tg://user?id={update.message.reply_to_message.from_user.id}) " \
                 f"{random.choice(SLAPS[action])}."
-        _send_message(update, reply_text, parse_mode='Markdown')
+        _send_reply(update, reply_text, parse_mode='Markdown')
 
 
 def mute(update, context):
     """Autodelete messages of a user (only usable by the developer)"""
     if update.message.from_user.id == DEVELOPER_ID:
         MUTED.append(update.message.reply_to_message.from_user.id)
+        with open('muted.py', 'wb') as muted_storer:
+            pickle.dump(MUTED, muted_storer)
 
 
 def unmute(update, context):
     """Stop autodeletion of messages of a user (only usable by the developer)"""
+    # Only if the developer calls it
     if update.message.from_user.id == DEVELOPER_ID:
-        MUTED.remove(update.message.reply_to_message.from_user.id)
+        # Only if the user is in the MUTED list, otherwise it will createa a ValueError
+        if update.message.reply_to_message.from_user.id in MUTED:
+            MUTED.remove(update.message.reply_to_message.from_user.id)
+            with open('muted.py', 'wb') as muted_storer:
+                pickle.dump(MUTED, muted_storer)
 
-def _command_antispammer_passed(update):
+def _command_antispam_passed(update):
     """
     Check if the user is spamming
-    Delay of CHAT_DELAY minute(s) for all commands toward the bot
+    Delay of CHAT_DELAY minute(s) for all commands toward the BOT
     Delay of INDIVIDUAL_USER_DELAY minute(s) for individual user commands, changeable.
     """
     # Shorten code
@@ -318,8 +338,8 @@ def _command_antispammer_passed(update):
     # Turn off antispam for private conversations
     if update.message.chat.type == 'private':
         return True
-    # Add exception for the bot developer to be able to run tests
-    if userid in ANTISPAMMER_EXCEPTIONS:
+    # Add exception for the BOT developer to be able to run tests
+    if userid in ANTISPAM_EXCEPTIONS:
         return True
     # Remove messages from muted users
     if userid in MUTED:
@@ -333,7 +353,8 @@ def _command_antispammer_passed(update):
     if chatid in SPAM_COUNTER:
         # First check if there is a chat cooldown (1 minute)
         if 'last_chat_command' in SPAM_COUNTER[chatid]:
-            if message_time > (SPAM_COUNTER[chatid]['last_chat_command'] + datetime.timedelta(seconds=CHAT_DELAY)):
+            if message_time > (SPAM_COUNTER[chatid]['last_chat_command'] +
+                               datetime.timedelta(seconds=CHAT_DELAY)):
                 SPAM_COUNTER[chatid]['last_chat_command'] = message_time
                 chat_cooldown = False
             else:
@@ -380,28 +401,29 @@ def _command_antispammer_passed(update):
         return True
     # Give error at minimum every 1 minute (ERROR_DELAY)
     if 'last_error' in SPAM_COUNTER[chatid]:
-        if message_time > (SPAM_COUNTER[chatid]['last_error'] + datetime.timedelta(seconds=ERROR_DELAY)):
+        if message_time > (SPAM_COUNTER[chatid]['last_error'] +
+                           datetime.timedelta(seconds=ERROR_DELAY)):
             SPAM_COUNTER[chatid]['last_error'] = message_time
             error_message += (f"Эта ошибка тоже появляется минимум каждую {ERROR_DELAY // 60} "
                               f"минуту.\nЗапросы во время кулдауна ошибки будут удаляться.")
-            _send_message(update, error_message)
+            _send_reply(update, error_message)
         else:
             _try_to_delete_message(update)
     else:
         error_message += (f"Эта ошибка тоже появляется минимум каждую {ERROR_DELAY // 60} минуту.\n"
                           f"Запросы во время кулдауна ошибки будут удаляться.")
-        _send_message(update, error_message)
+        _send_reply(update, error_message)
         SPAM_COUNTER[chatid]['last_error'] = message_time
     return False
 
 
-def _text_antispammer_passed(update):
+def _text_antispam_passed(update):
     """Checks if somebody is spamming reply_all words"""
     # Turn off antispam for private conversations
     if update.message.chat.type == 'private':
         return True
-    # Add exception for the bot developer to be able to run tests
-    if update.message.from_user.id in ANTISPAMMER_EXCEPTIONS:
+    # Add exception for the BOT developer to be able to run tests
+    if update.message.from_user.id in ANTISPAM_EXCEPTIONS:
         return True
     message_time = datetime.datetime.now()
     # Shorten code
@@ -434,15 +456,15 @@ def _text_antispammer_passed(update):
 def _try_to_delete_message(update):
     """Try to delete user message using admin rights. If no rights, pass."""
     try:
-        bot.delete_message(chat_id=update.message.chat_id,
+        BOT.delete_message(chat_id=update.message.chat_id,
                            message_id=update.message.message_id)
     except TelegramError:
         pass
 
 
-def _send_message(update, text: str, parse_mode: str = None):
+def _send_reply(update, text: str, parse_mode: str = None):
     """Shortener of replies"""
-    bot.send_message(chat_id=update.message.chat_id,
+    BOT.send_message(chat_id=update.message.chat_id,
                      text=text,
                      reply_to_message_id=update.message.message_id,
                      parse_mode=parse_mode)
@@ -450,18 +472,19 @@ def _send_message(update, text: str, parse_mode: str = None):
 
 def error(update, context):
     """Log Errors caused by Updates."""
-    logger.warning('Error "%s" caused by update "%s"', context.error, update)
+    LOGGER.warning('Error "%s" caused by update "%s"', context.error, update)
 
 
 def main():
-    """Start the bot."""
-    # Create the Updater and pass it your bot's token.
+    """Start the BOT."""
+    # Create the Updater and pass it your BOT's token.
     updater = Updater(token=TOKEN, use_context=True)
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
 
     # on different commands - answer in Telegram
+    dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help))
     dispatcher.add_handler(CommandHandler("flip", flip))
     dispatcher.add_handler(CommandHandler("myiq", myiq))
@@ -486,11 +509,14 @@ def main():
     dispatcher.add_error_handler(error)
 
     # Start the Bot
-    updater.start_polling()
+    # Set clean to True to clean any pending updates on Telegram servers before
+    # actually starting to poll. Otherwise the BOT may spam the chat on coming
+    # back online
+    updater.start_polling(clean=True)
 
-    # Run the bot until you press Ctrl-C or the process receives SIGINT,
+    # Run the BOT until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since
-    # start_polling() is non-blocking and will stop the bot gracefully.
+    # start_polling() is non-blocking and will stop the BOT gracefully.
     updater.idle()
 
 
