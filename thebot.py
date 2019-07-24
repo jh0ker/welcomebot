@@ -4,10 +4,10 @@ Authors (telegrams) - @doitforgachi, @dovaogedot
 
 import datetime
 import logging
+import pickle
 import random
 from os import environ
 
-import pickle
 import requests
 from telegram import Bot
 from telegram import TelegramError
@@ -19,6 +19,8 @@ from telegram.ext import Updater
 # Import huts, slaps
 from huts import HUTS
 from slaps import SLAPS
+
+
 # Import list of muted people, if fails to import, create a new list
 try:
     with open('muted.py', 'rb') as muted_storer:
@@ -46,13 +48,14 @@ ANTISPAM_EXCEPTIONS = {
     }
 
 # Delays in seconds for the BOT
-CHAT_DELAY = 1 * 60                # One minute
-INDIVIDUAL_USER_DELAY = 10 * 60    # Ten minutes
-INDIVIDUAL_REPLY_DELAY = 5 * 60    # Five minutes
-ERROR_DELAY = 1 * 60               # One minute
+CHAT_DELAY = 1 * 60  # One minute
+INDIVIDUAL_USER_DELAY = 10 * 60  # Ten minutes
+INDIVIDUAL_REPLY_DELAY = 5 * 60  # Five minutes
+ERROR_DELAY = 1 * 60  # One minute
 
 # Request timeout time in seconds
 REQUEST_TIMEOUT = 1.2
+
 
 def start(update, context):
     """Send out a start message"""
@@ -131,9 +134,10 @@ def reply_to_text(update, context):
     if update.message is not None:
         # If user is in the muted list, delete his message unless he is in exceptions
         # to avoid possible self-mutes
-        if update.message.from_user.id in MUTED and \
-                update.message.from_user.id not in ANTISPAM_EXCEPTIONS:
-            _try_to_delete_message(update)
+        if update.message.chat_id in MUTED:
+            if update.message.from_user.id in MUTED[update.message.chat_id] and \
+                    update.message.from_user.id not in ANTISPAM_EXCEPTIONS:
+                _try_to_delete_message(update)
         # Handle the word doomer
         elif _doomer_word_handler(update)[0]:
             if _text_antispam_passed(update):
@@ -151,7 +155,7 @@ def _doomer_word_handler(update):
     # Make the preparations with variations of the word with latin letters
     variations_with_latin_letters = [
         'думер', 'дyмер', 'дyмeр', 'дyмep', 'думeр', 'думep', 'думеp'
-    ]
+        ]
     doomer_word_start = None
     # Check if any of the variations are in the text, if there are break
     for variation in variations_with_latin_letters:
@@ -176,7 +180,7 @@ def _doomer_word_handler(update):
         # Return the reply word
         return (True, reply_word)
     # If the word is not found, return False
-    return (False, )
+    return (False,)
 
 
 def _anprim_word_handler(update):
@@ -287,12 +291,12 @@ def slap(update, context):
         # List the items that the target will be slapped with
         # Check if the user has indicated the target by making his message a reply
         if update.message.reply_to_message is None:
-            reply_text = ('Кого унижать то будем? '
+            reply_text = ('Кого унижать то будем?\n'
                           'Чтобы унизить, надо чтобы вы ответили вашей жертве.')
         else:
-            # Shorten code
-            initiator = update.message.from_user.first_name
-            target = update.message.reply_to_message.from_user.first_name
+            # Shorten code and strip of [] to remove interference with Markdown
+            initiator = update.message.from_user.first_name.strip('[]')
+            target = update.message.reply_to_message.from_user.first_name.strip('[]')
             # Generate the answer + create the reply using markdown. Use weighted actions.
             weighted_keys = []
             for action, items in SLAPS.items():
@@ -300,8 +304,8 @@ def slap(update, context):
             action = random.choice(weighted_keys)
             # Slap using markdown, as some people don't have usernames to use them for notification
             reply_text = f"[{initiator}](tg://user?id={update.message.from_user.id}) {action} " \
-                f"[{target}](tg://user?id={update.message.reply_to_message.from_user.id}) " \
-                f"{random.choice(SLAPS[action])}"
+                         f"[{target}](tg://user?id={update.message.reply_to_message.from_user.id}) " \
+                         f"{random.choice(SLAPS[action])}"
         _send_reply(update, reply_text, parse_mode='Markdown')
 
 
@@ -312,15 +316,23 @@ def mute(update, context):
         to_mute_id = update.message.reply_to_message.from_user.id
         # Only works for the dev
         if update.message.from_user.id == DEVELOPER_ID:
-            # If the chat exists, add instantly to muted
+            # If the chat does no exist, add instantly to muted
             if update.message.chat_id in MUTED:
+                # Add to muted dictionary id and first name
                 MUTED[update.message.chat_id][to_mute_id] = \
                     update.message.reply_to_message.from_user.first_name
+                # If last name exists, add it too
+                if update.message.reply_to_message.from_user.last_name:
+                    MUTED[update.message.chat_id][
+                        to_mute_id] += f' {update.message.reply_to_message.from_user.last_name}'
             # If the chat doesn't exist, create chat entry and add to muted
             else:
                 MUTED[update.message.chat_id] = {}
                 MUTED[update.message.chat_id][to_mute_id] = \
                     update.message.reply_to_message.from_user.first_name
+                if update.message.reply_to_message.from_user.last_name:
+                    MUTED[update.message.chat_id][
+                        to_mute_id] += f' {update.message.reply_to_message.from_user.last_name}'
             # Record to database
             with open('muted.py', 'wb') as muted_storer:
                 pickle.dump(MUTED, muted_storer)
@@ -377,13 +389,13 @@ def mutelist(update, context):
     # Only for developer
     if update.message.from_user.id == DEVELOPER_ID:
         # Somewhat of a table
-        id_list = 'first_name - user_id:\n'
+        id_list = 'name - user_id:\n'
         # If chat existed, add users
         if update.message.chat_id in MUTED:
             for muted_id, muted_name in MUTED[update.message.chat_id].items():
                 id_list += f'{muted_name} - {muted_id};\n'
         # If any entries, reply
-        if id_list != 'first_name - user_id:\n':
+        if id_list != 'name - user_id:\n':
             _send_reply(update, id_list)
         # If no entries, say nowhere there
         else:
@@ -406,8 +418,9 @@ def _command_antispam_passed(update):
     if userid in ANTISPAM_EXCEPTIONS:
         return True
     # Remove messages from muted users
-    if userid in MUTED:
-        _try_to_delete_message(userid)
+    if chatid in MUTED:
+        if userid in MUTED[chatid]:
+            _try_to_delete_message(update)
     # Get the time now to compare to previous messages
     message_time = datetime.datetime.now()
     # Create a holder for errors
@@ -424,7 +437,7 @@ def _command_antispam_passed(update):
             else:
                 error_message += \
                     f"Бот отвечает на команды пользователей минимум через " \
-                        f"каждую {CHAT_DELAY // 60} минуту.\n"
+                    f"каждую {CHAT_DELAY // 60} минуту.\n"
                 chat_cooldown = True
         else:
             SPAM_COUNTER[chatid]['last_chat_command'] = message_time
@@ -442,7 +455,7 @@ def _command_antispam_passed(update):
                 else:
                     error_message += \
                         f"Ответ индивидуальным пользователям на команды минимум через " \
-                            f"каждые {INDIVIDUAL_USER_DELAY // 60} минут.\n"
+                        f"каждые {INDIVIDUAL_USER_DELAY // 60} минут.\n"
                     user_cooldown = True
             else:
                 if not chat_cooldown:
