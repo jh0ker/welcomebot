@@ -25,11 +25,10 @@ try:
         MUTED = pickle.load(muted_storer)
 except (EOFError, FileNotFoundError):
     MUTED = {}
-print(MUTED)
 
-# Enable logging
+# Enable logging into file
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+                    level=logging.INFO, filename='logs.log')
 LOGGER = logging.getLogger(__name__)
 
 # Bot initialization
@@ -44,7 +43,7 @@ ANTISPAM_EXCEPTIONS = {
     413327053: "comradesanya",
     205762941: "dovaogedot",
     185500059: "melancholiak",
-}
+    }
 
 # Delays in seconds for the BOT
 CHAT_DELAY = 1 * 60                # One minute
@@ -273,9 +272,7 @@ def dadjoke(update, context):
     """Get a random dad joke"""
     if _command_antispam_passed(update):
         # Retrieve the website source, find the joke in the code.
-        headers = {
-            'Accept': 'application/json',
-        }
+        headers = {'Accept': 'application/json'}
         try:
             response = requests.get(
                 'https://icanhazdadjoke.com/', headers=headers, timeout=REQUEST_TIMEOUT).json()
@@ -304,7 +301,7 @@ def slap(update, context):
             # Slap using markdown, as some people don't have usernames to use them for notification
             reply_text = f"[{initiator}](tg://user?id={update.message.from_user.id}) {action} " \
                 f"[{target}](tg://user?id={update.message.reply_to_message.from_user.id}) " \
-                f"{random.choice(SLAPS[action])}."
+                f"{random.choice(SLAPS[action])}"
         _send_reply(update, reply_text, parse_mode='Markdown')
 
 
@@ -350,7 +347,7 @@ def unmute(update, context):
                     to_unmute_id = update.message.reply_to_message.from_user.id
                 # If no reply, say that no argument was given
                 except AttributeError:
-                    _send_reply(update, 'Вы забыли айди')
+                    _send_reply(update, 'Вы забыли указать айди.')
         # For replies, if no id is given
         else:
             to_unmute_id = update.message.reply_to_message.from_user.id
