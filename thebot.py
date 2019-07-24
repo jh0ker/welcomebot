@@ -23,7 +23,7 @@ from slaps import SLAPS
 try:
     with open('muted.py', 'rb') as muted_storer:
         MUTED = pickle.load(muted_storer)
-except EOFError:
+except (EOFError, FileNotFoundError):
     MUTED = []
 
 
