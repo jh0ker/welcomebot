@@ -24,8 +24,8 @@ try:
     with open('muted.py', 'rb') as muted_storer:
         MUTED = pickle.load(muted_storer)
 except (EOFError, FileNotFoundError):
-    MUTED = []
-
+    MUTED = {}
+print(MUTED)
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -33,7 +33,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 LOGGER = logging.getLogger(__name__)
 
 # Bot initialization
-TOKEN = environ.get("TG_BOT_TOKEN")
+TOKEN = "824227677:AAEXWiwnYPI3M6cZ1MTN2_pzmCdOpGqW6ic"
 BOT = Bot(TOKEN)
 
 # Antispammer variables
@@ -310,21 +310,88 @@ def slap(update, context):
 
 def mute(update, context):
     """Autodelete messages of a user (only usable by the developer)"""
-    if update.message.from_user.id == DEVELOPER_ID:
-        MUTED.append(update.message.reply_to_message.from_user.id)
-        with open('muted.py', 'wb') as muted_storer:
-            pickle.dump(MUTED, muted_storer)
+    try:
+        # Shorten code
+        to_mute_id = update.message.reply_to_message.from_user.id
+        # Only works for the dev
+        if update.message.from_user.id == DEVELOPER_ID:
+            # If the chat exists, add instantly to muted
+            if update.message.chat_id in MUTED:
+                MUTED[update.message.chat_id][to_mute_id] = \
+                    update.message.reply_to_message.from_user.first_name
+            # If the chat doesn't exist, create chat entry and add to muted
+            else:
+                MUTED[update.message.chat_id] = {}
+                MUTED[update.message.chat_id][to_mute_id] = \
+                    update.message.reply_to_message.from_user.first_name
+            # Record to database
+            with open('muted.py', 'wb') as muted_storer:
+                pickle.dump(MUTED, muted_storer)
+    # In case when not a reply
+    except AttributeError:
+        _send_reply(update, 'Надо ответить пользователю.')
 
 
 def unmute(update, context):
     """Stop autodeletion of messages of a user (only usable by the developer)"""
     # Only if the developer calls it
     if update.message.from_user.id == DEVELOPER_ID:
-        # Only if the user is in the MUTED list, otherwise it will createa a ValueError
-        if update.message.reply_to_message.from_user.id in MUTED:
-            MUTED.remove(update.message.reply_to_message.from_user.id)
-            with open('muted.py', 'wb') as muted_storer:
-                pickle.dump(MUTED, muted_storer)
+        # Create to enable unmute by reply and id
+        to_unmute_id = None
+        # Check for arguments in form of the id
+        if len(update.message.text.split()) > 1 and len(str(update.message.text.split()[1])) == 9:
+            # Try to get id
+            try:
+                to_unmute_id = int(update.message.text.split()[1])
+            # If didn't get id, check for reply
+            except ValueError:
+                # Check for reply
+                try:
+                    to_unmute_id = update.message.reply_to_message.from_user.id
+                # If no reply, say that no argument was given
+                except AttributeError:
+                    _send_reply(update, 'Вы забыли айди')
+        # For replies, if no id is given
+        else:
+            to_unmute_id = update.message.reply_to_message.from_user.id
+        # Only if the user is in the MUTED list
+        if to_unmute_id is not None:
+            # If the chat doesn't exist, then the user was never muted
+            if update.message.chat_id in MUTED:
+                # If was muted, unmute
+                if to_unmute_id in MUTED[update.message.chat_id]:
+                    MUTED[update.message.chat_id].pop(to_unmute_id)
+                    # If there are no more muted people in the chat, remove the chat instance
+                    # This is garbage collection
+                    if len(MUTED[update.message.chat_id]) == 0:
+                        MUTED.pop(update.message.chat_id)
+                    with open('muted.py', 'wb') as muted_storer:
+                        pickle.dump(MUTED, muted_storer)
+                else:
+                    _send_reply(update, 'Этот пользователь уже не был в списке молчунов.')
+            else:
+                _send_reply(update, 'Этот пользователь уже не был в списке молчунов.')
+        else:
+            _send_reply(update, 'Кого пытаемся убрать из списка молчунов?')
+
+
+def mutelist(update, context):
+    """Get the list of muted ids"""
+    # Only for developer
+    if update.message.from_user.id == DEVELOPER_ID:
+        # Somewhat of a table
+        id_list = 'first_name - user_id:\n'
+        # If chat existed, add users
+        if update.message.chat_id in MUTED:
+            for muted_id, muted_name in MUTED[update.message.chat_id].items():
+                id_list += f'{muted_name} - {muted_id};\n'
+        # If any entries, reply
+        if id_list != 'first_name - user_id:\n':
+            _send_reply(update, id_list)
+        # If no entries, say nowhere there
+        else:
+            _send_reply(update, 'Cписок молчунов пустой.')
+
 
 def _command_antispam_passed(update):
     """
@@ -496,6 +563,7 @@ def main():
     dispatcher.add_handler(CommandHandler("rules", rules))
     dispatcher.add_handler(CommandHandler('mute', mute))
     dispatcher.add_handler(CommandHandler('unmute', unmute))
+    dispatcher.add_handler(CommandHandler('mutelist', mutelist))
 
     # add message handlers
     dispatcher.add_handler(MessageHandler(
