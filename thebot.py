@@ -93,9 +93,9 @@ def help(update, context):
 def rules(update, context):
     """Reply to the user with the rules of the chat"""
     reply_text = ("1. Не быть зумером, не сообщать зумерам о думском клубе;\n"
-                  "2. Всяк сюда входящий, с того фото ножек;\n"
+                  "2. Всяк сюда входящий, с того фото своих ножек;\n"
                   "3. Никаких гей-гифок;\n"
-                  "4. За спам - ноги;\n"
+                  "4. За спам - фото своих ног;\n"
                   "5. Думерскую историю рассказать;\n")
     _send_reply(update, reply_text)
 
