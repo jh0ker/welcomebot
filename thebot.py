@@ -92,12 +92,13 @@ def help(update, context):
 
 def rules(update, context):
     """Reply to the user with the rules of the chat"""
-    reply_text = ("1. Не быть зумером, не сообщать зумерам о думском клубе;\n"
-                  "2. Всяк сюда входящий, с того фото своих ножек;\n"
-                  "3. Никаких гей-гифок;\n"
-                  "4. За спам - фото своих ног;\n"
-                  "5. Думерскую историю рассказать;\n")
-    _send_reply(update, reply_text)
+    if _command_antispam_passed(update):
+        reply_text = ("1. Не быть зумером, не сообщать зумерам о думском клубе;\n"
+                      "2. Всяк сюда входящий, с того фото своих ножек;\n"
+                      "3. Никаких гей-гифок;\n"
+                      "4. За спам - фото своих ног;\n"
+                      "5. Думерскую историю рассказать;\n")
+        _send_reply(update, reply_text)
 
 
 def welcomer(update, context):
@@ -128,8 +129,8 @@ def farewell(update, context):
             update, f"{update.message.left_chat_member.first_name}'a убили, красиво, уважаю.")
 
 
-def reply_to_text(update, context):
-    """Replies to regular text messages
+def message_filter(update, context):
+    """Replies to all messages
     Думер > Земляночка > """
     if update.message is not None:
         # If user is in the muted list, delete his message unless he is in exceptions
@@ -594,7 +595,7 @@ def main():
     dispatcher.add_handler(MessageHandler(
         Filters.status_update.left_chat_member, farewell))
     dispatcher.add_handler(MessageHandler(
-        Filters.text, reply_to_text))
+        Filters.all, message_filter))
 
     # log all errors
     dispatcher.add_error_handler(error)
