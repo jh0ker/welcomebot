@@ -20,18 +20,18 @@ from telegram.ext import Updater
 from huts import HUTS
 from slaps import SLAPS
 
-
-# Import list of muted people, if fails to import, create a new list
-try:
-    with open('muted.py', 'rb') as muted_storer:
-        MUTED = pickle.load(muted_storer)
-except (EOFError, FileNotFoundError):
-    MUTED = {}
-
 # Enable logging into file
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO, filename='logs.log')
 LOGGER = logging.getLogger(__name__)
+
+# Import list of muted people, if fails to import, create a new list and log the error
+try:
+    with open('muted.py', 'rb') as muted_storer:
+        MUTED = pickle.load(muted_storer)
+except (EOFError, FileNotFoundError) as error:
+    LOGGER.error(error)
+    MUTED = {}
 
 # Bot initialization
 TOKEN = environ.get("TG_BOT_TOKEN")
@@ -253,7 +253,8 @@ def dog(update, context):
                 BOT.send_photo(chat_id=update.message.chat_id,
                                photo=response['url'],
                                reply_to_message_id=update.message.message_id)
-        except requests.exceptions.ReadTimeout:
+        except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as error:
+            LOGGER.error(error)
             _send_reply(update, 'Думер умер на пути к серверу.')
 
 
@@ -268,7 +269,8 @@ def cat(update, context):
             BOT.send_photo(chat_id=update.message.chat_id,
                            photo=response['file'],
                            reply_to_message_id=update.message.message_id)
-        except requests.exceptions.ReadTimeout:
+        except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as error:
+            LOGGER.error(error)
             _send_reply(update, 'Думер умер на пути к серверу.')
 
 
@@ -281,7 +283,8 @@ def dadjoke(update, context):
             response = requests.get(
                 'https://icanhazdadjoke.com/', headers=headers, timeout=REQUEST_TIMEOUT).json()
             _send_reply(update, response['joke'])
-        except requests.exceptions.ReadTimeout:
+        except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as error:
+            LOGGER.error(error)
             _send_reply(update, 'Думер умер на пути к серверу.')
 
 
@@ -399,17 +402,17 @@ def mutelist(update, context):
     # Only for developer
     if update.message.from_user.id == DEVELOPER_ID:
         # Somewhat of a table
-        id_list = 'name - user_id:\n'
+        id_list = 'имя - айди пользователя:\n'
         # If chat existed, add users
         if update.message.chat_id in MUTED:
             for muted_id, muted_name in MUTED[update.message.chat_id].items():
                 id_list += f'{muted_name} - {muted_id};\n'
         # If any entries, reply
-        if id_list != 'name - user_id:\n':
+        if id_list != 'имя - айди пользователя:\n':
             _send_reply(update, id_list)
         # If no entries, say nowhere there
         else:
-            _send_reply(update, 'Cписок молчунов пустой.')
+            _send_reply(update, 'Cписок молчунов пуст.')
 
 
 def _command_antispam_passed(update):
