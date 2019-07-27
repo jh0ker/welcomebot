@@ -7,6 +7,7 @@ import logging
 import pickle
 import random
 from os import environ
+from time import sleep
 
 import requests
 from telegram import Bot
@@ -19,6 +20,7 @@ from telegram.ext import Updater
 # Import huts, slaps
 from huts import HUTS
 from slaps import SLAPS
+
 
 # Enable logging into file
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -313,6 +315,41 @@ def slap(update, context):
         _send_reply(update, reply_text, parse_mode='Markdown')
 
 
+def duel(update, context):
+    """Duel to solve any kind of argument"""
+
+    def _send_message(update, text_message, sleep_time: float = 0.25):
+        """Shortener for normal messages with sleep"""
+        BOT.send_message(chat_id=update.message.chat_id,
+                         text=text_message,
+                         parse_mode='Markdown')
+        sleep(sleep_time)
+
+    if _command_antispam_passed(update):
+        # If not replied, ask for the target
+        if update.message.reply_to_message is None:
+            _send_reply(update, 'С кем дуэль проводить будем?')
+        else:
+            # Shorten the code, format the names
+            initiator_name = update.message.from_user.first_name.strip('[]').capitalize()
+            initiator_id = update.message.from_user.id
+            target_name = update.message.reply_to_message.from_user.first_name.strip('[]').capitalize()
+            target_id = update.message.reply_to_message.from_user.id
+            participant_list = [(initiator_name, initiator_id), (target_name, target_id)]
+            # Get the winner and the loser
+            winner = participant_list.pop(random.choice([0, 1]))
+            loser = participant_list[0]
+            # Start the dueling text
+            _send_message(update, 'Дуэлисты расходятся...')
+            _send_message(update, 'Готовятся к выстрелу...')
+            _send_message(update, '***BAM BAM***')
+            duel_message = f'[{winner[0]}](tg://user?id={winner[1]}) подстрелил ' \
+                           f'[{loser[0]}](tg://user?id={loser[1]}) как свинью!\n' \
+                           f'Решительная победа за [{winner[0]}](tg://user?id={winner[1]}).'
+            # Give result
+            _send_message(update, duel_message, sleep_time=0)
+
+
 def mute(update, context):
     """Autodelete messages of a user (only usable by the developer)"""
     try:
@@ -380,7 +417,7 @@ def unmute(update, context):
                 # If was muted, unmute and notify of success
                 if to_unmute_id in MUTED[chat_id]:
                     _send_reply(update, f'Успешно снял сало с '
-                                f'[{MUTED[chat_id][to_unmute_id]}](tg://user?id={to_unmute_id}).',
+                                        f'[{MUTED[chat_id][to_unmute_id]}](tg://user?id={to_unmute_id}).',
                                 parse_mode='Markdown')
                     MUTED[chat_id].pop(to_unmute_id)
                     # If there are no more muted people in the chat, remove the chat instance
@@ -588,6 +625,7 @@ def main():
     dispatcher.add_handler(CommandHandler('mute', mute))
     dispatcher.add_handler(CommandHandler('unmute', unmute))
     dispatcher.add_handler(CommandHandler('mutelist', mutelist))
+    dispatcher.add_handler(CommandHandler('duel', duel))
 
     # add message handlers
     dispatcher.add_handler(MessageHandler(
