@@ -302,8 +302,8 @@ def slap(update, context):
                           'Чтобы унизить, надо чтобы вы ответили вашей жертве.')
         else:
             # Shorten code and strip of [] to remove interference with Markdown
-            initiator = update.message.from_user.first_name.strip('[]')
-            target = update.message.reply_to_message.from_user.first_name.strip('[]')
+            initiator = update.message.from_user.first_name.strip('[]').capitalize()
+            target = update.message.reply_to_message.from_user.first_name.strip('[]').capitalize()
             # Generate the answer + create the reply using markdown. Use weighted actions.
             weighted_keys = []
             for action, items in SLAPS.items():
@@ -343,9 +343,9 @@ def duel(update, context):
             # Start the dueling text
             _send_message(update, 'Дуэлисты расходятся...')
             _send_message(update, 'Готовятся к выстрелу...')
-            _send_message(update, '***BAM BAM***')
+            _send_message(update, '***BANG BANG***')
             duel_message = f'[{winner[0]}](tg://user?id={winner[1]}) подстрелил ' \
-                           f'[{loser[0]}](tg://user?id={loser[1]}) как свинью!\n' \
+                           f'[{loser[0]}](tg://user?id={loser[1]}), как свинью!\n' \
                            f'Решительная победа за [{winner[0]}](tg://user?id={winner[1]}).'
             # Give result
             _send_message(update, duel_message, sleep_time=0)
