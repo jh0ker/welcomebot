@@ -339,16 +339,36 @@ def duel(update, context):
             participant_list = [(initiator_name, initiator_id), (target_name, target_id)]
             # Get the winner and the loser
             winner = participant_list.pop(random.choice([0, 1]))
+            winner = f'[{winner[0]}](tg://user?id={winner[1]})'
             loser = participant_list[0]
+            loser = f'[{loser[0]}](tg://user?id={loser[1]})'
             # Start the dueling text
             _send_message(update, 'Дуэлисты расходятся...')
             _send_message(update, 'Готовятся к выстрелу...')
             _send_message(update, '***BANG BANG***')
-            duel_message = f'[{winner[0]}](tg://user?id={winner[1]}) подстрелил ' \
-                           f'[{loser[0]}](tg://user?id={loser[1]}), как свинью!\n' \
-                           f'Решительная победа за [{winner[0]}](tg://user?id={winner[1]}).'
-            # Give result
-            _send_message(update, duel_message, sleep_time=0)
+            # Make possible scenarios
+            scenarios = []
+            scenarios += ['miss'] * 3 + ['hit'] * 16 + ['alldead'] * 1
+            random.shuffle(scenarios)
+            scenario = scenarios.pop()
+            # Make the scenario tree
+            if scenario == 'hit':
+                duel_result = winner + ' подстрелил ' + loser + ', как свинью!\n' + \
+                              'Решительная победа за ' + winner + '.'
+            elif scenario == 'miss':
+                duel_result = winner + ' и ' + loser + ' оба выстрелили в никуда!\n' + \
+                              'В этот раз ничья!'
+            # Else is 'alldead' to stop pycharm from making issues
+            else:
+                duel_result = winner + ' и ' + loser + '... УБИЛИ ДРУГ ДРУГА!\n' + \
+                              'ОНИ УБИЛИ ДРУГ ДРУГА, КАРЛ!\n' + \
+                              'Оба победили? Оба проиграли? ... Пусть будет ничья!'
+            # Give result unless the connection died. If it did, try another message.
+            try:
+                _send_message(update, duel_result, sleep_time=0)
+            except TelegramError:
+                _send_message(update, 'Пошёл ливень и дуэль была отменена.\n'
+                                      'Приносим прощения! Заходите ещё!', sleep_time=0)
 
 
 def mute(update, context):
