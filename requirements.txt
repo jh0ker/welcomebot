@@ -1,4 +1,4 @@
-telegram=0.0.1
+telegram==0.0.1
 DateTime==4.3
 python-telegram-bot==12.0.0b1
 requests==2.22.0
