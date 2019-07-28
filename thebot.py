@@ -31,8 +31,8 @@ LOGGER = logging.getLogger(__name__)
 try:
     with open('modules/muted.py', 'rb') as muted_storer:
         MUTED = pickle.load(muted_storer)
-except (EOFError, FileNotFoundError) as error:
-    LOGGER.error(error)
+except (EOFError, FileNotFoundError) as err:
+    LOGGER.error(err)
     MUTED = {}
 
 # Bot initialization
@@ -444,7 +444,7 @@ def unmute(update, context):
                     MUTED[chatid].pop(to_unmute_id)
                     # If there are no more muted people in the chat, remove the chat instance
                     # This is garbage collection
-                    if len(MUTED[chatid]) == 0:
+                    if not MUTED[chatid]:
                         MUTED.pop(chatid)
                     # Store in database
                     with open('modules/muted.py', 'wb') as muted_storer:
