@@ -18,8 +18,8 @@ from telegram.ext import MessageHandler
 from telegram.ext import Updater
 
 # Import huts, slaps
-from huts import HUTS
-from slaps import SLAPS
+from modules.huts import HUTS
+from modules.slaps import SLAPS
 
 
 # Enable logging into file
@@ -29,7 +29,7 @@ LOGGER = logging.getLogger(__name__)
 
 # Import list of muted people, if fails to import, create a new list and log the error
 try:
-    with open('muted.py', 'rb') as muted_storer:
+    with open('modules/muted.py', 'rb') as muted_storer:
         MUTED = pickle.load(muted_storer)
 except (EOFError, FileNotFoundError) as error:
     LOGGER.error(error)
@@ -73,8 +73,10 @@ def help(update, context):
             "/cat - Случайное фото котика;\n"
             "/dog - Случайное фото собачки;\n"
             "/dadjoke - Случайная шутка бати;\n"
-            "/slap - Кого-то унизить (надо ответить жертве, чтобы бот понял кого бить);\n"
-            "/duel - Устроить дуэль (надо ответить тому, с кем будет дуэль);\n"
+            "/slap - Кого-то унизить "
+            "(надо ответить жертве, чтобы бот понял кого бить);\n"
+            "/duel - Устроить дуэль "
+            "(надо ответить тому, с кем будет дуэль);\n"
             "/rules - Правила думерского чата;\n"
             "\n"
             "<b>Генераторы чисел:</b>\n"
@@ -88,8 +90,8 @@ def help(update, context):
             f"3. Кулдаун на каждую команду {INDIVIDUAL_USER_DELAY // 60} минуту для "
             f"индивидуального пользователя.\n"
             f"4. Ошибка о кулдауне даётся минимум через каждую {ERROR_DELAY // 60} минуту. "
-            f"Спам команд во время кд удаляется.\n"
-        )
+            "Спам команд во время кд удаляется.\n"
+            )
         _send_reply(update, help_text, parse_mode='HTML')
 
 
@@ -112,7 +114,8 @@ def welcomer(update, context):
     # A BOT entered the chat, and not this BOT
     if update.message.new_chat_members[0].is_bot and \
             update.message.new_chat_members[0].id != BOT.id:
-        reply_text = f"Уходи, {update.message.new_chat_members[0].first_name}, нам больше ботов не надо."
+        reply_text = f"Уходи, {update.message.new_chat_members[0].first_name}, " \
+                     f"нам больше ботов не надо."
     # This BOT joined the chat
     elif update.message.new_chat_members[0].id == BOT.id:
         reply_text = "Думер бот в чате. Для списка функций используйте /help."
@@ -139,8 +142,8 @@ def message_filter(update, context):
         # If user is in the muted list, delete his message unless he is in exceptions
         # to avoid possible self-mutes
         if update.message.chat_id in MUTED:
-            if update.message.from_user.id in MUTED[update.message.chat_id] and \
-                    update.message.from_user.id not in ANTISPAM_EXCEPTIONS:
+            if _get(update, 'init_id') in MUTED[update.message.chat_id] and \
+                    _get(update, 'init_id') not in ANTISPAM_EXCEPTIONS:
                 _try_to_delete_message(update)
         # Handle the word doomer
         elif _doomer_word_handler(update)[0]:
@@ -171,6 +174,7 @@ def _doomer_word_handler(update):
     # If any of the variations have been found, give a reply
     if doomer_word_start is not None:
         # Find the word in the message, get the word and all adjacent symbol
+        # noinspection PyUnboundLocalVariable
         word_with_symbols = \
             update.message.text.lower()[doomer_word_start:].replace(
                 found_word, 'хуюмер').split()[0]
@@ -182,15 +186,17 @@ def _doomer_word_handler(update):
             else:
                 break
         # Return the reply word
-        return (True, reply_word)
+        return True, reply_word
     # If the word is not found, return False
-    return (False,)
+    return False, None
 
 
 def _anprim_word_handler(update):
     """Image of earth hut"""
-    variations = ['земляночку бы', 'земляночкy бы', 'землянoчку бы', 'зeмляночку бы',
-                  'землянoчкy бы', 'зeмляночкy бы', 'зeмлянoчку бы', 'зeмлянoчкy бы']
+    variations = ['земляночку бы', 'земляночкy бы',
+                  'землянoчку бы', 'зeмляночку бы',
+                  'землянoчкy бы', 'зeмляночкy бы',
+                  'зeмлянoчку бы', 'зeмлянoчкy бы']
     # If the word is found, return true
     for variation in variations:
         if variation in update.message.text.lower():
@@ -257,8 +263,8 @@ def dog(update, context):
                 BOT.send_photo(chat_id=update.message.chat_id,
                                photo=response['url'],
                                reply_to_message_id=update.message.message_id)
-        except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as error:
-            LOGGER.error(error)
+        except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as err:
+            LOGGER.error(err)
             _send_reply(update, 'Думер умер на пути к серверу.')
 
 
@@ -273,8 +279,8 @@ def cat(update, context):
             BOT.send_photo(chat_id=update.message.chat_id,
                            photo=response['file'],
                            reply_to_message_id=update.message.message_id)
-        except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as error:
-            LOGGER.error(error)
+        except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as err:
+            LOGGER.error(err)
             _send_reply(update, 'Думер умер на пути к серверу.')
 
 
@@ -287,8 +293,8 @@ def dadjoke(update, context):
             response = requests.get(
                 'https://icanhazdadjoke.com/', headers=headers, timeout=REQUEST_TIMEOUT).json()
             _send_reply(update, response['joke'])
-        except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as error:
-            LOGGER.error(error)
+        except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as err:
+            LOGGER.error(err)
             _send_reply(update, 'Думер умер на пути к серверу.')
 
 
@@ -302,25 +308,23 @@ def slap(update, context):
                           'Чтобы унизить, надо чтобы вы ответили вашей жертве.')
         else:
             # Shorten code and strip of [] to remove interference with Markdown
-            initiator = update.message.from_user.first_name.strip('[]').capitalize()
-            target = update.message.reply_to_message.from_user.first_name.strip('[]').capitalize()
             # Generate the answer + create the reply using markdown. Use weighted actions.
             weighted_keys = []
             for action, items in SLAPS.items():
                 weighted_keys += [action] * len(items)
             action = random.choice(weighted_keys)
             # Slap using markdown, as some people don't have usernames to use them for notification
-            reply_text = f"[{initiator}](tg://user?id={update.message.from_user.id}) {action} " \
-                         f"[{target}](tg://user?id={update.message.reply_to_message.from_user.id}) " \
+            reply_text = f"[{_get(update, 'init_name')}](tg://user?id={_get(update, 'init_id')}) {action} " \
+                         f"[{_get(update, 'target_name')}](tg://user?id={_get(update, 'target_id')}) " \
                          f"{random.choice(SLAPS[action])}"
         _send_reply(update, reply_text, parse_mode='Markdown')
 
 
 def duel(update, context):
     """Duel to solve any kind of argument"""
-
-    def _send_message(update, text_message, sleep_time: float = 0.25):
+    def _send_message(text_message, sleep_time: float = 0.25):
         """Shortener for normal messages with sleep"""
+        nonlocal update
         BOT.send_message(chat_id=update.message.chat_id,
                          text=text_message,
                          parse_mode='Markdown')
@@ -332,20 +336,17 @@ def duel(update, context):
             _send_reply(update, 'С кем дуэль проводить будем?')
         else:
             # Shorten the code, format the names
-            initiator_name = update.message.from_user.first_name.strip('[]').capitalize()
-            initiator_id = update.message.from_user.id
-            target_name = update.message.reply_to_message.from_user.first_name.strip('[]').capitalize()
-            target_id = update.message.reply_to_message.from_user.id
-            participant_list = [(initiator_name, initiator_id), (target_name, target_id)]
+            participant_list = [(_get(update, 'init_name'), _get(update, 'init_id')),
+                                (_get(update, 'target_name'), _get(update, 'target_id'))]
             # Get the winner and the loser
             winner = participant_list.pop(random.choice([0, 1]))
             winner = f'[{winner[0]}](tg://user?id={winner[1]})'
             loser = participant_list[0]
             loser = f'[{loser[0]}](tg://user?id={loser[1]})'
             # Start the dueling text
-            _send_message(update, 'Дуэлисты расходятся...')
-            _send_message(update, 'Готовятся к выстрелу...')
-            _send_message(update, '***BANG BANG***')
+            _send_message('Дуэлисты расходятся...')
+            _send_message('Готовятся к выстрелу...')
+            _send_message('***BANG BANG***')
             # Make possible scenarios
             scenarios = []
             scenarios += ['miss'] * 3 + ['hit'] * 16 + ['alldead'] * 1
@@ -365,24 +366,24 @@ def duel(update, context):
                               'Оба победили? Оба проиграли? ... Пусть будет ничья!'
             # Give result unless the connection died. If it did, try another message.
             try:
-                _send_message(update, duel_result, sleep_time=0)
+                _send_message(duel_result, sleep_time=0)
             except TelegramError:
-                _send_message(update, 'Пошёл ливень и дуэль была отменена.\n'
-                                      'Приносим прощения! Заходите ещё!', sleep_time=0)
+                _send_message('Пошёл ливень и дуэль была отменена.\n'
+                              'Приносим прощения! Заходите ещё!', sleep_time=0)
 
 
 def mute(update, context):
     """Autodelete messages of a user (only usable by the developer)"""
     try:
         # Shorten code
-        to_mute_id = update.message.reply_to_message.from_user.id
+        to_mute_id = _get(update, 'target_id')
         # Only works for the dev
-        if update.message.from_user.id == DEVELOPER_ID:
+        if _get(update, 'init_id') == DEVELOPER_ID:
             # If the chat does no exist, add instantly to muted
             if update.message.chat_id in MUTED:
                 # Add to muted dictionary id and first name
                 MUTED[update.message.chat_id][to_mute_id] = \
-                    update.message.reply_to_message.from_user.first_name
+                    _get(update, 'target_name')
                 # If last name exists, add it too
                 if update.message.reply_to_message.from_user.last_name:
                     MUTED[update.message.chat_id][
@@ -391,7 +392,7 @@ def mute(update, context):
             else:
                 MUTED[update.message.chat_id] = {}
                 MUTED[update.message.chat_id][to_mute_id] = \
-                    update.message.reply_to_message.from_user.first_name
+                    _get(update, 'target_name')
                 if update.message.reply_to_message.from_user.last_name:
                     MUTED[update.message.chat_id][
                         to_mute_id] += f' {update.message.reply_to_message.from_user.last_name}'
@@ -399,9 +400,9 @@ def mute(update, context):
             BOT.send_photo(chat_id=update.message.chat_id,
                            photo='https://www.dropbox.com/s/m1ek8cgis4echn9/silence.jpg?raw=1',
                            caption='Теперь ты под салом и не можешь писать в чат.',
-                           reply_to_message_id=update.message.reply_to_message.message_id)
+                           reply_to_message_id=_get(update, 'target_id'))
             # Record to database
-            with open('muted.py', 'wb') as muted_storer:
+            with open('modules/muted.py', 'wb') as muted_storer:
                 pickle.dump(MUTED, muted_storer)
     # In case when not a reply
     except AttributeError:
@@ -411,10 +412,10 @@ def mute(update, context):
 def unmute(update, context):
     """Stop autodeletion of messages of a user (only usable by the developer)"""
     # Only if the developer calls it
-    if update.message.from_user.id == DEVELOPER_ID:
+    if _get(update, 'init_id') == DEVELOPER_ID:
         # Create to enable unmute by reply and id
         to_unmute_id = None
-        chat_id = update.message.chat_id
+        chatid = _get(update, 'chat_id')
         # Check for arguments in form of the id
         if len(update.message.text.split()) > 1 and len(str(update.message.text.split()[1])) == 9:
             # Try to get id
@@ -424,29 +425,29 @@ def unmute(update, context):
             except ValueError:
                 # Check for reply
                 try:
-                    to_unmute_id = update.message.reply_to_message.from_user.id
+                    to_unmute_id = _get(update, 'target_id')
                 # If no reply, say that no argument was given
                 except AttributeError:
                     _send_reply(update, 'Вы забыли указать айди.')
         # For replies, if no id is given
         else:
-            to_unmute_id = update.message.reply_to_message.from_user.id
+            to_unmute_id = _get(update, 'target_id')
         # Only if the user is in the MUTED list
         if to_unmute_id is not None:
             # If the chat doesn't exist, then the user was never muted
-            if chat_id in MUTED:
+            if chatid in MUTED:
                 # If was muted, unmute and notify of success
-                if to_unmute_id in MUTED[chat_id]:
+                if to_unmute_id in MUTED[chatid]:
                     _send_reply(update, f'Успешно снял сало с '
-                                        f'[{MUTED[chat_id][to_unmute_id]}](tg://user?id={to_unmute_id}).',
+                                        f'[{MUTED[chatid][to_unmute_id]}](tg://user?id={to_unmute_id}).',
                                 parse_mode='Markdown')
-                    MUTED[chat_id].pop(to_unmute_id)
+                    MUTED[chatid].pop(to_unmute_id)
                     # If there are no more muted people in the chat, remove the chat instance
                     # This is garbage collection
-                    if len(MUTED[chat_id]) == 0:
-                        MUTED.pop(chat_id)
+                    if len(MUTED[chatid]) == 0:
+                        MUTED.pop(chatid)
                     # Store in database
-                    with open('muted.py', 'wb') as muted_storer:
+                    with open('modules/muted.py', 'wb') as muted_storer:
                         pickle.dump(MUTED, muted_storer)
                 else:
                     _send_reply(update, 'Этот пользователь уже не был в списке молчунов.')
@@ -459,7 +460,7 @@ def unmute(update, context):
 def mutelist(update, context):
     """Get the list of muted ids"""
     # Only for developer
-    if update.message.from_user.id == DEVELOPER_ID:
+    if _get(update, 'init_id') == DEVELOPER_ID:
         # Somewhat of a table
         id_list = 'имя - айди пользователя:\n'
         # If chat existed, add users
@@ -481,8 +482,7 @@ def _command_antispam_passed(update):
     Delay of INDIVIDUAL_USER_DELAY minute(s) for individual user commands, changeable.
     """
     # Shorten code
-    chatid = update.message.chat_id
-    userid = update.message.from_user.id
+    chatid, userid = _get(update, 'chat_id'), _get(update, 'init_id')
     # Turn off antispam for private conversations
     if update.message.chat.type == 'private':
         return True
@@ -527,7 +527,7 @@ def _command_antispam_passed(update):
                 else:
                     error_message += \
                         f"Ответ индивидуальным пользователям на команды минимум через " \
-                        f"каждые {INDIVIDUAL_USER_DELAY // 60} минут.\n"
+                        "каждые {INDIVIDUAL_USER_DELAY // 60} минут.\n"
                     user_cooldown = True
             else:
                 if not chat_cooldown:
@@ -572,12 +572,11 @@ def _text_antispam_passed(update):
     if update.message.chat.type == 'private':
         return True
     # Add exception for the BOT developer to be able to run tests
-    if update.message.from_user.id in ANTISPAM_EXCEPTIONS:
+    if _get(update, 'init_id') in ANTISPAM_EXCEPTIONS:
         return True
     message_time = datetime.datetime.now()
     # Shorten code
-    chatid = update.message.chat_id
-    userid = update.message.from_user.id
+    chatid, userid = _get(update, 'chat_id'), _get(update, 'init_id')
     if chatid in SPAM_COUNTER:
         if userid in SPAM_COUNTER[chatid]:
             if 'text_replied' in SPAM_COUNTER[chatid][userid]:
@@ -617,6 +616,21 @@ def _send_reply(update, text: str, parse_mode: str = None):
                      text=text,
                      reply_to_message_id=update.message.message_id,
                      parse_mode=parse_mode)
+
+
+def _get(update, what_is_needed: str):
+    """Get something from update"""
+    update_data = {
+        'chat_id': update.message.chat_id,
+        'init_name': update.message.from_user.first_name.strip('[]').capitalize(),
+        'init_id': update.message.from_user.id,
+        }
+    if update.message.reply_to_message is not None:
+        update_data['target_name'] = \
+            update.message.reply_to_message.from_user.first_name.strip('[]').capitalize()
+        update_data['target_id'] = \
+            update.message.reply_to_message.from_user.id
+    return update_data[what_is_needed]
 
 
 def error(update, context):
