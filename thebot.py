@@ -111,20 +111,21 @@ def welcomer(update, context):
     Empty messages could be status messages, so we check them if there is a new
     group member.
     """
-    # A BOT entered the chat, and not this BOT
-    if update.message.new_chat_members[0].is_bot and \
-            update.message.new_chat_members[0].id != BOT.id:
-        reply_text = f"Уходи, {update.message.new_chat_members[0].first_name}, " \
-                     f"нам больше ботов не надо."
-    # This BOT joined the chat
-    elif update.message.new_chat_members[0].id == BOT.id:
-        reply_text = "Думер бот в чате. Для списка функций используйте /help."
-    # Another user joined the chat
-    else:
-        new_member = update.message.new_chat_members[0].first_name
-        reply_text = (f"Приветствуем вас в Думерском Чате, {new_member}!\n"
-                      f"По традициям группы, с вас фото своих ног.\n")
-    _send_reply(update, reply_text)
+    # Create a loop over a list in cast many users have been invited at once
+    for new_member in update.message.new_chat_members:
+        tagged_user = \
+            f"[{new_member.first_name.strip('[]').capitalize()}](tg://user?id={new_member.id})"
+        # A BOT entered the chat, and not this BOT
+        if new_member.is_bot and new_member.id != BOT.id:
+            reply_text = f"Уходи, {tagged_user}, нам больше ботов не надо."
+        # This BOT joined the chat
+        elif new_member.id == BOT.id:
+            reply_text = "Думер бот в чате. Для списка функций используйте /help."
+        # Another user joined the chat
+        else:
+            reply_text = (f"Приветствуем вас в Думерском Чате, {tagged_user}!\n"
+                          f"По традициям группы, с вас фото своих ног.\n")
+        _send_reply(update, reply_text, parse_mode='Markdown')
 
 
 def farewell(update, context):
@@ -354,14 +355,14 @@ def duel(update, context):
             scenario = scenarios.pop()
             # Make the scenario tree
             if scenario == 'hit':
-                duel_result = winner + ' подстрелил ' + loser + ', как свинью!\n' + \
-                              'Решительная победа за ' + winner + '.'
+                duel_result = f'{winner} подстрелил {loser}, как свинью!\n' + \
+                              f'Решительная победа за {winner}.'
             elif scenario == 'miss':
-                duel_result = winner + ' и ' + loser + ' оба выстрелили в никуда!\n' + \
+                duel_result = f'{winner} и {loser} оба выстрелили в никуда!\n' + \
                               'В этот раз ничья!'
             # Else is 'alldead' to stop pycharm from making issues
             else:
-                duel_result = winner + ' и ' + loser + '... УБИЛИ ДРУГ ДРУГА!\n' + \
+                duel_result = f'{winner} и {loser} ... УБИЛИ ДРУГ ДРУГА!\n' + \
                               'ОНИ УБИЛИ ДРУГ ДРУГА, КАРЛ!\n' + \
                               'Оба победили? Оба проиграли? ... Пусть будет ничья!'
             # Give result unless the connection died. If it did, try another message.
