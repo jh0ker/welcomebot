@@ -377,28 +377,28 @@ def mute(update, context):
     """Autodelete messages of a user (only usable by the developer)"""
     try:
         # Shorten code
-        to_mute_id = _get(update, 'target_id')
+        to_mute_id, chat_id = _get(update, 'target_id'), _get(update, 'chat_id')
         # Only works for the dev
         if _get(update, 'init_id') == DEVELOPER_ID:
             # If the chat does no exist, add instantly to muted
-            if update.message.chat_id in MUTED:
+            if chat_id in MUTED:
                 # Add to muted dictionary id and first name
-                MUTED[update.message.chat_id][to_mute_id] = \
+                MUTED[chat_id][to_mute_id] = \
                     _get(update, 'target_name')
                 # If last name exists, add it too
                 if update.message.reply_to_message.from_user.last_name:
-                    MUTED[update.message.chat_id][
-                        to_mute_id] += f' {update.message.reply_to_message.from_user.last_name}'
+                    MUTED[chat_id][to_mute_id] += \
+                        f' {update.message.reply_to_message.from_user.last_name}'
             # If the chat doesn't exist, create chat entry and add to muted
             else:
-                MUTED[update.message.chat_id] = {}
-                MUTED[update.message.chat_id][to_mute_id] = \
+                MUTED[chat_id] = {}
+                MUTED[chat_id][to_mute_id] = \
                     _get(update, 'target_name')
                 if update.message.reply_to_message.from_user.last_name:
-                    MUTED[update.message.chat_id][
+                    MUTED[chat_id][
                         to_mute_id] += f' {update.message.reply_to_message.from_user.last_name}'
             # Send photo and explanation to the silenced person
-            BOT.send_photo(chat_id=update.message.chat_id,
+            BOT.send_photo(chat_id=chat_id,
                            photo='https://www.dropbox.com/s/m1ek8cgis4echn9/silence.jpg?raw=1',
                            caption='Теперь ты под салом и не можешь писать в чат.',
                            reply_to_message_id=_get(update, 'target_id'))
@@ -416,7 +416,7 @@ def unmute(update, context):
     if _get(update, 'init_id') == DEVELOPER_ID:
         # Create to enable unmute by reply and id
         to_unmute_id = None
-        chatid = _get(update, 'chat_id')
+        chat_id = _get(update, 'chat_id')
         # Check for arguments in form of the id
         if len(update.message.text.split()) > 1 and len(str(update.message.text.split()[1])) == 9:
             # Try to get id
@@ -436,17 +436,17 @@ def unmute(update, context):
         # Only if the user is in the MUTED list
         if to_unmute_id is not None:
             # If the chat doesn't exist, then the user was never muted
-            if chatid in MUTED:
+            if chat_id in MUTED:
                 # If was muted, unmute and notify of success
-                if to_unmute_id in MUTED[chatid]:
+                if to_unmute_id in MUTED[chat_id]:
                     _send_reply(update, f'Успешно снял сало с '
-                                        f'[{MUTED[chatid][to_unmute_id]}](tg://user?id={to_unmute_id}).',
+                                        f'[{MUTED[chat_id][to_unmute_id]}](tg://user?id={to_unmute_id}).',
                                 parse_mode='Markdown')
-                    MUTED[chatid].pop(to_unmute_id)
+                    MUTED[chat_id].pop(to_unmute_id)
                     # If there are no more muted people in the chat, remove the chat instance
                     # This is garbage collection
-                    if not MUTED[chatid]:
-                        MUTED.pop(chatid)
+                    if not MUTED[chat_id]:
+                        MUTED.pop(chat_id)
                     # Store in database
                     with open('modules/muted.py', 'wb') as muted_storer:
                         pickle.dump(MUTED, muted_storer)
@@ -473,7 +473,7 @@ def mutelist(update, context):
             _send_reply(update, id_list)
         # If no entries, say nowhere there
         else:
-            _send_reply(update, 'Cписок молчунов пуст.')
+            _send_reply(update, 'Список молчунов пуст.')
 
 
 def _command_antispam_passed(update):
@@ -483,16 +483,16 @@ def _command_antispam_passed(update):
     Delay of INDIVIDUAL_USER_DELAY minute(s) for individual user commands, changeable.
     """
     # Shorten code
-    chatid, userid = _get(update, 'chat_id'), _get(update, 'init_id')
+    chat_id, user_id = _get(update, 'chat_id'), _get(update, 'init_id')
     # Turn off antispam for private conversations
     if update.message.chat.type == 'private':
         return True
     # Add exception for the BOT developer to be able to run tests
-    if userid in ANTISPAM_EXCEPTIONS:
+    if user_id in ANTISPAM_EXCEPTIONS:
         return True
     # Remove messages from muted users
-    if chatid in MUTED:
-        if userid in MUTED[chatid]:
+    if chat_id in MUTED:
+        if user_id in MUTED[chat_id]:
             _try_to_delete_message(update)
     # Get the time now to compare to previous messages
     message_time = datetime.datetime.now()
@@ -500,12 +500,12 @@ def _command_antispam_passed(update):
     error_message = ''
     # If the chat has been encountered before, go into its info,
     # otherwise create chat info in SPAM_COUNTER
-    if chatid in SPAM_COUNTER:
+    if chat_id in SPAM_COUNTER:
         # First check if there is a chat cooldown (1 minute)
-        if 'last_chat_command' in SPAM_COUNTER[chatid]:
-            if message_time > (SPAM_COUNTER[chatid]['last_chat_command'] +
+        if 'last_chat_command' in SPAM_COUNTER[chat_id]:
+            if message_time > (SPAM_COUNTER[chat_id]['last_chat_command'] +
                                datetime.timedelta(seconds=CHAT_DELAY)):
-                SPAM_COUNTER[chatid]['last_chat_command'] = message_time
+                SPAM_COUNTER[chat_id]['last_chat_command'] = message_time
                 chat_cooldown = False
             else:
                 error_message += \
@@ -513,47 +513,47 @@ def _command_antispam_passed(update):
                     f"каждую {CHAT_DELAY // 60} минуту.\n"
                 chat_cooldown = True
         else:
-            SPAM_COUNTER[chatid]['last_chat_command'] = message_time
-            SPAM_COUNTER[chatid][userid] = {}
-            SPAM_COUNTER[chatid][userid]['command_replied'] = message_time
+            SPAM_COUNTER[chat_id]['last_chat_command'] = message_time
+            SPAM_COUNTER[chat_id][user_id] = {}
+            SPAM_COUNTER[chat_id][user_id]['command_replied'] = message_time
             return True
 
         # Next check if there is a user cooldown (INDIVIDUAL_USER_DELAY minute)
-        if userid in SPAM_COUNTER[chatid]:
-            if 'command_replied' in SPAM_COUNTER[chatid][userid]:
-                if message_time > (SPAM_COUNTER[chatid][userid]['command_replied'] +
+        if user_id in SPAM_COUNTER[chat_id]:
+            if 'command_replied' in SPAM_COUNTER[chat_id][user_id]:
+                if message_time > (SPAM_COUNTER[chat_id][user_id]['command_replied'] +
                                    datetime.timedelta(seconds=INDIVIDUAL_USER_DELAY)):
-                    SPAM_COUNTER[chatid][userid]['command_replied'] = message_time
+                    SPAM_COUNTER[chat_id][user_id]['command_replied'] = message_time
                     user_cooldown = False
                 else:
                     error_message += \
                         f"Ответ индивидуальным пользователям на команды минимум через " \
-                        "каждые {INDIVIDUAL_USER_DELAY // 60} минут.\n"
+                        f"каждые {INDIVIDUAL_USER_DELAY // 60} минут.\n"
                     user_cooldown = True
             else:
                 if not chat_cooldown:
-                    SPAM_COUNTER[chatid][userid]['command_replied'] = message_time
+                    SPAM_COUNTER[chat_id][user_id]['command_replied'] = message_time
                 user_cooldown = False
         else:
             if not chat_cooldown:
-                SPAM_COUNTER[chatid][userid] = {}
-                SPAM_COUNTER[chatid][userid]['command_replied'] = message_time
+                SPAM_COUNTER[chat_id][user_id] = {}
+                SPAM_COUNTER[chat_id][user_id]['command_replied'] = message_time
             user_cooldown = False
     else:
-        SPAM_COUNTER[chatid] = {}
-        SPAM_COUNTER[chatid]['last_chat_command'] = message_time
-        SPAM_COUNTER[chatid][userid] = {}
-        SPAM_COUNTER[chatid][userid]['command_replied'] = message_time
+        SPAM_COUNTER[chat_id] = {}
+        SPAM_COUNTER[chat_id]['last_chat_command'] = message_time
+        SPAM_COUNTER[chat_id][user_id] = {}
+        SPAM_COUNTER[chat_id][user_id]['command_replied'] = message_time
         return True
 
     # If there is no user cooldown or a chat cooldown, return True to allow the commands to run
     if not chat_cooldown and not user_cooldown:
         return True
     # Give error at minimum every 1 minute (ERROR_DELAY)
-    if 'last_error' in SPAM_COUNTER[chatid]:
-        if message_time > (SPAM_COUNTER[chatid]['last_error'] +
+    if 'last_error' in SPAM_COUNTER[chat_id]:
+        if message_time > (SPAM_COUNTER[chat_id]['last_error'] +
                            datetime.timedelta(seconds=ERROR_DELAY)):
-            SPAM_COUNTER[chatid]['last_error'] = message_time
+            SPAM_COUNTER[chat_id]['last_error'] = message_time
             error_message += (f"Эта ошибка тоже появляется минимум каждую {ERROR_DELAY // 60} "
                               f"минуту.\nЗапросы во время кулдауна ошибки будут удаляться.")
             _send_reply(update, error_message)
@@ -563,7 +563,7 @@ def _command_antispam_passed(update):
         error_message += (f"Эта ошибка тоже появляется минимум каждую {ERROR_DELAY // 60} минуту.\n"
                           f"Запросы во время кулдауна ошибки будут удаляться.")
         _send_reply(update, error_message)
-        SPAM_COUNTER[chatid]['last_error'] = message_time
+        SPAM_COUNTER[chat_id]['last_error'] = message_time
     return False
 
 
@@ -577,28 +577,28 @@ def _text_antispam_passed(update):
         return True
     message_time = datetime.datetime.now()
     # Shorten code
-    chatid, userid = _get(update, 'chat_id'), _get(update, 'init_id')
-    if chatid in SPAM_COUNTER:
-        if userid in SPAM_COUNTER[chatid]:
-            if 'text_replied' in SPAM_COUNTER[chatid][userid]:
-                if message_time > (SPAM_COUNTER[chatid][userid]['text_replied'] +
+    chat_id, user_id = _get(update, 'chat_id'), _get(update, 'init_id')
+    if chat_id in SPAM_COUNTER:
+        if user_id in SPAM_COUNTER[chat_id]:
+            if 'text_replied' in SPAM_COUNTER[chat_id][user_id]:
+                if message_time > (SPAM_COUNTER[chat_id][user_id]['text_replied'] +
                                    datetime.timedelta(seconds=INDIVIDUAL_REPLY_DELAY)):
-                    SPAM_COUNTER[chatid][userid]['text_replied'] = message_time
+                    SPAM_COUNTER[chat_id][user_id]['text_replied'] = message_time
                     return True
                 else:
                     return False
             else:
-                SPAM_COUNTER[chatid][userid]['text_replied'] = message_time
+                SPAM_COUNTER[chat_id][user_id]['text_replied'] = message_time
                 return True
         else:
-            SPAM_COUNTER[chatid][userid] = {}
-            SPAM_COUNTER[chatid][userid]['text_replied'] = message_time
+            SPAM_COUNTER[chat_id][user_id] = {}
+            SPAM_COUNTER[chat_id][user_id]['text_replied'] = message_time
             return True
     else:
-        SPAM_COUNTER[chatid] = {}
-        SPAM_COUNTER[chatid]['last_chat_reply'] = message_time
-        SPAM_COUNTER[chatid][userid] = {}
-        SPAM_COUNTER[chatid][userid]['text_replied'] = message_time
+        SPAM_COUNTER[chat_id] = {}
+        SPAM_COUNTER[chat_id]['last_chat_reply'] = message_time
+        SPAM_COUNTER[chat_id][user_id] = {}
+        SPAM_COUNTER[chat_id][user_id]['text_replied'] = message_time
         return True
 
 
