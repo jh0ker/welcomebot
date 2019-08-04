@@ -560,7 +560,8 @@ def _command_antispam_passed(update):
             if 'command_replied' in SPAM_COUNTER[chat_id][user_id]:
                 if message_time > (SPAM_COUNTER[chat_id][user_id]['command_replied'] +
                                    datetime.timedelta(seconds=INDIVIDUAL_USER_DELAY)):
-                    SPAM_COUNTER[chat_id][user_id]['command_replied'] = message_time
+                    if not chat_cooldown:
+                        SPAM_COUNTER[chat_id][user_id]['command_replied'] = message_time
                     user_cooldown = False
                 else:
                     error_message += \
