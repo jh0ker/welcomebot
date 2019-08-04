@@ -328,16 +328,28 @@ def slap(update, context):
             reply_text = ('Кого унижать то будем?\n'
                           'Чтобы унизить, надо чтобы вы ответили вашей жертве.')
         else:
-            # Shorten code and strip of [] to remove interference with Markdown
             # Generate the answer + create the reply using markdown. Use weighted actions.
-            weighted_keys = []
-            for action, items in SLAPS.items():
-                weighted_keys += [action] * len(items)
-            action = random.choice(weighted_keys)
-            # Slap using markdown, as some people don't have usernames to use them for notification
-            reply_text = f"[{_get(update, 'init_name')}](tg://user?id={_get(update, 'init_id')}) {action} " \
-                         f"[{_get(update, 'target_name')}](tg://user?id={_get(update, 'target_id')}) " \
-                         f"{random.choice(SLAPS[action])}"
+            # Determine if the initiator failed or succeeded
+            success_and_fail = []
+            # Add successes
+            for action, items in SLAPS['success'].items():
+                success_and_fail += ['success'] * len(items)
+            # Add failures
+            success_and_fail += ['failure'] * len(SLAPS['failure'])
+            # Different replies if the user failed or succeeded to slap
+            if random.choice(success_and_fail) == 'success':
+                weighted_keys = []
+                for action, items in SLAPS['success'].items():
+                    weighted_keys += [action] * len(items)
+                action = random.choice(weighted_keys)
+                # Slap using markdown, as some people don't have usernames to use them for notification
+                reply_text = f"[{_get(update, 'init_name')}](tg://user?id={_get(update, 'init_id')}) {action} " \
+                             f"[{_get(update, 'target_name')}](tg://user?id={_get(update, 'target_id')}) " \
+                             f"{random.choice(SLAPS['success'][action])}"
+            else:
+                action = random.choice(SLAPS['failure'])
+                reply_text = f"[{_get(update, 'init_name')}](tg://user?id={_get(update, 'init_id')}) {action}"
+        # Send the reply with result
         _send_reply(update, reply_text, parse_mode='Markdown')
 
 
@@ -374,7 +386,13 @@ def duel(update, context):
                     # Start the dueling text
                     _send_message('Дуэлисты расходятся...')
                     _send_message('Готовятся к выстрелу...')
-                    _send_message('***BANG BANG***')
+                    shooting_sound = random.random() * 100
+                    if shooting_sound <= 98:
+                        _send_message('***BANG BANG***')
+                    elif 96 < shooting_sound <= 98:
+                        _send_message('***ПИФ-ПАФ***')
+                    else:
+                        _send_message('***RAPE GANG***')
                     # Make possible scenarios
                     scenarios = []
                     scenarios += ['miss'] * 3 + ['hit'] * 16 + ['alldead'] * 1
