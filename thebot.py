@@ -35,6 +35,14 @@ except (EOFError, FileNotFoundError) as err:
     LOGGER.error(err)
     MUTED = {}
 
+# Import the changelog
+try:
+    with open('changelog.md', 'r') as changelog:
+        changes = changelog.read()
+except (EOFError, FileNotFoundError) as err:
+    LOGGER.error(err)
+    changes = 'Не смог добраться до изменений. Что-то не так.'
+
 # Bot initialization
 TOKEN = environ.get("TG_BOT_TOKEN")
 BOT = Bot(TOKEN)
@@ -70,6 +78,7 @@ def help(update, context):
         help_text = (
             f"<b>Пример команды для бота:</b> /help@{BOT.username}\n"
             "/help - Это меню;\n"
+            "/whatsnew - Новое в боте;\n"
             "/cat - Случайное фото котика;\n"
             "/dog - Случайное фото собачки;\n"
             "/dadjoke - Случайная шутка бати;\n"
@@ -93,6 +102,16 @@ def help(update, context):
             "Спам команд во время кд удаляется.\n"
             )
         _send_reply(update, help_text, parse_mode='HTML')
+
+
+def whatsnew(update, context):
+    """Reply with all new goodies"""
+    if _command_antispam_passed(update):
+        # Get the last 3 day changes
+        latest_changes = ''
+        for change in changes.split('\n\n')[:3]:
+            latest_changes += change + '\n'
+        _send_reply(update, latest_changes, parse_mode='Markdown')
 
 
 def rules(update, context):
@@ -337,40 +356,58 @@ def duel(update, context):
             _send_reply(update, 'С кем дуэль проводить будем?')
         else:
             # Shorten the code, format the names
-            participant_list = [(_get(update, 'init_name'), _get(update, 'init_id')),
-                                (_get(update, 'target_name'), _get(update, 'target_id'))]
-            # Get the winner and the loser
-            winner = participant_list.pop(random.choice([0, 1]))
-            winner = f'[{winner[0]}](tg://user?id={winner[1]})'
-            loser = participant_list[0]
-            loser = f'[{loser[0]}](tg://user?id={loser[1]})'
-            # Start the dueling text
-            _send_message('Дуэлисты расходятся...')
-            _send_message('Готовятся к выстрелу...')
-            _send_message('***BANG BANG***')
-            # Make possible scenarios
-            scenarios = []
-            scenarios += ['miss'] * 3 + ['hit'] * 16 + ['alldead'] * 1
-            random.shuffle(scenarios)
-            scenario = scenarios.pop()
-            # Make the scenario tree
-            if scenario == 'hit':
-                duel_result = f'{winner} подстрелил {loser}, как свинью!\n' + \
-                              f'Решительная победа за {winner}.'
-            elif scenario == 'miss':
-                duel_result = f'{winner} и {loser} оба выстрелили в никуда!\n' + \
-                              'В этот раз ничья!'
-            # Else is 'alldead' to stop pycharm from making issues
+            initiator_name, initiator_id = _get(update, 'init_name'), _get(update, 'init_id')
+            target_name, target_id = _get(update, 'target_name'), _get(update, 'target_id')
+            answered = False
+            # Tree for when the target is not self
+            if initiator_id != target_id:
+                # Tree for when the bot is not the target
+                if target_id != BOT.id:
+                    participant_list = [(initiator_name, initiator_id),
+                                        (target_name, target_id)]
+                    # Get the winner and the loser
+                    winner = participant_list.pop(random.choice([0, 1]))
+                    winner = f'[{winner[0]}](tg://user?id={winner[1]})'
+                    loser = participant_list[0]
+                    loser = f'[{loser[0]}](tg://user?id={loser[1]})'
+                    # Start the dueling text
+                    _send_message('Дуэлисты расходятся...')
+                    _send_message('Готовятся к выстрелу...')
+                    _send_message('***BANG BANG***')
+                    # Make possible scenarios
+                    scenarios = []
+                    scenarios += ['miss'] * 3 + ['hit'] * 16 + ['alldead'] * 1
+                    random.shuffle(scenarios)
+                    scenario = scenarios.pop()
+                    # Make the scenario tree
+                    if scenario == 'hit':
+                        duel_result = f'{winner} подстрелил {loser}, как свинью!\n' + \
+                                      f'Решительная победа за {winner}.'
+                    elif scenario == 'miss':
+                        duel_result = f'{winner} и {loser} оба выстрелили в никуда!\n' + \
+                                      'В этот раз ничья!'
+                    # Else is 'alldead' to stop pycharm from making issues
+                    else:
+                        duel_result = f'{winner} и {loser} ... УБИЛИ ДРУГ ДРУГА!\n' + \
+                                      'ОНИ УБИЛИ ДРУГ ДРУГА, КАРЛ!\n' + \
+                                      'Оба победили? Оба проиграли? ... Пусть будет ничья!'
+                else:
+                    # If the bot is the target, send an angry message
+                    duel_result = 'В жопу себе стрельни, мудак.'
+                    _send_reply(update, duel_result)
+                    answered = True
             else:
-                duel_result = f'{winner} и {loser} ... УБИЛИ ДРУГ ДРУГА!\n' + \
-                              'ОНИ УБИЛИ ДРУГ ДРУГА, КАРЛ!\n' + \
-                              'Оба победили? Оба проиграли? ... Пусть будет ничья!'
-            # Give result unless the connection died. If it did, try another message.
-            try:
-                _send_message(duel_result, sleep_time=0)
-            except TelegramError:
-                _send_message('Пошёл ливень и дуэль была отменена.\n'
-                              'Приносим прощения! Заходите ещё!', sleep_time=0)
+                # Suicide message
+                initiator_name_formatted = f'[{initiator_name}](tg://user?id={initiator_id})'
+                duel_result = f'{initiator_name_formatted} застрелился!'
+            # Give result if not answered and unless the connection died.
+            # If it did, try another message.
+            if not answered:
+                try:
+                    _send_message(duel_result, sleep_time=0)
+                except TelegramError:
+                    _send_message('Пошёл ливень и дуэль была отменена.\n'
+                                  'Приносим прощения! Заходите ещё!', sleep_time=0)
 
 
 def mute(update, context):
@@ -650,6 +687,7 @@ def main():
     # on different commands - answer in Telegram
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help))
+    dispatcher.add_handler(CommandHandler('whatsnew', whatsnew))
     dispatcher.add_handler(CommandHandler("flip", flip))
     dispatcher.add_handler(CommandHandler("myiq", myiq))
     dispatcher.add_handler(CommandHandler("muhdick", muhdick))
