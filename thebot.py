@@ -39,10 +39,10 @@ except (EOFError, FileNotFoundError) as err:
 # Import the changelog
 try:
     with open('changelog.md', 'r') as changelog:
-        changes = changelog.read()
+        CHANGES = changelog.read()
 except (EOFError, FileNotFoundError) as err:
     LOGGER.error(err)
-    changes = 'Не смог добраться до изменений. Что-то не так.'
+    CHANGES = 'Не смог добраться до изменений. Что-то не так.'
 
 # Bot initialization
 TOKEN = environ.get("TG_BOT_TOKEN")
@@ -110,7 +110,7 @@ def whatsnew(update, context):
     if _command_antispam_passed(update):
         # Get the last 3 day changes
         latest_changes = ''
-        for change in changes.split('\n\n')[:3]:
+        for change in CHANGES.split('\n\n')[:3]:
             latest_changes += change + '\n'
         _send_reply(update, latest_changes, parse_mode='Markdown')
 
@@ -383,7 +383,7 @@ def duel(update, context):
                     # Make the scenario tree
                     if scenario == 'hit':
                         scenario = random.choice(DUELS['1v1'])
-                        duel_result = f'{winner} {scenario[0]} {loser} {scenario[1]}!\n' + \
+                        duel_result = f'{winner} {scenario[0]} {loser} {scenario[1]}'.strip() +'!\n' + \
                                       f'Решительная победа за {winner}.'
                     elif scenario == 'miss':
                         duel_result = f'{winner} и {loser} оба выстрелили в никуда!\n' + \
