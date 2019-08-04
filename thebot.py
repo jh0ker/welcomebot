@@ -17,9 +17,10 @@ from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
 
-# Import huts, slaps
+# Import huts, slaps, duels
 from modules.huts import HUTS
 from modules.slaps import SLAPS
+from modules.duels import DUELS
 
 
 # Enable logging into file
@@ -381,7 +382,8 @@ def duel(update, context):
                     scenario = scenarios.pop()
                     # Make the scenario tree
                     if scenario == 'hit':
-                        duel_result = f'{winner} подстрелил {loser}, как свинью!\n' + \
+                        scenario = random.choice(DUELS['1v1'])
+                        duel_result = f'{winner} {scenario[0]} {loser} {scenario[1]}!\n' + \
                                       f'Решительная победа за {winner}.'
                     elif scenario == 'miss':
                         duel_result = f'{winner} и {loser} оба выстрелили в никуда!\n' + \
@@ -393,13 +395,13 @@ def duel(update, context):
                                       'Оба победили? Оба проиграли? ... Пусть будет ничья!'
                 else:
                     # If the bot is the target, send an angry message
-                    duel_result = 'В жопу себе стрельни, мудак.'
+                    duel_result = random.choice(DUELS['bot'])
                     _send_reply(update, duel_result)
                     answered = True
             else:
                 # Suicide message
                 initiator_name_formatted = f'[{initiator_name}](tg://user?id={initiator_id})'
-                duel_result = f'{initiator_name_formatted} застрелился!'
+                duel_result = f"{initiator_name_formatted} {random.choice(DUELS['self'])}!"
             # Give result if not answered and unless the connection died.
             # If it did, try another message.
             if not answered:
