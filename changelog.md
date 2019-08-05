@@ -1,10 +1,18 @@
+***05.08.2019*** 
+- Добавлено больше вариаций для /duel, /slap.
+- Добавлен обратный исход для /duel, тем самым, можно иметь больше вариантов ответа.
+- Добавлен ответ для плебеев, которые пытаются использовать /mutelist, /mute, /unmute.
+- Исправлен ответ на слова думер и земляночку бы.
+- Добавлен @calldoctor как автор для slaps.py и duels.py.
+- Добавлено /leave, чтобы выкинуть бота, если надо (только для создателя).
+- Этот текст переведен на русский.
+
 ***04.08.2019*** 
-- Add the possibility of suicide in /duel (reply to yourself).
-- Changed how the bot handles dueling with him.
-- Added /whatsnew, to check the latest changes to the bot.
-- Fixed bug for antispammer of commands.
-- Add more variations for replies in /duel.
-- Add more variations for replies in /slap.
+- Добавлена возможность суицида в /duel (надо ответить себе).
+- Изменено то, как бот реагирует на дуэль с ним.
+- Добавлено /whatsnew, чтобы посмотреть последние изменений бота.
+- Пофикшен баг для антиспамера команд.
+- Добавлено больше вариаций для /duel, /slap.
 
 ***30.07.2019***  
-- Now upon welcoming, the bot tags the new user.
+- Теперь при приветствии, бот тегает нового пользователя.

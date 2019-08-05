@@ -38,7 +38,7 @@ except (EOFError, FileNotFoundError) as err:
 
 # Import the changelog
 try:
-    with open('changelog.md', 'r') as changelog:
+    with open('changelog.md', 'r', encoding='utf-8') as changelog:
         CHANGES = changelog.read()
 except (EOFError, FileNotFoundError) as err:
     LOGGER.error(err)
@@ -159,7 +159,7 @@ def farewell(update, context):
 def message_filter(update, context):
     """Replies to all messages
     Думер > Земляночка > """
-    if update.message is not None:
+    try:
         # If user is in the muted list, delete his message unless he is in exceptions
         # to avoid possible self-mutes
         if update.message.chat_id in MUTED:
@@ -177,6 +177,9 @@ def message_filter(update, context):
                                photo=random.choice(HUTS),
                                caption='Эх, жить бы подальше от общества как анприм и там думить..',
                                reply_to_message_id=update.message.message_id)
+    # Skip the edits, don't log this error
+    except AttributeError:
+        pass
 
 
 def _doomer_word_handler(update):
@@ -400,9 +403,17 @@ def duel(update, context):
                     scenario = scenarios.pop()
                     # Make the scenario tree
                     if scenario == 'hit':
-                        scenario = random.choice(DUELS['1v1'])
-                        duel_result = f'{winner} {scenario[0]} {loser} {scenario[1]}'.strip() +'!\n' + \
-                                      f'Решительная победа за {winner}.'
+                        # Get weighted scenarios for 1v1 (straight or inverse)
+                        weighted_direction = []
+                        for direction, scenario in DUELS['1v1'].items():
+                            weighted_direction += [direction] * len(scenario)
+                        duel_type = random.choice(weighted_direction)
+                        scenario = random.choice(DUELS['1v1'][duel_type])
+                        if duel_type == 'straight':
+                            duel_result = f'{winner} {scenario[0]} {loser} {scenario[1]}'.strip()
+                        else:
+                            duel_result = f'{loser} {scenario[0]} {winner} {scenario[1]}'.strip()
+                        duel_result += f'!\nРешительная победа за {winner}.'
                     elif scenario == 'miss':
                         duel_result = f'{winner} и {loser} оба выстрелили в никуда!\n' + \
                                       'В этот раз ничья!'
@@ -432,11 +443,11 @@ def duel(update, context):
 
 def mute(update, context):
     """Autodelete messages of a user (only usable by the developer)"""
-    try:
+    # Only works for the dev
+    if _get(update, 'init_id') == DEVELOPER_ID:
         # Shorten code
-        to_mute_id, chat_id = _get(update, 'target_id'), _get(update, 'chat_id')
-        # Only works for the dev
-        if _get(update, 'init_id') == DEVELOPER_ID:
+        try:
+            to_mute_id, chat_id = _get(update, 'target_id'), _get(update, 'chat_id')
             # If the chat does no exist, add instantly to muted
             if chat_id in MUTED:
                 # Add to muted dictionary id and first name
@@ -462,9 +473,12 @@ def mute(update, context):
             # Record to database
             with open('modules/muted.py', 'wb') as muted_storer:
                 pickle.dump(MUTED, muted_storer)
-    # In case when not a reply
-    except AttributeError:
-        _send_reply(update, 'Надо ответить пользователю.')
+        except KeyError:
+            _send_reply(update, 'Пожалуйста, выберите цель.')
+    # If an ordinary used tries to use the command
+    else:
+        if _command_antispam_passed(update):
+            _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
 
 def unmute(update, context):
@@ -513,6 +527,10 @@ def unmute(update, context):
                 _send_reply(update, 'Этот пользователь уже не был в списке молчунов.')
         else:
             _send_reply(update, 'Кого пытаемся убрать из списка молчунов?')
+    # If an ordinary used tries to use the command
+    else:
+        if _command_antispam_passed(update):
+            _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
 
 def mutelist(update, context):
@@ -531,7 +549,19 @@ def mutelist(update, context):
         # If no entries, say nowhere there
         else:
             _send_reply(update, 'Список молчунов пуст.')
+    # If an ordinary used tries to use the command
+    else:
+        if _command_antispam_passed(update):
+            _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
+
+def leave(update, context):
+    """Make the bot leave the group, usable only by the developer."""
+    if _get(update, 'init_id') == DEVELOPER_ID:
+        BOT.leave_chat(chat_id=update.message.chat_id)
+    else:
+        if _command_antispam_passed(update):
+            _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
 def _command_antispam_passed(update):
     """
@@ -721,6 +751,7 @@ def main():
     dispatcher.add_handler(CommandHandler('unmute', unmute))
     dispatcher.add_handler(CommandHandler('mutelist', mutelist))
     dispatcher.add_handler(CommandHandler('duel', duel))
+    dispatcher.add_handler(CommandHandler('leave', leave))
 
     # add message handlers
     dispatcher.add_handler(MessageHandler(

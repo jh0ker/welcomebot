@@ -1,4 +1,7 @@
-"""Collection of links to images of huts"""
+"""
+Collection of links to images of huts
+"""
+
 HUTS = [
     'https://www.dropbox.com/s/kw5pwp1jhtxdn8n/01.jpg?raw=1',
     'https://www.dropbox.com/s/cadft8m8z238jug/02.jpg?raw=1',

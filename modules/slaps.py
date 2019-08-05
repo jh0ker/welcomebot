@@ -1,4 +1,8 @@
-"""Collection of slaps"""
+"""
+Collection of slaps
+Authors (telegrams) - @doitforgachi, @calldoctor
+"""
+
 SLAPS = {
     'success': {
         'ударил': [
@@ -54,7 +58,7 @@ SLAPS = {
         },
     'failure': [
         'хрюкнул',
-        'пукнул себе в лицо',
+        'пукнул',
         'оподливился'
         ]
     }
