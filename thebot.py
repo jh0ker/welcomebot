@@ -47,12 +47,6 @@ BOT = Bot(TOKEN)
 # Antispammer variables
 SPAM_COUNTER = {}
 DEVELOPER_ID = 255295801
-ANTISPAM_EXCEPTIONS = {
-    DEVELOPER_ID: "doitforricardo",
-    413327053: "comradesanya",
-    205762941: "dovaogedot",
-    185500059: "mel_a_real_programmer",
-    }
 
 # Delays in seconds for the BOT
 INDIVIDUAL_USER_DELAY = 10 * 60  # Ten minutes
@@ -633,10 +627,9 @@ def check_cooldown(update, whattocheck, cooldown):
         return True
 
 
-def _create_chat_table():
-    """Create a database with chat data"""
-    dbc.execute(f'''
-        CREATE TABLE IF NOT EXISTS "chat" 
+def _create_tables():
+    """Create a muted databases"""
+    dbc.execute(f'''CREATE TABLE IF NOT EXISTS "chat" 
         (id NUMERIC PRIMARY KEY, 
         chatid NUMERIC, 
         firstname TEXT DEFAULT NULL, 
@@ -644,18 +637,23 @@ def _create_chat_table():
         lastusercommanderror TEXT DEFAULT NULL, 
         lasttextreply TEXT DEFAULT NULL
         )''')
-    db.commit()
-
-
-def _create_mute_table():
-    """Create a muted database"""
-    dbc.execute(f'''
-        CREATE TABLE IF NOT EXISTS "muted" 
+    dbc.execute(f'''CREATE TABLE IF NOT EXISTS "muted" 
         (id NUMERIC PRIMARY KEY, 
         chatid NUMERIC, 
         firstname TEXT DEFAULT NULL, 
         reason TEXT DEFAULT NULL
         )''')
+    dbc.execute(f'''CREATE TABLE IF NOT EXISTS "exceptions"
+    (id NUMERIC PRIMARY KEY,
+    firstname TEXT DEFAULT NULL)
+    ''')
+    dbc.execute(f''' 
+    INSERT INTO "exceptions" (id, firstname) 
+    VALUES 
+    (255295801, "doitforricardo"), 
+    (413327053, "comradesanya"),
+    (205762941, "dovaogedot"),
+    (185500059, "mel_a_real_programmer")''')
     db.commit()
 
 
@@ -693,7 +691,6 @@ def _get(update, what_is_needed: str):
 
 def _muted(update):
     """Check if the user is muted"""
-    _create_mute_table()
     found = dbc.execute(f'''SELECT id FROM "muted" 
     WHERE id={update.message.from_user.id} AND chatid={update.message.chat_id}''').fetchone()
     # Except non existent table, then not muted
@@ -747,8 +744,7 @@ def main():
     dispatcher.add_error_handler(error)
 
     # Create databases
-    _create_chat_table()
-    _create_mute_table()
+    _create_tables()
 
     # Start the Bot
     # Set clean to True to clean any pending updates on Telegram servers before
