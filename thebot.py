@@ -444,10 +444,10 @@ def myscore(update, context):
     """Give the user his K/D for duels"""
     if _command_antispam_passed(update):
         user_data = dbc.execute(
-            f'''SELECT * FROM duels WHERE 
-            id={update.message.from_user.id} AND chatid={update.message.chat_id}''').fetchone()
+            f'''SELECT kills, deaths FROM duels WHERE 
+            id={update.message.from_user.id}''').fetchone()
         if user_data is not None:
-            _send_reply(update, f'Для K/D равен {user_data[2]}/{user_data[3]}.')
+            _send_reply(update, f'Твой K/D равен {user_data[0]}/{user_data[1]}.')
         else:
             _send_reply(update, f'Сначала подуэлься, потом спрашивай.')
 
@@ -653,7 +653,7 @@ def _create_tables():
     firstname TEXT DEFAULT NULL)
     ''')
     dbc.execute(f''' 
-    INSERT INTO "exceptions" (id, firstname) 
+    INSERT OR REPLACE INTO "exceptions" (id, firstname) 
     VALUES 
     (255295801, "doitforricardo"), 
     (413327053, "comradesanya"),
@@ -663,10 +663,10 @@ def _create_tables():
     dbc.execute(f'''CREATE TABLE IF NOT EXISTS "duels"
     (id NUMERIC PRIMARY KEY,
     firstname TEXT DEFAULT NULL,
-    kills NUMERIC DEFAULT NULL,
-    deaths NUMERIC DEFAULT NULL)
+    kills NUMERIC DEFAULT 0,
+    deaths NUMERIC DEFAULT 0)
     ''')
-
+    # Commit the database
     db.commit()
 
 
