@@ -29,7 +29,6 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 LOGGER = logging.getLogger(__name__)
 
 # Import the database with muted, exceptions and duel data
-# TODO - Rework antispam with database
 db = sqlite3.connect('doomerbot.db', check_same_thread=False)
 dbc = db.cursor()
 
@@ -56,7 +55,6 @@ ANTISPAM_EXCEPTIONS = {
     }
 
 # Delays in seconds for the BOT
-CHAT_DELAY = 1 * 60  # One minute
 INDIVIDUAL_USER_DELAY = 10 * 60  # Ten minutes
 INDIVIDUAL_REPLY_DELAY = 5 * 60  # Five minutes
 ERROR_DELAY = 1 * 60  # One minute
@@ -77,14 +75,15 @@ def help(update, context):
             f"<b>Пример команды для бота:</b> /help@{BOT.username}\n"
             "/help - Это меню;\n"
             "/whatsnew - Новое в боте;\n"
-            "/cat - Случайное фото котика;\n"
-            "/dog - Случайное фото собачки;\n"
-            "/dadjoke - Случайная шутка бати;\n"
+            "/rules - Правила думерского чата;\n"
             "/slap - Кого-то унизить "
             "(надо ответить жертве, чтобы бот понял кого бить);\n"
             "/duel - Устроить дуэль "
             "(надо ответить тому, с кем будет дуэль);\n"
-            "/rules - Правила думерского чата;\n"
+            "/myscore - Мой счёт в дуэлях;\n"
+            "/cat - Случайное фото котика;\n"
+            "/dog - Случайное фото собачки;\n"
+            "/dadjoke - Случайная шутка бати;\n"
             "\n"
             "<b>Генераторы чисел:</b>\n"
             "/myiq - Мой IQ (1 - 200);\n"
@@ -93,12 +92,11 @@ def help(update, context):
             "\n"
             "<b>Дополнительная информация:</b>\n"
             "1. Бот здоровается с людьми, прибывшими в чат и просит у них имя, фамилию, фото ног.\n"
-            f"2. Кулдаун бота на любые команды {CHAT_DELAY // 60} минута.\n"
-            f"3. Кулдаун на каждую команду {INDIVIDUAL_USER_DELAY // 60} минуту для "
+            f"2. Кулдаун на каждую команду {INDIVIDUAL_USER_DELAY // 60} минуту для "
             f"индивидуального пользователя.\n"
-            f"4. Ошибка о кулдауне даётся минимум через каждую {ERROR_DELAY // 60} минуту. "
+            f"3. Ошибка о кулдауне даётся минимум через каждую {ERROR_DELAY // 60} минуту. "
             "Спам команд во время кд удаляется.\n"
-            )
+        )
         _send_reply(update, help_text, parse_mode='HTML')
 
 
@@ -131,7 +129,7 @@ def welcomer(update, context):
     # Create a loop over a list in cast many users have been invited at once
     for new_member in update.message.new_chat_members:
         tagged_user = \
-            f"[{new_member.first_name.strip('[]').capitalize()}](tg://user?id={new_member.id})"
+            f"[{new_member.first_name.strip('[]')}](tg://user?id={new_member.id})"
         # A BOT entered the chat, and not this BOT
         if new_member.is_bot and new_member.id != BOT.id:
             reply_text = f"Уходи, {tagged_user}, нам больше ботов не надо."
@@ -159,12 +157,13 @@ def message_filter(update, context):
     try:
         # If user is in the muted list, delete his message unless he is in exceptions
         # to avoid possible self-mutes
+        doomer_word = _doomer_word_handler(update)
         if _muted(update):
             _try_to_delete_message(update)
         # Handle the word doomer
-        elif _doomer_word_handler(update)[0]:
+        elif doomer_word:
             if _text_antispam_passed(update):
-                _send_reply(update, _doomer_word_handler(update)[1])
+                _send_reply(update, doomer_word)
         # Handle землянoчкy
         elif _anprim_word_handler(update):
             if _text_antispam_passed(update):
@@ -190,6 +189,7 @@ def _doomer_word_handler(update):
             found_word = variation
             doomer_word_start = position
             break
+    reply_word = ''
     # If any of the variations have been found, give a reply
     if doomer_word_start is not None:
         # Find the word in the message, get the word and all adjacent symbol
@@ -197,17 +197,14 @@ def _doomer_word_handler(update):
         word_with_symbols = \
             update.message.text.lower()[doomer_word_start:].replace(
                 found_word, 'хуюмер').split()[0]
-        reply_word = ''
         # Get only the word, until any number or non alpha symbol is encountered
         for i in word_with_symbols:
             if i.isalpha():
                 reply_word += i
             else:
                 break
-        # Return the reply word
-        return True, reply_word
     # If the word is not found, return False
-    return False, None
+    return reply_word
 
 
 def _anprim_word_handler(update):
@@ -375,7 +372,6 @@ def duel(update, context):
         dbc.execute(f'UPDATE duels SET deaths = deaths + {p2_kd[1]} WHERE id={loser[1]}')
         db.commit()
 
-
     if _command_antispam_passed(update):
         # If not replied, ask for the target
         if update.message.reply_to_message is None:
@@ -396,7 +392,7 @@ def duel(update, context):
                     _send_message('Дуэлисты расходятся...')
                     _send_message('Готовятся к выстрелу...')
                     shooting_sound = random.random() * 100
-                    if shooting_sound <= 98:
+                    if shooting_sound <= 96:
                         _send_message('***BANG BANG***')
                     elif 96 < shooting_sound <= 98:
                         _send_message('***ПИФ-ПАФ***')
@@ -405,37 +401,31 @@ def duel(update, context):
                     # Get the winner and the loser
                     winner = participant_list.pop(random.choice([0, 1]))
                     loser = participant_list[0]
-                    winner_tag = f'[{winner[0]}](tg://user?id={winner[1]})'
-                    loser_tag = f'[{loser[0]}](tg://user?id={loser[1]})'
-                    # Make possible scenarios
+                    winner_tag = f'[{winner[0].capitalize()}](tg://user?id={winner[1]})'
+                    loser_tag = f'[{loser[0].capitalize()}](tg://user?id={loser[1]})'
+                    # Make possible scenarios - 15% miss, 85% hit
                     scenarios = []
-                    scenarios += ['miss'] * 3 + ['hit'] * 16 + ['alldead'] * 1
+                    scenarios += ['miss'] * 3 + ['hit'] * 17
                     random.shuffle(scenarios)
                     scenario = scenarios.pop()
                     # Make the scenario tree
                     if scenario == 'hit':
-                        # Get weighted scenarios for 1v1 (straight or inverse)
+                        # Get weighted scenarios for 1v1 (onewinner or alldead)
                         weighted_direction = []
                         for direction, scenario in DUELS['1v1'].items():
                             weighted_direction += [direction] * len(scenario)
                         duel_type = random.choice(weighted_direction)
-                        scenario = random.choice(DUELS['1v1'][duel_type])
-                        if duel_type == 'straight':
-                            duel_result = f'{winner_tag} {scenario[0]} {loser_tag} {scenario[1]}'.strip()
-                        else:
-                            duel_result = f'{loser_tag} {scenario[0]} {winner_tag} {scenario[1]}'.strip()
-                        duel_result += f'!\nРешительная победа за {winner_tag}.'
-                        _score_the_results((1, 0), (0, 1))
-                    elif scenario == 'miss':
-                        duel_result = f'{winner_tag} и {loser_tag} оба выстрелили в никуда!\n' + \
-                                      'В этот раз ничья! (0, 0)'
-                        _score_the_results((0, 0), (0, 0))
-                    # Else is 'alldead' to stop pycharm from making issues
-                    else:
-                        duel_result = f'{winner_tag} и {loser_tag} ... УБИЛИ ДРУГ ДРУГА!\n' + \
-                                      'ОНИ УБИЛИ ДРУГ ДРУГА, КАРЛ!\n' + \
-                                      'Оба победили? Оба проиграли? ... Пусть будет ничья! (1, 1)'
-                        _score_the_results((1, 1), (1, 1))
+                        event = random.choice(DUELS['1v1'][duel_type])
+                        duel_result = event.replace('winner', winner_tag).replace('loser', loser_tag)
+                        if duel_type == 'onewinner':
+                            duel_result += f'!\nРешительная победа за {winner_tag}.'
+                            _score_the_results((1, 0), (0, 1))
+                        else:  # 'alldead', no result scoring
+                            duel_result += '\nВ этот раз ничья! (0, 0)'
+                    else:  # 'miss'
+                        duel_result = random.choice(DUELS['1v1']['miss'])
+                        duel_result = \
+                            duel_result.replace('winner', winner_tag).replace('loser', loser_tag)
                 else:
                     # If the bot is the target, send an angry message
                     duel_result = random.choice(DUELS['bot'])
@@ -444,8 +434,8 @@ def duel(update, context):
             else:
                 # Suicide message
                 initiator_name_formatted = f'[{initiator_name}](tg://user?id={initiator_id})'
-                duel_result = f"{initiator_name_formatted} {random.choice(DUELS['self'])}!\n" \
-                              f"За это экспа/статы не даются!"
+                duel_result = f"{random.choice(DUELS['self']).replace('loser', initiator_name_formatted)}!\n" \
+                              f"За суицид экспа/статы не даются!"
             # Give result if not answered and unless the connection died.
             # If it did, try another message.
             if not answered:
@@ -473,13 +463,18 @@ def mute(update, context):
         try:
             # Shorten code
             to_mute_id, chat_id = _get(update, 'target_id'), _get(update, 'chat_id')
-            tablename = f'mute{chat_id}'
+            tablename = f'\"mute{update.message.chat_id}\"'
             # Mute and record into database
-            dbc.execute(f'''CREATE TABLE IF NOT EXISTS "{tablename}" 
-            (id NUMERIC PRIMARY KEY, firstname TEXT DEFAULT NULL, unmutedate TEXT DEFAULT NULL)''')
+            _create_mute_table(update)
             dbc.execute(f'''
-            INSERT OR REPLACE INTO "{tablename}" (id, firstname) 
+            INSERT OR IGNORE INTO {tablename} (id, firstname) 
             VALUES ("{to_mute_id}", "{update.message.reply_to_message.from_user.first_name}")''')
+            # Get mute reason if there is any
+            if len(update.message.text.split()) > 1:
+                mutereason = ' '.join((update.message.text).split()[1:])
+                dbc.execute(f'''
+                    UPDATE {tablename} SET reason="{mutereason}" WHERE id={to_mute_id}''')
+            dbc.execute(f'''''')
             db.commit()
             # Send photo and explanation to the silenced person
             BOT.send_photo(chat_id=chat_id,
@@ -499,11 +494,11 @@ def unmute(update, context):
     # Only if the developer calls it
     if _get(update, 'init_id') == DEVELOPER_ID:
         # Get chat id, create the replied flag to not make large trees
-        chat_id = _get(update, 'chat_id')
         replied = False
+        _create_mute_table(update)
         # If there is a reply, get the id of the reply target
         if update.message.reply_to_message is not None:
-            to_unmute_id  = _get(update, 'target_id')
+            to_unmute_id = _get(update, 'target_id')
         # If no reply target, take the argument if it exists
         else:
             try:
@@ -511,9 +506,9 @@ def unmute(update, context):
             except IndexError:
                 _send_reply(update, 'Вы не указали цель.')
                 to_unmute_id, replied = 'NULL', True
-        tablename = f'mute{chat_id}'
+        tablename = f'\"mute{update.message.chat_id}\"'
         # Check if the entry exists
-        target = dbc.execute(f'''SELECT * FROM "{tablename}" 
+        target = dbc.execute(f'''SELECT * FROM {tablename} 
         WHERE id={to_unmute_id}''').fetchone()
         if target is not None:
             # Get the target name
@@ -523,7 +518,7 @@ def unmute(update, context):
             # Send the reply of successful unmute
             _send_reply(update, f'Успешно снял мут с {target_tagged}.', parse_mode='Markdown')
             # Delete the user from the muted database and commit
-            dbc.execute(f'''DELETE FROM "{tablename}" 
+            dbc.execute(f'''DELETE FROM {tablename} 
             WHERE id={to_unmute_id}''')
             db.commit()
         elif target is None and not replied:
@@ -540,10 +535,17 @@ def mutelist(update, context):
     if _get(update, 'init_id') == DEVELOPER_ID:
         # Somewhat of a table
         id_list = 'имя - айди пользователя:\n'
-        tablename = f'mute{update.message.chat_id}'
+        tablename = f'\"mute{update.message.chat_id}\"'
+        _create_mute_table(update)
         # If there are muted targets, send reply, else say that there is nobody
-        for entry in dbc.execute(f'SELECT * FROM "{tablename}"').fetchall():
-            id_list += f'{entry[1]} - {entry[0]}\n'
+        listnumber = 1
+        for entry in dbc.execute(f'SELECT * FROM {tablename}').fetchall():
+            id_list += f'{listnumber}. {entry[1]} - {entry[0]}\n'
+            if entry[2]:
+                id_list += f'Причина: {entry[2].capitalize()}\n'
+            else:
+                id_list += 'Причина не указана.\n'
+            listnumber += 1
         if id_list != 'имя - айди пользователя:\n':
             _send_reply(update, id_list)
         else:
@@ -566,127 +568,98 @@ def leave(update, context):
 def _command_antispam_passed(update):
     """
     Check if the user is spamming
-    Delay of CHAT_DELAY minute(s) for all commands toward the BOT
     Delay of INDIVIDUAL_USER_DELAY minute(s) for individual user commands, changeable.
     """
-    # Shorten code
-    chat_id, user_id = _get(update, 'chat_id'), _get(update, 'init_id')
-    # Turn off antispam for private conversations
-    if update.message.chat.type == 'private':
-        return True
-    # Add exception for the BOT developer to be able to run tests
-    if user_id in ANTISPAM_EXCEPTIONS:
-        return True
-    # Remove messages from muted users
-    if _muted(update):
-        _try_to_delete_message(update)
-    # Get the time now to compare to previous messages
-    message_time = datetime.datetime.now()
-    # Create a holder for errors
-    error_message = ''
-    # If the chat has been encountered before, go into its info,
-    # otherwise create chat info in SPAM_COUNTER
-    if chat_id in SPAM_COUNTER:
-        # First check if there is a chat cooldown (1 minute)
-        if 'last_chat_command' in SPAM_COUNTER[chat_id]:
-            if message_time > (SPAM_COUNTER[chat_id]['last_chat_command'] +
-                               datetime.timedelta(seconds=CHAT_DELAY)):
-                SPAM_COUNTER[chat_id]['last_chat_command'] = message_time
-                chat_cooldown = False
-            else:
-                error_message += \
-                    f"Бот отвечает на команды пользователей минимум через " \
-                    f"каждую {CHAT_DELAY // 60} минуту.\n"
-                chat_cooldown = True
-        else:
-            SPAM_COUNTER[chat_id]['last_chat_command'] = message_time
-            SPAM_COUNTER[chat_id][user_id] = {}
-            SPAM_COUNTER[chat_id][user_id]['command_replied'] = message_time
-            return True
-
-        # Next check if there is a user cooldown (INDIVIDUAL_USER_DELAY minute)
-        if user_id in SPAM_COUNTER[chat_id]:
-            if 'command_replied' in SPAM_COUNTER[chat_id][user_id]:
-                if message_time > (SPAM_COUNTER[chat_id][user_id]['command_replied'] +
-                                   datetime.timedelta(seconds=INDIVIDUAL_USER_DELAY)):
-                    if not chat_cooldown:
-                        SPAM_COUNTER[chat_id][user_id]['command_replied'] = message_time
-                    user_cooldown = False
-                else:
-                    error_message += \
-                        f"Ответ индивидуальным пользователям на команды минимум через " \
-                        f"каждые {INDIVIDUAL_USER_DELAY // 60} минут.\n"
-                    user_cooldown = True
-            else:
-                if not chat_cooldown:
-                    SPAM_COUNTER[chat_id][user_id]['command_replied'] = message_time
-                user_cooldown = False
-        else:
-            if not chat_cooldown:
-                SPAM_COUNTER[chat_id][user_id] = {}
-                SPAM_COUNTER[chat_id][user_id]['command_replied'] = message_time
-            user_cooldown = False
-    else:
-        SPAM_COUNTER[chat_id] = {}
-        SPAM_COUNTER[chat_id]['last_chat_command'] = message_time
-        SPAM_COUNTER[chat_id][user_id] = {}
-        SPAM_COUNTER[chat_id][user_id]['command_replied'] = message_time
-        return True
-
-    # If there is no user cooldown or a chat cooldown, return True to allow the commands to run
-    if not chat_cooldown and not user_cooldown:
-        return True
-    # Give error at minimum every 1 minute (ERROR_DELAY)
-    if 'last_error' in SPAM_COUNTER[chat_id]:
-        if message_time > (SPAM_COUNTER[chat_id]['last_error'] +
-                           datetime.timedelta(seconds=ERROR_DELAY)):
-            SPAM_COUNTER[chat_id]['last_error'] = message_time
-            error_message += (f"Эта ошибка тоже появляется минимум каждую {ERROR_DELAY // 60} "
-                              f"минуту.\nЗапросы во время кулдауна ошибки будут удаляться.")
-            _send_reply(update, error_message)
-        else:
-            _try_to_delete_message(update)
-    else:
-        error_message += (f"Эта ошибка тоже появляется минимум каждую {ERROR_DELAY // 60} минуту.\n"
-                          f"Запросы во время кулдауна ошибки будут удаляться.")
-        _send_reply(update, error_message)
-        SPAM_COUNTER[chat_id]['last_error'] = message_time
-    return False
+    return check_cooldown(update, 'lastcommandreply', INDIVIDUAL_USER_DELAY)
 
 
 def _text_antispam_passed(update):
     """Checks if somebody is spamming reply_all words"""
-    # Turn off antispam for private conversations
+    return check_cooldown(update, 'lasttextreply', INDIVIDUAL_REPLY_DELAY)
+
+
+def check_cooldown(update, whattocheck, cooldown):
+    """Check cooldown of command, reply, error
+    Whattocheck should be the sql column name"""
+
+    def _give_command_error():
+        """Give command cooldown error"""
+        nonlocal update
+        if check_cooldown(update, 'lastusercommanderror', ERROR_DELAY):
+            time_remaining = str((threshold - message_time)).split('.')[0][3:]
+            _send_reply(update, f'До команды осталось {time_remaining} (ММ:СС). Пока можешь идти нахуй.')
+
     if update.message.chat.type == 'private':
         return True
-    # Add exception for the BOT developer to be able to run tests
-    if _get(update, 'init_id') in ANTISPAM_EXCEPTIONS:
+    # Add exceptions for some users
+    if dbc.execute(f'''
+    SELECT * FROM exceptions 
+    WHERE id={update.message.from_user.id}
+    ''').fetchone():
         return True
-    message_time = datetime.datetime.now()
+    if whattocheck == 'lastcommandreply':
+        if _muted(update):
+            _try_to_delete_message(update)
+            return False
+    # Create table if doesn't exist
+    _create_chat_table(update)
     # Shorten code
-    chat_id, user_id = _get(update, 'chat_id'), _get(update, 'init_id')
-    if chat_id in SPAM_COUNTER:
-        if user_id in SPAM_COUNTER[chat_id]:
-            if 'text_replied' in SPAM_COUNTER[chat_id][user_id]:
-                if message_time > (SPAM_COUNTER[chat_id][user_id]['text_replied'] +
-                                   datetime.timedelta(seconds=INDIVIDUAL_REPLY_DELAY)):
-                    SPAM_COUNTER[chat_id][user_id]['text_replied'] = message_time
-                    return True
-                else:
-                    return False
-            else:
-                SPAM_COUNTER[chat_id][user_id]['text_replied'] = message_time
-                return True
-        else:
-            SPAM_COUNTER[chat_id][user_id] = {}
-            SPAM_COUNTER[chat_id][user_id]['text_replied'] = message_time
+    user_id = update.message.from_user.id
+    tablename = f'\"chat{update.message.chat_id}\"'
+    message_time = datetime.datetime.now()
+    lastinstance = dbc.execute(f'''
+    SELECT {whattocheck} from {tablename}
+    WHERE id={user_id}''').fetchone()
+    if isinstance(lastinstance, tuple):
+        lastinstance = lastinstance[0]
+    # If there was a last one
+    if lastinstance is not None:
+        # Check if the cooldown has passed
+        threshold = datetime.datetime.fromisoformat(lastinstance) + \
+                    datetime.timedelta(seconds=cooldown)
+        if message_time > threshold:
+            # If it did, update table, return True
+            dbc.execute(f'''
+            UPDATE {tablename} SET {whattocheck}="{message_time}" WHERE id={user_id}''')
+            db.commit()
             return True
+        else:
+            if whattocheck == 'lastcommandreply':
+                _give_command_error()
+            # If it didn't return False
+            return False
+    # If there was none, create entry and return True
     else:
-        SPAM_COUNTER[chat_id] = {}
-        SPAM_COUNTER[chat_id]['last_chat_reply'] = message_time
-        SPAM_COUNTER[chat_id][user_id] = {}
-        SPAM_COUNTER[chat_id][user_id]['text_replied'] = message_time
+        dbc.execute(f'''INSERT OR IGNORE INTO {tablename} (id, firstname, {whattocheck}) 
+        VALUES ({user_id}, "{update.message.from_user.first_name}", "{message_time}")''')
+        dbc.execute(f'''
+        UPDATE {tablename} SET {whattocheck}="{message_time}" WHERE id={user_id}''')
+        db.commit()
         return True
+
+
+def _create_chat_table(update):
+    """Create a database with chat data"""
+    dbc.execute(f'''
+        CREATE TABLE IF NOT EXISTS "{'chat' + str(update.message.chat_id)}" 
+        (id NUMERIC PRIMARY KEY, 
+        firstname TEXT DEFAULT NULL, 
+        lastcommandreply TEXT DEFAULT NULL,
+        lastusercommanderror TEXT DEFAULT NULL,
+        lasttextreply TEXT DEFAULT NULL
+        )''')
+    db.commit()
+
+
+def _create_mute_table(update):
+    """Create a muted database"""
+    dbc.execute(f'''
+        CREATE TABLE IF NOT EXISTS "{'mute' + str(update.message.chat_id)}" 
+        (id NUMERIC PRIMARY KEY, 
+        firstname TEXT DEFAULT NULL, 
+        reason TEXT DEFAULT NULL
+        )''')
+    db.commit()
 
 
 def _try_to_delete_message(update):
@@ -710,12 +683,12 @@ def _get(update, what_is_needed: str):
     """Get something from update"""
     update_data = {
         'chat_id': update.message.chat_id,
-        'init_name': update.message.from_user.first_name.strip('[]').capitalize(),
+        'init_name': update.message.from_user.first_name.strip('[]'),
         'init_id': update.message.from_user.id,
         }
     if update.message.reply_to_message is not None:
         update_data['target_name'] = \
-            update.message.reply_to_message.from_user.first_name.strip('[]').capitalize()
+            update.message.reply_to_message.from_user.first_name.strip('[]')
         update_data['target_id'] = \
             update.message.reply_to_message.from_user.id
     return update_data[what_is_needed]
@@ -723,9 +696,11 @@ def _get(update, what_is_needed: str):
 
 def _muted(update):
     """Check if the user is muted"""
-    tablename = f'mute{update.message.chat_id}'
-    found = dbc.execute(f'''SELECT * FROM "{tablename}" 
+    tablename = f'\"mute{update.message.chat_id}\"'
+    _create_mute_table(update)
+    found = dbc.execute(f'''SELECT id FROM {tablename} 
     WHERE id={update.message.from_user.id}''').fetchone()
+    # Except non existent table, then not muted
     if found is None:
         return False
     else:
