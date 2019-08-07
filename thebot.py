@@ -443,7 +443,9 @@ def duel(update, context):
 def myscore(update, context):
     """Give the user his K/D for duels"""
     if _command_antispam_passed(update):
-        user_data = dbc.execute(f'''SELECT * FROM duels WHERE id={update.message.from_user.id}''').fetchone()
+        user_data = dbc.execute(
+            f'''SELECT * FROM duels WHERE 
+            id={update.message.from_user.id} AND chatid={update.message.chat_id}''').fetchone()
         if user_data is not None:
             _send_reply(update, f'Для K/D равен {user_data[2]}/{user_data[3]}.')
         else:
@@ -629,6 +631,7 @@ def check_cooldown(update, whattocheck, cooldown):
 
 def _create_tables():
     """Create a muted databases"""
+    # Chat
     dbc.execute(f'''CREATE TABLE IF NOT EXISTS "chat" 
         (id NUMERIC PRIMARY KEY, 
         chatid NUMERIC, 
@@ -637,12 +640,14 @@ def _create_tables():
         lastusercommanderror TEXT DEFAULT NULL, 
         lasttextreply TEXT DEFAULT NULL
         )''')
+    # Muted
     dbc.execute(f'''CREATE TABLE IF NOT EXISTS "muted" 
         (id NUMERIC PRIMARY KEY, 
         chatid NUMERIC, 
         firstname TEXT DEFAULT NULL, 
         reason TEXT DEFAULT NULL
         )''')
+    # Exceptions
     dbc.execute(f'''CREATE TABLE IF NOT EXISTS "exceptions"
     (id NUMERIC PRIMARY KEY,
     firstname TEXT DEFAULT NULL)
@@ -654,6 +659,14 @@ def _create_tables():
     (413327053, "comradesanya"),
     (205762941, "dovaogedot"),
     (185500059, "mel_a_real_programmer")''')
+    # Duels
+    dbc.execute(f'''CREATE TABLE IF NOT EXISTS "duels"
+    (id NUMERIC PRIMARY KEY,
+    firstname TEXT DEFAULT NULL,
+    kills NUMERIC DEFAULT NULL,
+    deaths NUMERIC DEFAULT NULL)
+    ''')
+
     db.commit()
 
 
