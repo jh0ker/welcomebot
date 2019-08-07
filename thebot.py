@@ -463,18 +463,18 @@ def mute(update, context):
         try:
             # Shorten code
             to_mute_id, chat_id = _get(update, 'target_id'), _get(update, 'chat_id')
-            tablename = f'\"mute{update.message.chat_id}\"'
             # Mute and record into database
-            _create_mute_table(update)
             dbc.execute(f'''
-            INSERT OR IGNORE INTO {tablename} (id, firstname) 
-            VALUES ("{to_mute_id}", "{update.message.reply_to_message.from_user.first_name}")''')
+            INSERT OR IGNORE INTO "muted" (id, chatid, firstname) 
+            VALUES 
+            ("{to_mute_id}", 
+            "{update.message.chat_id}", 
+            "{update.message.reply_to_message.from_user.first_name}")''')
             # Get mute reason if there is any
             if len(update.message.text.split()) > 1:
                 mutereason = ' '.join((update.message.text).split()[1:])
                 dbc.execute(f'''
-                    UPDATE {tablename} SET reason="{mutereason}" WHERE id={to_mute_id}''')
-            dbc.execute(f'''''')
+                    UPDATE "muted" SET reason="{mutereason}" WHERE id={to_mute_id} AND chatid={update.message.chat_id}''')
             db.commit()
             # Send photo and explanation to the silenced person
             BOT.send_photo(chat_id=chat_id,
@@ -495,7 +495,7 @@ def unmute(update, context):
     if _get(update, 'init_id') == DEVELOPER_ID:
         # Get chat id, create the replied flag to not make large trees
         replied = False
-        _create_mute_table(update)
+
         # If there is a reply, get the id of the reply target
         if update.message.reply_to_message is not None:
             to_unmute_id = _get(update, 'target_id')
@@ -506,10 +506,9 @@ def unmute(update, context):
             except IndexError:
                 _send_reply(update, 'Вы не указали цель.')
                 to_unmute_id, replied = 'NULL', True
-        tablename = f'\"mute{update.message.chat_id}\"'
         # Check if the entry exists
-        target = dbc.execute(f'''SELECT * FROM {tablename} 
-        WHERE id={to_unmute_id}''').fetchone()
+        target = dbc.execute(f'''SELECT * FROM "muted" 
+        WHERE id={to_unmute_id} AND chatid={update.message.chat_id}''').fetchone()
         if target is not None:
             # Get the target name
             target_name = target[1].strip('[]')
@@ -518,8 +517,8 @@ def unmute(update, context):
             # Send the reply of successful unmute
             _send_reply(update, f'Успешно снял мут с {target_tagged}.', parse_mode='Markdown')
             # Delete the user from the muted database and commit
-            dbc.execute(f'''DELETE FROM {tablename} 
-            WHERE id={to_unmute_id}''')
+            dbc.execute(f'''DELETE FROM "muted" 
+            WHERE id={to_unmute_id} AND chatid={update.message.chat_id}''')
             db.commit()
         elif target is None and not replied:
             _send_reply(update, 'Такого в списке нет.')
@@ -535,11 +534,9 @@ def mutelist(update, context):
     if _get(update, 'init_id') == DEVELOPER_ID:
         # Somewhat of a table
         id_list = 'имя - айди пользователя:\n'
-        tablename = f'\"mute{update.message.chat_id}\"'
-        _create_mute_table(update)
         # If there are muted targets, send reply, else say that there is nobody
         listnumber = 1
-        for entry in dbc.execute(f'SELECT * FROM {tablename}').fetchall():
+        for entry in dbc.execute(f'SELECT * FROM "muted" WHERE chatid={update.message.chat_id}').fetchall():
             id_list += f'{listnumber}. {entry[1]} - {entry[0]}\n'
             if entry[2]:
                 id_list += f'Причина: {entry[2].capitalize()}\n'
@@ -602,14 +599,12 @@ def check_cooldown(update, whattocheck, cooldown):
             _try_to_delete_message(update)
             return False
     # Create table if doesn't exist
-    _create_chat_table(update)
     # Shorten code
     user_id = update.message.from_user.id
-    tablename = f'\"chat{update.message.chat_id}\"'
     message_time = datetime.datetime.now()
     lastinstance = dbc.execute(f'''
-    SELECT {whattocheck} from {tablename}
-    WHERE id={user_id}''').fetchone()
+    SELECT {whattocheck} from "chat"
+    WHERE id={user_id} AND chatid={update.message.chat_id}''').fetchone()
     if isinstance(lastinstance, tuple):
         lastinstance = lastinstance[0]
     # If there was a last one
@@ -620,7 +615,7 @@ def check_cooldown(update, whattocheck, cooldown):
         if message_time > threshold:
             # If it did, update table, return True
             dbc.execute(f'''
-            UPDATE {tablename} SET {whattocheck}="{message_time}" WHERE id={user_id}''')
+            UPDATE "chat" SET {whattocheck}="{message_time}" WHERE id={user_id} AND chatid={update.message.chat_id}''')
             db.commit()
             return True
         else:
@@ -630,32 +625,34 @@ def check_cooldown(update, whattocheck, cooldown):
             return False
     # If there was none, create entry and return True
     else:
-        dbc.execute(f'''INSERT OR IGNORE INTO {tablename} (id, firstname, {whattocheck}) 
-        VALUES ({user_id}, "{update.message.from_user.first_name}", "{message_time}")''')
+        dbc.execute(f'''INSERT OR IGNORE INTO "chat" (id, chatid, firstname, {whattocheck}) 
+        VALUES ({user_id}, "{update.message.chat_id}" ,"{update.message.from_user.first_name}", "{message_time}")''')
         dbc.execute(f'''
-        UPDATE {tablename} SET {whattocheck}="{message_time}" WHERE id={user_id}''')
+        UPDATE "chat" SET {whattocheck}="{message_time}" WHERE id={user_id} AND chatid={update.message.chat_id}''')
         db.commit()
         return True
 
 
-def _create_chat_table(update):
+def _create_chat_table():
     """Create a database with chat data"""
     dbc.execute(f'''
-        CREATE TABLE IF NOT EXISTS "{'chat' + str(update.message.chat_id)}" 
+        CREATE TABLE IF NOT EXISTS "chat" 
         (id NUMERIC PRIMARY KEY, 
+        chatid NUMERIC, 
         firstname TEXT DEFAULT NULL, 
-        lastcommandreply TEXT DEFAULT NULL,
-        lastusercommanderror TEXT DEFAULT NULL,
+        lastcommandreply TEXT DEFAULT NULL, 
+        lastusercommanderror TEXT DEFAULT NULL, 
         lasttextreply TEXT DEFAULT NULL
         )''')
     db.commit()
 
 
-def _create_mute_table(update):
+def _create_mute_table():
     """Create a muted database"""
     dbc.execute(f'''
-        CREATE TABLE IF NOT EXISTS "{'mute' + str(update.message.chat_id)}" 
+        CREATE TABLE IF NOT EXISTS "muted" 
         (id NUMERIC PRIMARY KEY, 
+        chatid NUMERIC, 
         firstname TEXT DEFAULT NULL, 
         reason TEXT DEFAULT NULL
         )''')
@@ -696,10 +693,9 @@ def _get(update, what_is_needed: str):
 
 def _muted(update):
     """Check if the user is muted"""
-    tablename = f'\"mute{update.message.chat_id}\"'
-    _create_mute_table(update)
-    found = dbc.execute(f'''SELECT id FROM {tablename} 
-    WHERE id={update.message.from_user.id}''').fetchone()
+    _create_mute_table()
+    found = dbc.execute(f'''SELECT id FROM "muted" 
+    WHERE id={update.message.from_user.id} AND chatid={update.message.chat_id}''').fetchone()
     # Except non existent table, then not muted
     if found is None:
         return False
@@ -749,6 +745,10 @@ def main():
 
     # log all errors
     dispatcher.add_error_handler(error)
+
+    # Create databases
+    _create_chat_table()
+    _create_mute_table()
 
     # Start the Bot
     # Set clean to True to clean any pending updates on Telegram servers before
