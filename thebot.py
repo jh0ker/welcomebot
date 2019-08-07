@@ -357,13 +357,13 @@ def duel(update, context):
         """Score the results in the database"""
         nonlocal winner, loser
         # Set winner (p1) data
-        dbc.execute(f'INSERT OR IGNORE INTO duels (id, firstname) VALUES ("{winner[1]}", "{winner[0]}")')
-        dbc.execute(f'UPDATE duels SET kills = kills + {p1_kd[0]} WHERE id={winner[1]}')
-        dbc.execute(f'UPDATE duels SET deaths = deaths + {p1_kd[1]} WHERE id={winner[1]}')
+        dbc.execute(f'INSERT OR IGNORE INTO duels (user_id, firstname) VALUES ("{winner[1]}", "{winner[0]}")')
+        dbc.execute(f'UPDATE duels SET kills = kills + {p1_kd[0]} WHERE user_id={winner[1]}')
+        dbc.execute(f'UPDATE duels SET deaths = deaths + {p1_kd[1]} WHERE user_id={winner[1]}')
         # Set loser (p2) data
-        dbc.execute(f'INSERT OR IGNORE INTO duels (id, firstname) VALUES ("{loser[1]}", "{loser[0]}")')
-        dbc.execute(f'UPDATE duels SET kills = kills + {p2_kd[0]} WHERE id={loser[1]}')
-        dbc.execute(f'UPDATE duels SET deaths = deaths + {p2_kd[1]} WHERE id={loser[1]}')
+        dbc.execute(f'INSERT OR IGNORE INTO duels (user_id, firstname) VALUES ("{loser[1]}", "{loser[0]}")')
+        dbc.execute(f'UPDATE duels SET kills = kills + {p2_kd[0]} WHERE user_id={loser[1]}')
+        dbc.execute(f'UPDATE duels SET deaths = deaths + {p2_kd[1]} WHERE user_id={loser[1]}')
         db.commit()
 
     if _command_antispam_passed(update):
@@ -445,11 +445,28 @@ def myscore(update, context):
     if _command_antispam_passed(update):
         user_data = dbc.execute(
             f'''SELECT kills, deaths FROM duels WHERE 
-            id={update.message.from_user.id}''').fetchone()
+            user_id={update.message.from_user.id}''').fetchone()
         if user_data is not None:
             _send_reply(update, f'Твой K/D равен {user_data[0]}/{user_data[1]}.')
         else:
             _send_reply(update, f'Сначала подуэлься, потом спрашивай.')
+
+
+def duelranking(update, context):
+    """Get the top best duelists"""
+    if _command_antispam_passed(update):
+        table = ''
+        for query in (('Лучшие:\n', 'kills/deaths'), ('Худшие:\n', 'deaths/kills')):
+            table += query[0]
+            counter = 1
+            for q in dbc.execute(f'''SELECT * FROM "duels" ORDER BY {query[1]} LIMIT 5'''):
+                table += f'№{counter} [{q[1]}](tg://user?id={q[0]})\t -\t {q[2]}/{q[3]}'
+                try:
+                    table += f' ({int(q[2]/q[3])}%)\n'
+                except ZeroDivisionError:
+                    table += ' (100%)\n'
+                counter += 1
+        _send_reply(update, table, parse_mode='Markdown')
 
 
 def mute(update, context):
@@ -461,7 +478,7 @@ def mute(update, context):
             to_mute_id, chat_id = _get(update, 'target_id'), _get(update, 'chat_id')
             # Mute and record into database
             dbc.execute(f'''
-            INSERT OR IGNORE INTO "muted" (id, chatid, firstname) 
+            INSERT OR IGNORE INTO "muted" (user_id, chat_id, firstname) 
             VALUES 
             ("{to_mute_id}", 
             "{update.message.chat_id}", 
@@ -470,7 +487,8 @@ def mute(update, context):
             if len(update.message.text.split()) > 1:
                 mutereason = ' '.join((update.message.text).split()[1:])
                 dbc.execute(f'''
-                    UPDATE "muted" SET reason="{mutereason}" WHERE id={to_mute_id} AND chatid={update.message.chat_id}''')
+                    UPDATE "muted" SET reason="{mutereason}" WHERE user_id={to_mute_id} 
+                    AND chat_id={update.message.chat_id}''')
             db.commit()
             # Send photo and explanation to the silenced person
             BOT.send_photo(chat_id=chat_id,
@@ -491,7 +509,6 @@ def unmute(update, context):
     if _get(update, 'init_id') == DEVELOPER_ID:
         # Get chat id, create the replied flag to not make large trees
         replied = False
-
         # If there is a reply, get the id of the reply target
         if update.message.reply_to_message is not None:
             to_unmute_id = _get(update, 'target_id')
@@ -504,7 +521,7 @@ def unmute(update, context):
                 to_unmute_id, replied = 'NULL', True
         # Check if the entry exists
         target = dbc.execute(f'''SELECT * FROM "muted" 
-        WHERE id={to_unmute_id} AND chatid={update.message.chat_id}''').fetchone()
+        WHERE user_id={to_unmute_id} AND chat_id={update.message.chat_id}''').fetchone()
         if target is not None:
             # Get the target name
             target_name = target[1].strip('[]')
@@ -514,7 +531,7 @@ def unmute(update, context):
             _send_reply(update, f'Успешно снял мут с {target_tagged}.', parse_mode='Markdown')
             # Delete the user from the muted database and commit
             dbc.execute(f'''DELETE FROM "muted" 
-            WHERE id={to_unmute_id} AND chatid={update.message.chat_id}''')
+            WHERE user_id={to_unmute_id} AND chat_id={update.message.chat_id}''')
             db.commit()
         elif target is None and not replied:
             _send_reply(update, 'Такого в списке нет.')
@@ -532,9 +549,10 @@ def mutelist(update, context):
         id_list = 'имя - айди пользователя:\n'
         # If there are muted targets, send reply, else say that there is nobody
         listnumber = 1
-        for entry in dbc.execute(f'SELECT * FROM "muted" WHERE chatid={update.message.chat_id}').fetchall():
-            id_list += f'{listnumber}. {entry[1]} - {entry[0]}\n'
-            if entry[2]:
+        for entry in dbc.execute(f'SELECT * FROM "muted" WHERE '
+                                 f'chat_id={update.message.chat_id}').fetchall():
+            id_list += f'{listnumber}. {entry[2]} - {entry[0]}\n'
+            if entry[3]:
                 id_list += f'Причина: {entry[2].capitalize()}\n'
             else:
                 id_list += 'Причина не указана.\n'
@@ -587,7 +605,7 @@ def check_cooldown(update, whattocheck, cooldown):
     # Add exceptions for some users
     if dbc.execute(f'''
     SELECT * FROM exceptions 
-    WHERE id={update.message.from_user.id}
+    WHERE user_id={update.message.from_user.id}
     ''').fetchone():
         return True
     if whattocheck == 'lastcommandreply':
@@ -600,7 +618,7 @@ def check_cooldown(update, whattocheck, cooldown):
     message_time = datetime.datetime.now()
     lastinstance = dbc.execute(f'''
     SELECT {whattocheck} from "chat"
-    WHERE id={user_id} AND chatid={update.message.chat_id}''').fetchone()
+    WHERE user_id={user_id} AND chat_id={update.message.chat_id}''').fetchone()
     if isinstance(lastinstance, tuple):
         lastinstance = lastinstance[0]
     # If there was a last one
@@ -611,7 +629,8 @@ def check_cooldown(update, whattocheck, cooldown):
         if message_time > threshold:
             # If it did, update table, return True
             dbc.execute(f'''
-            UPDATE "chat" SET {whattocheck}="{message_time}" WHERE id={user_id} AND chatid={update.message.chat_id}''')
+            UPDATE "chat" SET {whattocheck}="{message_time}" 
+            WHERE user_id={user_id} AND chat_id={update.message.chat_id}''')
             db.commit()
             return True
         else:
@@ -621,39 +640,61 @@ def check_cooldown(update, whattocheck, cooldown):
             return False
     # If there was none, create entry and return True
     else:
-        dbc.execute(f'''INSERT OR IGNORE INTO "chat" (id, chatid, firstname, {whattocheck}) 
-        VALUES ({user_id}, "{update.message.chat_id}" ,"{update.message.from_user.first_name}", "{message_time}")''')
+        dbc.execute(f'''INSERT OR IGNORE INTO 
+        "chat" (user_id, chat_id, firstname, {whattocheck}) 
+        VALUES ({user_id}, "{update.message.chat_id}", 
+        "{update.message.from_user.first_name}", "{message_time}")''')
         dbc.execute(f'''
-        UPDATE "chat" SET {whattocheck}="{message_time}" WHERE id={user_id} AND chatid={update.message.chat_id}''')
+        UPDATE "chat" SET {whattocheck}="{message_time}" 
+        WHERE user_id={user_id} AND chat_id={update.message.chat_id}''')
         db.commit()
         return True
+
+def record_user_data(update):
+    """Record user data into userdata table"""
 
 
 def _create_tables():
     """Create a muted databases"""
+    # Userdata
+    dbc.execute(f'''CREATE TABLE IF NOT EXISTS "userdata"
+    (id NUMERIC PRIMARY KEY UNIQUE,
+    firstname TEXT NOT NULL,
+    lastname TEXT DEFAULT NULL,
+    username TEXT DEFAULT NULL
+    )''')
+    dbc.execute(f'''INSERT OR REPLACE INTO "userdata" (id, firstname, username)
+    VALUES (255295801, "тяночкууу", "doitforricardo")
+    ''')
     # Chat
     dbc.execute(f'''CREATE TABLE IF NOT EXISTS "chat" 
-        (id NUMERIC PRIMARY KEY, 
-        chatid NUMERIC, 
-        firstname TEXT DEFAULT NULL, 
-        lastcommandreply TEXT DEFAULT NULL, 
-        lastusercommanderror TEXT DEFAULT NULL, 
-        lasttextreply TEXT DEFAULT NULL
-        )''')
+    (user_id NUMERIC UNIQUE, 
+    chat_id NUMERIC, 
+    firstname TEXT DEFAULT NULL, 
+    lastcommandreply TEXT DEFAULT NULL, 
+    lastusercommanderror TEXT DEFAULT NULL, 
+    lasttextreply TEXT DEFAULT NULL,
+    FOREIGN KEY(user_id) REFERENCES userdata(id),
+    FOREIGN KEY(firstname) REFERENCES userdata(firstname)
+    )''')
     # Muted
     dbc.execute(f'''CREATE TABLE IF NOT EXISTS "muted" 
-        (id NUMERIC PRIMARY KEY, 
-        chatid NUMERIC, 
-        firstname TEXT DEFAULT NULL, 
-        reason TEXT DEFAULT NULL
-        )''')
+    (user_id NUMERIC UNIQUE, 
+    chat_id NUMERIC, 
+    firstname TEXT DEFAULT NULL, 
+    reason TEXT DEFAULT NULL,
+    FOREIGN KEY(user_id) REFERENCES userdata(id),
+    FOREIGN KEY(firstname) REFERENCES userdata(firstname)
+    )''')
     # Exceptions
     dbc.execute(f'''CREATE TABLE IF NOT EXISTS "exceptions"
-    (id NUMERIC PRIMARY KEY,
-    firstname TEXT DEFAULT NULL)
+    (user_id NUMERIC UNIQUE,
+    firstname TEXT DEFAULT NULL,
+    FOREIGN KEY(user_id) REFERENCES userdata(id),
+    FOREIGN KEY(firstname) REFERENCES userdata(firstname))
     ''')
     dbc.execute(f''' 
-    INSERT OR REPLACE INTO "exceptions" (id, firstname) 
+    INSERT OR REPLACE INTO "exceptions" (user_id, firstname) 
     VALUES 
     (255295801, "doitforricardo"), 
     (413327053, "comradesanya"),
@@ -661,10 +702,12 @@ def _create_tables():
     (185500059, "mel_a_real_programmer")''')
     # Duels
     dbc.execute(f'''CREATE TABLE IF NOT EXISTS "duels"
-    (id NUMERIC PRIMARY KEY,
+    (user_id NUMERIC UNIQUE,
     firstname TEXT DEFAULT NULL,
     kills NUMERIC DEFAULT 0,
-    deaths NUMERIC DEFAULT 0)
+    deaths NUMERIC DEFAULT 0,
+    FOREIGN KEY(user_id) REFERENCES userdata(id),
+    FOREIGN KEY(firstname) REFERENCES userdata(firstname))
     ''')
     # Commit the database
     db.commit()
@@ -704,8 +747,9 @@ def _get(update, what_is_needed: str):
 
 def _muted(update):
     """Check if the user is muted"""
-    found = dbc.execute(f'''SELECT id FROM "muted" 
-    WHERE id={update.message.from_user.id} AND chatid={update.message.chat_id}''').fetchone()
+    found = dbc.execute(f'''SELECT "user_id" FROM "muted" 
+    WHERE user_id={update.message.from_user.id} AND 
+    chat_id={update.message.chat_id}''').fetchone()
     # Except non existent table, then not muted
     if found is None:
         return False
@@ -743,6 +787,7 @@ def main():
     dispatcher.add_handler(CommandHandler('mutelist', mutelist))
     dispatcher.add_handler(CommandHandler('duel', duel))
     dispatcher.add_handler(CommandHandler('myscore', myscore))
+    dispatcher.add_handler(CommandHandler('duelranking', duelranking))
     dispatcher.add_handler(CommandHandler('leave', leave))
 
     # add message handlers
