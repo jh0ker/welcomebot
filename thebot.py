@@ -651,11 +651,14 @@ def check_cooldown(update, whattocheck, cooldown):
     Whattocheck should be the sql column name"""
 
     def _give_command_error():
-        """Give command cooldown error"""
+        """Give command cooldown error, if the user still spams, delete his message"""
         nonlocal update
         if check_cooldown(update, 'lastusercommanderror', ERROR_DELAY):
             time_remaining = str((threshold - message_time)).split('.')[0][3:]
-            _send_reply(update, f'До команды осталось {time_remaining} (ММ:СС). Пока можешь идти нахуй.')
+            _send_reply(update, f'До команды осталось {time_remaining} (ММ:СС). '
+                                f'Пока можешь идти нахуй, я буду удалять твои команды.')
+        else:
+            _try_to_delete_message(update)
 
     if update.message.chat.type == 'private':
         return True
