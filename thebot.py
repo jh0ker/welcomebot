@@ -491,10 +491,9 @@ def mute(update, context):
                     AND chat_id={update.message.chat_id}''')
             db.commit()
             # Send photo and explanation to the silenced person
-            BOT.send_photo(chat_id=chat_id,
-                           photo='https://www.dropbox.com/s/m1ek8cgis4echn9/silence.jpg?raw=1',
-                           caption='Теперь ты под салом и не можешь писать в чат.',
-                           reply_to_message_id=update.message.reply_to_message.message_id)
+            BOT.send_message(chat_id=chat_id,
+                             text='Теперь ты под салом и не можешь писать в чат.',
+                             reply_to_message_id=update.message.reply_to_message.message_id)
         except KeyError:
             _send_reply(update, 'Пожалуйста, выберите цель.')
     # If an ordinary used tries to use the command
@@ -509,19 +508,22 @@ def unmute(update, context):
     if _get(update, 'init_id') == DEVELOPER_ID:
         # Get chat id, create the replied flag to not make large trees
         replied = False
+        to_unmute_name = 'NULL'
+        to_unmute_id = 'NULL'
         # If there is a reply, get the id of the reply target
         if update.message.reply_to_message is not None:
             to_unmute_id = _get(update, 'target_id')
         # If no reply target, take the argument if it exists
         else:
             try:
-                to_unmute_id = update.message.text.split()[1]
+                to_unmute_name = ' '.join(update.message.text.split()[1:])
             except IndexError:
                 _send_reply(update, 'Вы не указали цель.')
-                to_unmute_id, replied = 'NULL', True
+                replied = True
         # Check if the entry exists
-        target = dbc.execute(f'''SELECT * FROM "muted" 
-        WHERE user_id={to_unmute_id} AND chat_id={update.message.chat_id}''').fetchone()
+        target = dbc.execute(f'''SELECT user_id, firstname FROM "muted" 
+        WHERE chat_id={update.message.chat_id} AND 
+        (user_id={to_unmute_id} OR firstname="{to_unmute_name}")''').fetchone()
         if target is not None:
             # Get the target name
             target_name = target[1].strip('[]')
@@ -531,7 +533,8 @@ def unmute(update, context):
             _send_reply(update, f'Успешно снял мут с {target_tagged}.', parse_mode='Markdown')
             # Delete the user from the muted database and commit
             dbc.execute(f'''DELETE FROM "muted" 
-            WHERE user_id={to_unmute_id} AND chat_id={update.message.chat_id}''')
+            WHERE chat_id={update.message.chat_id} AND 
+            (user_id={to_unmute_id} OR firstname="{to_unmute_name}")''')
             db.commit()
         elif target is None and not replied:
             _send_reply(update, 'Такого в списке нет.')
@@ -541,31 +544,85 @@ def unmute(update, context):
             _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
 
-def mutelist(update, context):
+def _getsqllist(update, query: str):
     """Get the list of muted ids"""
     # Only for developer
     if _get(update, 'init_id') == DEVELOPER_ID:
+        insert = {}
+        if query == 'mutelist':
+            insert['variables'] = "\"firstname\", \"user_id\", \"reason\""
+            insert['table'] = "\"muted\""
+            insert['constraint'] = f"WHERE chat_id={update.message.chat_id}"
+        else:  # 'immunelist'
+            insert['variables'] = "\"firstname\", \"user_id\""
+            insert['table'] = "\"exceptions\""
+            insert['constraint'] = ""
         # Somewhat of a table
-        id_list = 'имя - айди пользователя:\n'
+        table = ''
         # If there are muted targets, send reply, else say that there is nobody
         listnumber = 1
-        for entry in dbc.execute(f'SELECT * FROM "muted" WHERE '
-                                 f'chat_id={update.message.chat_id}').fetchall():
-            id_list += f'{listnumber}. {entry[2]} - {entry[0]}\n'
-            if entry[3]:
-                id_list += f'Причина: {entry[2].capitalize()}\n'
-            else:
-                id_list += 'Причина не указана.\n'
+        for entry in dbc.execute(f"""SELECT {insert['variables']} FROM {insert['table']} 
+                                {insert['constraint']}""").fetchall():
+            table += f'{listnumber}. [{entry[0]}](tg://user?id={entry[1]})\n'
+            if query == 'mutelist':
+                if entry[2]:
+                    table += f'Причина: {entry[2].capitalize()}\n'
+                else:
+                    table += 'Причина не указана.\n'
             listnumber += 1
-        if id_list != 'имя - айди пользователя:\n':
-            _send_reply(update, id_list)
+        if table:
+            _send_reply(update, table, parse_mode='Markdown')
         else:
-            _send_reply(update, 'В муте никого нет.')
+            _send_reply(update, 'Список пуст.')
     # If an ordinary used tries to use the command
     else:
         if _command_antispam_passed(update):
             _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
+
+def immune(update, context):
+    """Add user to exceptions"""
+    if update.message.from_user.id == DEVELOPER_ID:
+        if update.message.reply_to_message is not None:
+            dbc.execute(f'''INSERT OR IGNORE INTO "exceptions" 
+            (user_id, firstname) VALUES 
+            ({update.message.reply_to_message.from_user.id}, 
+            "{update.message.reply_to_message.from_user.first_name}")''')
+            db.commit()
+        else:
+            _send_reply(update, 'Дай цель.')
+    else:
+        if _command_antispam_passed(update):
+            _send_reply(update, 'Пошёл нахуй, ты не админ.')
+
+
+def unimmune(update, context):
+    """Remove user from exceptions"""
+    if update.message.from_user.id == DEVELOPER_ID:
+        if update.message.reply_to_message:
+            dbc.execute(f'''DELETE FROM "exceptions" 
+            WHERE user_id={update.message.reply_to_message.from_user.id}''')
+            db.commit()
+        else:
+            if len(update.message.text.split()) > 1:
+                unimmune_target = ' '.join(update.message.text.split()[1:])
+                dbc.execute(f'''DELETE FROM "exceptions" 
+                WHERE firstname="{unimmune_target}"''')
+                db.commit()
+            else:
+                _send_reply(update, 'Дай цель.')
+    else:
+        if _command_antispam_passed(update):
+            _send_reply(update, 'Пошёл нахуй, ты не админ.')
+
+
+def immunelist(update, context):
+    """Get the exceptions list"""
+    return _getsqllist(update, 'immunelist')
+
+def mutelist(update, context):
+    """Get the mute list"""
+    return _getsqllist(update, 'mutelist')
 
 def leave(update, context):
     """Make the bot leave the group, usable only by the developer."""
@@ -650,9 +707,16 @@ def check_cooldown(update, whattocheck, cooldown):
         db.commit()
         return True
 
-def record_user_data(update):
-    """Record user data into userdata table"""
-
+def dev(update, context):
+    """Send the dev of developer commands"""
+    if update.message.from_user.id == DEVELOPER_ID:
+        commands = ("/mute - Замутить;\n"
+                    "/unmute - Cнять мут;\n"
+                    "/mutelist - Показать всех в муте;\n"
+                    "/immune - Добавить пользователю иммунитет на задержку команд;\n"
+                    "/unimmune - Снять иммунитет;\n"
+                    "/immunelist - Лист людей с имунитетами;\n")
+        _send_reply(update, commands)
 
 def _create_tables():
     """Create a muted databases"""
@@ -785,10 +849,14 @@ def main():
     dispatcher.add_handler(CommandHandler('mute', mute))
     dispatcher.add_handler(CommandHandler('unmute', unmute))
     dispatcher.add_handler(CommandHandler('mutelist', mutelist))
+    dispatcher.add_handler(CommandHandler('immune', immune))
+    dispatcher.add_handler(CommandHandler('unimmune', unimmune))
+    dispatcher.add_handler(CommandHandler('immunelist', immunelist))
     dispatcher.add_handler(CommandHandler('duel', duel))
     dispatcher.add_handler(CommandHandler('myscore', myscore))
     dispatcher.add_handler(CommandHandler('duelranking', duelranking))
     dispatcher.add_handler(CommandHandler('leave', leave))
+    dispatcher.add_handler(CommandHandler('dev', dev))
 
     # add message handlers
     dispatcher.add_handler(MessageHandler(
