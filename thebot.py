@@ -12,10 +12,13 @@ import sqlite3
 import requests
 from telegram import Bot
 from telegram import TelegramError
+from telegram import Update
+from telegram.ext import CallbackContext
 from telegram.ext import CommandHandler
 from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
+from telegram.ext.dispatcher import run_async
 
 # Import huts, slaps, duels
 from modules.huts import HUTS
@@ -44,25 +47,24 @@ except (EOFError, FileNotFoundError) as changelog_err:
 TOKEN = environ.get("TG_BOT_TOKEN")
 BOT = Bot(TOKEN)
 
-# Antispammer variables
-SPAM_COUNTER = {}
+# Add developer ID
 DEVELOPER_ID = 255295801
 
 # Delays in seconds for the BOT
 INDIVIDUAL_USER_DELAY = 10 * 60  # Ten minutes
 INDIVIDUAL_REPLY_DELAY = 5 * 60  # Five minutes
-ERROR_DELAY = 1 * 60  # One minute
+ERROR_DELAY = 5 * 60  # One minute
 
 # Request timeout time in seconds
 REQUEST_TIMEOUT = 1.2
 
 
-def start(update, context):
+def start(update: Update, context: CallbackContext):
     """Send out a start message"""
     _send_reply(update, 'Думер бот в чате. Для списка функций используйте /help.')
 
 
-def help(update, context):
+def help(update: Update, context: CallbackContext):
     """Help message"""
     if _command_antispam_passed(update):
         help_text = (
@@ -94,7 +96,7 @@ def help(update, context):
         _send_reply(update, help_text, parse_mode='HTML')
 
 
-def whatsnew(update, context):
+def whatsnew(update: Update, context: CallbackContext):
     """Reply with all new goodies"""
     if _command_antispam_passed(update):
         # Get the last 3 day changes
@@ -104,7 +106,7 @@ def whatsnew(update, context):
         _send_reply(update, latest_changes, parse_mode='Markdown')
 
 
-def rules(update, context):
+def rules(update: Update, context: CallbackContext):
     """Reply to the user with the rules of the chat"""
     if _command_antispam_passed(update):
         reply_text = ("1. Не быть зумером, не сообщать зумерам о думском клубе;\n"
@@ -115,7 +117,8 @@ def rules(update, context):
         _send_reply(update, reply_text)
 
 
-def welcomer(update, context):
+@run_async
+def welcomer(update: Update, context: CallbackContext):
     """
     Empty messages could be status messages, so we check them if there is a new
     group member.
@@ -137,7 +140,8 @@ def welcomer(update, context):
         _send_reply(update, reply_text, parse_mode='Markdown')
 
 
-def farewell(update, context):
+@run_async
+def farewell(update: Update, context: CallbackContext):
     """Goodbye message"""
     # A a BOT was removed
     if update.message.left_chat_member.is_bot:
@@ -145,7 +149,7 @@ def farewell(update, context):
             update, f"{update.message.left_chat_member.first_name}'a убили, красиво, уважаю.")
 
 
-def message_filter(update, context):
+def message_filter(update: Update, context: CallbackContext):
     """Replies to all messages
     Думер > Земляночка > """
     try:
@@ -215,13 +219,13 @@ def _anprim_word_handler(update):
     return False
 
 
-def flip(update, context):
+def flip(update: Update, context: CallbackContext):
     """Flip a Coin"""
     if _command_antispam_passed(update):
         _send_reply(update, random.choice(['Орёл!', 'Решка!']))
 
 
-def myiq(update, context):
+def myiq(update: Update, context: CallbackContext):
     """Return IQ level (1 - 200)"""
     if _command_antispam_passed(update):
         iq_level = random.randint(1, 200)
@@ -237,7 +241,7 @@ def myiq(update, context):
         _send_reply(update, reply_text)
 
 
-def muhdick(update, context):
+def muhdick(update: Update, context: CallbackContext):
     """Return dick size in cm (1 - 25)"""
     if _command_antispam_passed(update):
         muh_dick = random.randint(1, 25)
@@ -250,7 +254,7 @@ def muhdick(update, context):
         _send_reply(update, reply_text)
 
 
-def dog(update, context):
+def dog(update: Update, context: CallbackContext):
     """Get a random dog image"""
     # Go to a website with a json, that contains a link, pass the link to the BOT,
     # let the server download the image/video/gif
@@ -278,7 +282,7 @@ def dog(update, context):
             _send_reply(update, 'Думер умер на пути к серверу.')
 
 
-def cat(update, context):
+def cat(update: Update, context: CallbackContext):
     """Get a random cat image"""
     # Go to a website with a json, that contains a link, pass the link to the BOT,
     # let the server download the image
@@ -294,7 +298,7 @@ def cat(update, context):
             _send_reply(update, 'Думер умер на пути к серверу.')
 
 
-def dadjoke(update, context):
+def dadjoke(update: Update, context: CallbackContext):
     """Get a random dad joke"""
     if _command_antispam_passed(update):
         # Retrieve the website source, find the joke in the code.
@@ -308,7 +312,7 @@ def dadjoke(update, context):
             _send_reply(update, 'Думер умер на пути к серверу.')
 
 
-def slap(update, context):
+def slap(update: Update, context: CallbackContext):
     """Slap with random item"""
     if _command_antispam_passed(update):
         # List the items that the target will be slapped with
@@ -342,7 +346,7 @@ def slap(update, context):
         _send_reply(update, reply_text, parse_mode='Markdown')
 
 
-def duel(update, context):
+def duel(update: Update, context: CallbackContext):
     """Duel to solve any kind of argument"""
 
     def _send_message(text_message, sleep_time: float = 0.25):
@@ -440,7 +444,7 @@ def duel(update, context):
                                   'Приносим прощения! Заходите ещё!', sleep_time=0)
 
 
-def myscore(update, context):
+def myscore(update: Update, context: CallbackContext):
     """Give the user his K/D for duels"""
     if _command_antispam_passed(update):
         user_data = dbc.execute(
@@ -452,7 +456,7 @@ def myscore(update, context):
             _send_reply(update, f'Сначала подуэлься, потом спрашивай.')
 
 
-def duelranking(update, context):
+def duelranking(update: Update, context: CallbackContext):
     """Get the top best duelists"""
     if _command_antispam_passed(update):
         table = ''
@@ -468,8 +472,8 @@ def duelranking(update, context):
                 counter += 1
         _send_reply(update, table, parse_mode='Markdown')
 
-
-def mute(update, context):
+@run_async
+def mute(update: Update, context: CallbackContext):
     """Autodelete messages of a user (only usable by the developer)"""
     # Only works for the dev
     if _get(update, 'init_id') == DEVELOPER_ID:
@@ -501,8 +505,8 @@ def mute(update, context):
         if _command_antispam_passed(update):
             _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
-
-def unmute(update, context):
+@run_async
+def unmute(update: Update, context: CallbackContext):
     """Stop autodeletion of messages of a user (only usable by the developer)"""
     # Only if the developer calls it
     if _get(update, 'init_id') == DEVELOPER_ID:
@@ -543,7 +547,7 @@ def unmute(update, context):
         if _command_antispam_passed(update):
             _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
-
+@run_async
 def _getsqllist(update, query: str):
     """Get the list of muted ids"""
     # Only for developer
@@ -579,8 +583,8 @@ def _getsqllist(update, query: str):
         if _command_antispam_passed(update):
             _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
-
-def immune(update, context):
+@run_async
+def immune(update: Update, context: CallbackContext):
     """Add user to exceptions"""
     if update.message.from_user.id == DEVELOPER_ID:
         if update.message.reply_to_message is not None:
@@ -595,8 +599,8 @@ def immune(update, context):
         if _command_antispam_passed(update):
             _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
-
-def unimmune(update, context):
+@run_async
+def unimmune(update: Update, context: CallbackContext):
     """Remove user from exceptions"""
     if update.message.from_user.id == DEVELOPER_ID:
         if update.message.reply_to_message:
@@ -615,16 +619,18 @@ def unimmune(update, context):
         if _command_antispam_passed(update):
             _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
-
-def immunelist(update, context):
+@run_async
+def immunelist(update: Update, context: CallbackContext):
     """Get the exceptions list"""
     return _getsqllist(update, 'immunelist')
 
-def mutelist(update, context):
+@run_async
+def mutelist(update: Update, context: CallbackContext):
     """Get the mute list"""
     return _getsqllist(update, 'mutelist')
 
-def leave(update, context):
+
+def leave(update: Update, context: CallbackContext):
     """Make the bot leave the group, usable only by the developer."""
     if _get(update, 'init_id') == DEVELOPER_ID:
         BOT.leave_chat(chat_id=update.message.chat_id)
@@ -710,7 +716,8 @@ def check_cooldown(update, whattocheck, cooldown):
         db.commit()
         return True
 
-def dev(update, context):
+
+def dev(update: Update, context: CallbackContext):
     """Send the dev of developer commands"""
     if update.message.from_user.id == DEVELOPER_ID:
         commands = ("/mute - Замутить;\n"
@@ -730,9 +737,6 @@ def _create_tables():
     lastname TEXT DEFAULT NULL,
     username TEXT DEFAULT NULL
     )''')
-    dbc.execute(f'''INSERT OR REPLACE INTO "userdata" (id, firstname, username)
-    VALUES (255295801, "тяночкууу", "doitforricardo")
-    ''')
     # Chat
     dbc.execute(f'''CREATE TABLE IF NOT EXISTS "chat" 
     (user_id NUMERIC UNIQUE, 
@@ -817,14 +821,19 @@ def _muted(update):
     found = dbc.execute(f'''SELECT "user_id" FROM "muted" 
     WHERE user_id={update.message.from_user.id} AND 
     chat_id={update.message.chat_id}''').fetchone()
-    # Except non existent table, then not muted
     if found is None:
         return False
     else:
-        return True
+        # Check for exceptions
+        exception = dbc.execute(f'''SELECT "user_id" from "exceptions"
+        WHERE user_id={update.message.from_user.id}''').fetchone()
+        if exception is None:
+            return True
+        else:
+            return False
 
 
-def error(update, context):
+def error_callback(update: Update, context: CallbackContext):
     """Log Errors caused by Updates."""
     LOGGER.warning('Error "%s" caused by update "%s"', context.error, update)
 
@@ -870,7 +879,7 @@ def main():
         Filters.all, message_filter))
 
     # log all errors
-    dispatcher.add_error_handler(error)
+    dispatcher.add_error_handler(error_callback)
 
     # Create databases
     _create_tables()
