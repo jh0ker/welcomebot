@@ -472,10 +472,10 @@ def duelranking(update: Update, context: CallbackContext):
         for query in (('Лучшие:\n', 'DESC'), ('Худшие:\n', 'ASC')):
             table += query[0]
             counter = 1
-            for q in dbc.execute(f'''SELECT user_id, firstname, kills, deaths, winpercent 
+            for q in dbc.execute(f'''SELECT firstname, kills, deaths, winpercent 
                                 FROM "duels" ORDER BY winpercent {query[1]} LIMIT 5'''):
-                table += f'№{counter} [{q[1]}](tg://user?id={q[0]})\t -\t {q[2]}/{q[3]}'
-                table += f' ({round(q[4], 2)}%)\n'
+                table += f'№{counter} {q[0]}\t -\t {q[1]}/{q[2]}'
+                table += f' ({round(q[3], 2)}%)\n'
                 counter += 1
         _send_reply(update, table, parse_mode='Markdown')
 
@@ -561,11 +561,11 @@ def _getsqllist(update, query: str):
     if _get(update, 'init_id') == DEVELOPER_ID:
         insert = {}
         if query == 'mutelist':
-            insert['variables'] = "\"firstname\", \"user_id\", \"reason\""
+            insert['variables'] = "\"firstname\", \"reason\""
             insert['table'] = "\"muted\""
             insert['constraint'] = f"WHERE chat_id={update.message.chat_id}"
         else:  # 'immunelist'
-            insert['variables'] = "\"firstname\", \"user_id\""
+            insert['variables'] = "\"firstname\""
             insert['table'] = "\"exceptions\""
             insert['constraint'] = ""
         # Somewhat of a table
@@ -574,15 +574,15 @@ def _getsqllist(update, query: str):
         listnumber = 1
         for entry in dbc.execute(f"""SELECT {insert['variables']} FROM {insert['table']} 
                                 {insert['constraint']}""").fetchall():
-            table += f'{listnumber}. [{entry[0]}](tg://user?id={entry[1]})\n'
+            table += f'{listnumber}. {entry[0]}\n'
             if query == 'mutelist':
-                if entry[2]:
-                    table += f'Причина: {entry[2].capitalize()}\n'
+                if entry[1]:
+                    table += f'Причина: {entry[1].capitalize()}\n'
                 else:
                     table += 'Причина не указана.\n'
             listnumber += 1
         if table:
-            _send_reply(update, table, parse_mode='Markdown')
+            _send_reply(update, table)
         else:
             _send_reply(update, 'Список пуст.')
     # If an ordinary used tries to use the command
