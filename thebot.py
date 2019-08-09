@@ -460,7 +460,7 @@ def duelranking(update: Update, context: CallbackContext):
     """Get the top best duelists"""
     if _command_antispam_passed(update):
         table = ''
-        for query in (('Лучшие:\n', 'kills/deaths'), ('Худшие:\n', 'deaths/kills')):
+        for query in (('Лучшие:\n', 'kills/(deaths+kills)'), ('Худшие:\n', 'deaths/(kills+deaths)')):
             table += query[0]
             counter = 1
             for q in dbc.execute(f'''SELECT user_id, firstname, kills, deaths 
