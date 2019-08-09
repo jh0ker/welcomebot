@@ -370,7 +370,7 @@ def duel(update: Update, context: CallbackContext):
         WHERE user_id={userid}''').fetchone()
         if userfound:
             KILLMULTIPLIER, DEATHMULTIPLIER = 0.4, 0.08
-            HARDCAP = 90
+            HARDCAP = 92
             win_chance = random.uniform(LOWEST_ACCURACY, 55) \
                          + userfound[0] * KILLMULTIPLIER \
                          + userfound[1] * DEATHMULTIPLIER
@@ -438,7 +438,7 @@ def duel(update: Update, context: CallbackContext):
             if initiator_id != target_id:
                 # Tree for when the bot is not the target
                 if target_id != BOT.id:
-                    LOWEST_ACCURACY = 40
+                    LOWEST_ACCURACY = 45
                     # Get the player list
                     participant_list = [
                         (initiator_name, initiator_id,
@@ -456,7 +456,7 @@ def duel(update: Update, context: CallbackContext):
                     else:
                         _send_message('***RAPE GANG***')
                     # Get the winner and the loser
-                    winthreshold = random.uniform(LOWEST_ACCURACY, 100)
+                    winthreshold = random.uniform(0, 100)
                     winners, losers = [], []
                     for player in participant_list:
                         if player[2] > winthreshold:
@@ -504,7 +504,7 @@ def myscore(update: Update, context: CallbackContext):
             # 50 is maximum strength
             ADDITIONALSTR = min(50, ADDITIONALSTR)
             _send_reply(update, f'Твой K/D равен {user_data[0]}/{user_data[1]}.\n'
-                                f'Шанс победы из-за опыта повышен на {round(ADDITIONALSTR, 2)}%. (максимум 50%)\n'
+                                f'Шанс победы из-за опыта повышен на {round(ADDITIONALSTR, 2)}%. (максимум 55%)\n'
                                 f'P.S. +{KILLMULTIPLIER}% за убийство, +{DEATHMULTIPLIER}% за смерть.')
         else:
             _send_reply(update, f'Сначала подуэлься, потом спрашивай.')
