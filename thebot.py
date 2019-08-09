@@ -502,8 +502,8 @@ def myscore(update: Update, context: CallbackContext):
             KILLMULTIPLIER, DEATHMULTIPLIER = 0.4, 0.08
             ADDITIONALSTR = user_data[0] * KILLMULTIPLIER + user_data[1] * DEATHMULTIPLIER
             _send_reply(update, f'Твой K/D равен {user_data[0]}/{user_data[1]}.\n'
-                                f'Надбавка силы за опыт составляет {round(ADDITIONALSTR, 2)}.\n'
-                                f'P.S. {KILLMULTIPLIER} за убийство, {DEATHMULTIPLIER} за смерть.')
+                                f'Шанс победы из-за опыта повышен на {round(ADDITIONALSTR, 2)}%.\n'
+                                f'P.S. +{KILLMULTIPLIER}% за убийство, +{DEATHMULTIPLIER}% за смерть.')
         else:
             _send_reply(update, f'Сначала подуэлься, потом спрашивай.')
 
