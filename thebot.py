@@ -455,14 +455,18 @@ def duel(update: Update, context: CallbackContext):
                         _send_message('***ПИФ-ПАФ***')
                     else:
                         _send_message('***RAPE GANG***')
-                    # Get the winner and the loser
-                    winthreshold = random.uniform(0, 100)
+                    # Get the winner and the loser. Check 1
+                    winthreshold = random.uniform(0, 60)
                     winners, losers = [], []
                     for player in participant_list:
                         if player[2] > winthreshold:
                             winners.append(player)
                         else:
                             losers.append(player)
+                    # Get the winner and the loser. Check 2
+                    if len(winners) == 2:
+                        random.shuffle(winners)
+                        winners.pop()
                     # Make the scenario tree
                     if len(winners) == 0:
                         scenario = 'nonedead'
