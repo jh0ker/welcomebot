@@ -416,7 +416,8 @@ def duel(update: Update, context: CallbackContext):
         if scenario == 'nonedead':
             return string.replace('loser1', losers[0][3]).replace('loser2', losers[1][3])
         elif scenario == 'onedead':
-            return string.replace('winner', winners[0][3]).replace('loser', losers[0][3])
+            return string.replace('winner', winners[0][3]).replace('loser', losers[0][3]) + '' \
+                    f'\nПобеда за {winners[0][3]}!'
         elif scenario == 'alldead':
             return string.replace('winner1', winners[0][3]).replace('winner2', winners[1][3])
         elif scenario == 'suicide':
@@ -466,7 +467,7 @@ def duel(update: Update, context: CallbackContext):
                     # Get the winner and the loser. Check 2
                     if len(winners) == 2:
                         random.shuffle(winners)
-                        winners.pop()
+                        losers.append(winners.pop())
                     # Make the scenario tree
                     if len(winners) == 0:
                         scenario = 'nonedead'
