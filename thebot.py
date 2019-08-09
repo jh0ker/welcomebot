@@ -368,6 +368,15 @@ def duel(update: Update, context: CallbackContext):
         dbc.execute(f'INSERT OR IGNORE INTO duels (user_id, firstname) VALUES ("{loser[1]}", "{loser[0]}")')
         dbc.execute(f'UPDATE duels SET kills = kills + {p2_kd[0]} WHERE user_id={loser[1]}')
         dbc.execute(f'UPDATE duels SET deaths = deaths + {p2_kd[1]} WHERE user_id={loser[1]}')
+        # Update k/d
+        for player in (winner[1], loser[1]):
+            data = dbc.execute(f'SELECT kills, deaths from duels WHERE user_id={player}').fetchone()
+            try:
+                wr = data[0] / (data[0] + data[1]) * 100
+            except ZeroDivisionError:
+                wr = 100
+            dbc.execute(f'UPDATE duels SET '
+                        f'winpercent = {wr} WHERE user_id={player}')
         db.commit()
 
     if _command_antispam_passed(update):
@@ -460,17 +469,13 @@ def duelranking(update: Update, context: CallbackContext):
     """Get the top best duelists"""
     if _command_antispam_passed(update):
         table = ''
-        for query in (('Лучшие:\n', 'kills/(deaths+kills)'), ('Худшие:\n', 'deaths/(kills+deaths)')):
+        for query in (('Лучшие:\n', 'DESC'), ('Худшие:\n', 'ASC')):
             table += query[0]
             counter = 1
-            for q in dbc.execute(f'''SELECT user_id, firstname, kills, deaths 
-                                FROM "duels" ORDER BY {query[1]} LIMIT 5'''):
+            for q in dbc.execute(f'''SELECT user_id, firstname, kills, deaths, winpercent 
+                                FROM "duels" ORDER BY winpercent {query[1]} LIMIT 5'''):
                 table += f'№{counter} [{q[1]}](tg://user?id={q[0]})\t -\t {q[2]}/{q[3]}'
-                try:
-                    winrate = q[2]/(q[3] + q[2]) * 100
-                    table += f' ({round(winrate, 2)}%)\n'
-                except ZeroDivisionError:
-                    table += ' (100%)\n'
+                table += f' ({round(q[4], 2)}%)\n'
                 counter += 1
         _send_reply(update, table, parse_mode='Markdown')
 
@@ -782,6 +787,10 @@ def _create_tables():
     FOREIGN KEY(user_id) REFERENCES userdata(id),
     FOREIGN KEY(firstname) REFERENCES userdata(firstname))
     ''')
+    dbc.execute(f'''ALTER TABLE "duels" ADD winpercent NUMERIC DEFAULT 0''')
+    for data in dbc.execute(f'''SELECT user_id, kills, deaths from "duels"''').fetchall():
+        dbc.execute(f'''UPDATE "duels" SET winpercent={data[1]/(data[1]+data[2])*100} 
+        WHERE user_id={data[0]}''')
     # Commit the database
     db.commit()
 
