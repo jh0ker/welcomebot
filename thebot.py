@@ -463,10 +463,11 @@ def duelranking(update: Update, context: CallbackContext):
         for query in (('Лучшие:\n', 'kills/deaths'), ('Худшие:\n', 'deaths/kills')):
             table += query[0]
             counter = 1
-            for q in dbc.execute(f'''SELECT * FROM "duels" ORDER BY {query[1]} LIMIT 5'''):
+            for q in dbc.execute(f'''SELECT user_id, firstname, kills, deaths 
+                                FROM "duels" ORDER BY {query[1]} LIMIT 5'''):
                 table += f'№{counter} [{q[1]}](tg://user?id={q[0]})\t -\t {q[2]}/{q[3]}'
                 try:
-                    table += f' ({int(q[2]/q[3])}%)\n'
+                    table += f' ({round(q[2]/q[3], 2)}%)\n'
                 except ZeroDivisionError:
                     table += ' (100%)\n'
                 counter += 1
