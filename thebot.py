@@ -363,6 +363,21 @@ def slap(update: Update, context: CallbackContext):
 def duel(update: Update, context: CallbackContext):
     """Duel to solve any kind of argument"""
 
+    def _getuserstr(userid: int) -> float:
+        """Get strength if the user to assist in duels"""
+        nonlocal LOWEST_ACCURACY
+        userfound = dbc.execute(f'''SELECT kills, deaths from "duels"
+        WHERE user_id={userid}''').fetchone()
+        if userfound:
+            KILLMULTIPLIER, DEATHMULTIPLIER = 0.4, 0.08
+            HARDCAP = 90
+            win_chance = random.uniform(LOWEST_ACCURACY, 55) \
+                         + userfound[0] * KILLMULTIPLIER \
+                         + userfound[1] * DEATHMULTIPLIER
+            return min(win_chance, HARDCAP)
+        else:
+            return random.randrange(LOWEST_ACCURACY, 55)
+
     def _send_message(text_message, sleep_time: float = 0.25):
         """Shorten normal messages with sleep"""
         nonlocal update
@@ -373,17 +388,19 @@ def duel(update: Update, context: CallbackContext):
 
     def _score_the_results(p1_kd, p2_kd):
         """Score the results in the database"""
-        nonlocal winner, loser
+        nonlocal winners, losers
         # Set winner (p1) data
-        dbc.execute(f'INSERT OR IGNORE INTO duels (user_id, firstname) VALUES ("{winner[1]}", "{winner[0]}")')
-        dbc.execute(f'UPDATE duels SET kills = kills + {p1_kd[0]} WHERE user_id={winner[1]}')
-        dbc.execute(f'UPDATE duels SET deaths = deaths + {p1_kd[1]} WHERE user_id={winner[1]}')
+        dbc.execute(f'INSERT OR IGNORE INTO duels (user_id, firstname) '
+                    f'VALUES ("{winners[0][1]}", "{winners[0][0]}")')
+        dbc.execute(f'UPDATE duels SET kills = kills + {p1_kd[0]} WHERE user_id={winners[0][1]}')
+        dbc.execute(f'UPDATE duels SET deaths = deaths + {p1_kd[1]} WHERE user_id={winners[0][1]}')
         # Set loser (p2) data
-        dbc.execute(f'INSERT OR IGNORE INTO duels (user_id, firstname) VALUES ("{loser[1]}", "{loser[0]}")')
-        dbc.execute(f'UPDATE duels SET kills = kills + {p2_kd[0]} WHERE user_id={loser[1]}')
-        dbc.execute(f'UPDATE duels SET deaths = deaths + {p2_kd[1]} WHERE user_id={loser[1]}')
+        dbc.execute(f'INSERT OR IGNORE INTO duels (user_id, firstname) '
+                    f'VALUES ("{losers[0][1]}", "{losers[0][0]}")')
+        dbc.execute(f'UPDATE duels SET kills = kills + {p2_kd[0]} WHERE user_id={losers[0][1]}')
+        dbc.execute(f'UPDATE duels SET deaths = deaths + {p2_kd[1]} WHERE user_id={losers[0][1]}')
         # Update k/d
-        for player in (winner[1], loser[1]):
+        for player in (winners[0][1], losers[0][1]):
             data = dbc.execute(f'SELECT kills, deaths from duels WHERE user_id={player}').fetchone()
             try:
                 wr = data[0] / (data[0] + data[1]) * 100
@@ -392,6 +409,18 @@ def duel(update: Update, context: CallbackContext):
             dbc.execute(f'UPDATE duels SET '
                         f'winpercent = {wr} WHERE user_id={player}')
         db.commit()
+
+    def _usenames(string: str) -> str:
+        """Insert names into the strings"""
+        nonlocal winners, losers, scenario
+        if scenario == 'nonedead':
+            return string.replace('loser1', losers[0][3]).replace('loser2', losers[1][3])
+        elif scenario == 'onedead':
+            return string.replace('winner', winners[0][3]).replace('loser', losers[0][3])
+        elif scenario == 'alldead':
+            return string.replace('winner1', winners[0][3]).replace('winner2', winners[1][3])
+        elif scenario == 'suicide':
+            return string.replace('loser', initiator_tag)
 
     if _command_antispam_passed(update):
         # If not replied, ask for the target
@@ -402,13 +431,20 @@ def duel(update: Update, context: CallbackContext):
             # Shorten the code, format the names
             initiator_name, initiator_id = _get(update, 'init_name'), _get(update, 'init_id')
             target_name, target_id = _get(update, 'target_name'), _get(update, 'target_id')
+            initiator_tag = f'[{initiator_name}](tg://user?id={initiator_id})'
+            target_tag = f'[{target_name}](tg://user?id={target_id})'
             answered = False
             # Tree for when the target is not self
             if initiator_id != target_id:
                 # Tree for when the bot is not the target
                 if target_id != BOT.id:
-                    participant_list = [(initiator_name, initiator_id),
-                                        (target_name, target_id)]
+                    LOWEST_ACCURACY = 40
+                    # Get the player list
+                    participant_list = [
+                        (initiator_name, initiator_id,
+                         _getuserstr(initiator_id), initiator_tag),
+                        (target_name, target_id,
+                         _getuserstr(target_id), target_tag)]
                     # Start the dueling text
                     _send_message('Дуэлисты расходятся...')
                     _send_message('Готовятся к выстрелу...')
@@ -420,51 +456,39 @@ def duel(update: Update, context: CallbackContext):
                     else:
                         _send_message('***RAPE GANG***')
                     # Get the winner and the loser
-                    winner = participant_list.pop(random.choice([0, 1]))
-                    loser = participant_list[0]
-                    winner_tag = f'[{winner[0].capitalize()}](tg://user?id={winner[1]})'
-                    loser_tag = f'[{loser[0].capitalize()}](tg://user?id={loser[1]})'
-                    # Make possible scenarios - 15% miss, 85% hit
-                    scenarios = []
-                    scenarios += ['miss'] * 3 + ['hit'] * 17
-                    random.shuffle(scenarios)
-                    scenario = scenarios.pop()
+                    winthreshold = random.uniform(LOWEST_ACCURACY, 100)
+                    winners, losers = [], []
+                    for player in participant_list:
+                        if player[2] > winthreshold:
+                            winners.append(player)
+                        else:
+                            losers.append(player)
                     # Make the scenario tree
-                    if scenario == 'hit':
-                        # Get weighted scenarios for 1v1 (onewinner or alldead)
-                        weighted_direction = []
-                        for direction, scenario in DUELS['1v1'].items():
-                            weighted_direction += [direction] * len(scenario)
-                        duel_type = random.choice(weighted_direction)
-                        event = random.choice(DUELS['1v1'][duel_type])
-                        duel_result = event.replace('winner', winner_tag).replace('loser', loser_tag)
-                        if duel_type == 'onewinner':
-                            duel_result += f'!\nРешительная победа за {winner_tag}.'
-                            _score_the_results((1, 0), (0, 1))
-                        else:  # 'alldead', no result scoring
-                            duel_result += '\nВ этот раз ничья! (0, 0)'
-                    else:  # 'miss'
-                        duel_result = random.choice(DUELS['1v1']['miss'])
-                        duel_result = \
-                            duel_result.replace('winner', winner_tag).replace('loser', loser_tag)
+                    if len(winners) == 0:
+                        scenario = 'nonedead'
+                    elif len(winners) == 1:
+                        scenario = 'onedead'
+                        _score_the_results((1, 0), (0, 1))
+                    else:
+                        scenario = 'alldead'
+                    # Get the result
+                    duel_result = _usenames(random.choice(DUELS['1v1'][scenario]))
                 else:
                     # If the bot is the target, send an angry message
-                    duel_result = random.choice(DUELS['bot'])
-                    _send_reply(update, duel_result)
-                    answered = True
+                    scenario = 'bot'
+                    duel_result = random.choice(DUELS[scenario])
             else:
                 # Suicide message
-                initiator_name_formatted = f'[{initiator_name}](tg://user?id={initiator_id})'
-                duel_result = f"{random.choice(DUELS['self']).replace('loser', initiator_name_formatted)}!\n" \
+                scenario = 'suicide'
+                duel_result = f"{_usenames(random.choice(DUELS[scenario]))}!\n" \
                               f"За суицид экспа/статы не даются!"
             # Give result if not answered and unless the connection died.
             # If it did, try another message.
-            if not answered:
-                try:
-                    _send_message(duel_result, sleep_time=0)
-                except TelegramError:
-                    _send_message('Пошёл ливень и дуэль была отменена.\n'
-                                  'Приносим прощения! Заходите ещё!', sleep_time=0)
+            try:
+                _send_message(duel_result, sleep_time=0)
+            except TelegramError:
+                _send_message('Пошёл ливень и дуэль была отменена.\n'
+                              'Приносим прощения! Заходите ещё!', sleep_time=0)
 
 
 @run_async
@@ -475,7 +499,11 @@ def myscore(update: Update, context: CallbackContext):
             f'''SELECT kills, deaths FROM duels WHERE 
             user_id={update.message.from_user.id}''').fetchone()
         if user_data is not None:
-            _send_reply(update, f'Твой K/D равен {user_data[0]}/{user_data[1]}.')
+            KILLMULTIPLIER, DEATHMULTIPLIER = 0.4, 0.08
+            ADDITIONALSTR = user_data[0] * KILLMULTIPLIER + user_data[1] * DEATHMULTIPLIER
+            _send_reply(update, f'Твой K/D равен {user_data[0]}/{user_data[1]}.\n'
+                                f'Надбавка силы за опыт составляет {ADDITIONALSTR}.\n'
+                                f'P.S. {KILLMULTIPLIER} за убийство, {DEATHMULTIPLIER} за смерть.')
         else:
             _send_reply(update, f'Сначала подуэлься, потом спрашивай.')
 
@@ -489,7 +517,8 @@ def duelranking(update: Update, context: CallbackContext):
             table += query[0]
             counter = 1
             for q in dbc.execute(f'''SELECT firstname, kills, deaths, winpercent 
-                                FROM "duels" ORDER BY winpercent {query[1]} LIMIT 5'''):
+                                FROM "duels" WHERE kills>2 and deaths>2 
+                                ORDER BY winpercent {query[1]} LIMIT 5'''):
                 table += f'№{counter} {q[0]}\t -\t {q[1]}/{q[2]}'
                 table += f' ({round(q[3], 2)}%)\n'
                 counter += 1

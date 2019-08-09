@@ -5,13 +5,14 @@ Authors (telegrams) - @doitforgachi, @calldoctor
 
 DUELS = {
     '1v1': {
-        'onewinner': [
+        'onedead': [
             'winner подстрелил loser как свинью',
             'winner нашпиговал loser пулями',
             'winner сделал из loser решето',
             'winner сделал из loser дуршлаг',
             'winner сделал из loser сито',
-            'winner сделал из loser сито-хуито',
+            'winner сделал из loser сито-диспасито',
+            'winner сделал из loser сито-хуэсито',
             'winner сделал из loser тяночку, отстрелив ему мошонку',
             'winner сделал в loser пару новых дырок',
             'winner пораскинул мозгами loser',
@@ -26,16 +27,15 @@ DUELS = {
             'loser не пришел на перестрелку, потому что забыл перевести время',
             ],
         'alldead': [
-            'winner пришел на дуэль с бананом и всех взорвал. Никто не выжил нахуй!',
-            'winner и loser...УБИЛИ ДРУГ ДРУГА!\nОНИ УБИЛИ ДРУГ ДРУГА, КАРЛ!',
+            'winner1 пришел на дуэль с бананом и всех взорвал. Никто не выжил нахуй!',
+            'winner1 и winner2...УБИЛИ ДРУГ ДРУГА!\nОНИ УБИЛИ ДРУГ ДРУГА, КАРЛ!',
             '\U0001F33C\U0001F33C\U0001F33CMAKE LOVE NOT WAR\U0001F33C\U0001F33C\U0001F33C',
             ],
-        'miss': [
-            'winner и loser оба выстрелили в никуда!',
-            'loser и winner оба выстрелили в никуда!',
+        'nonedead': [
+            'loser1 и loser2 оба выстрелили в никуда!',
             ]
         },
-    'self': [
+    'suicide': [
         'loser застрелился',
         'loser закосплеил Курта Кобейна',
         'loser вступил в клуб 27',
