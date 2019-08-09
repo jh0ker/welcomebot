@@ -467,7 +467,8 @@ def duelranking(update: Update, context: CallbackContext):
                                 FROM "duels" ORDER BY {query[1]} LIMIT 5'''):
                 table += f'№{counter} [{q[1]}](tg://user?id={q[0]})\t -\t {q[2]}/{q[3]}'
                 try:
-                    table += f' ({round(q[2]/q[3], 2)}%)\n'
+                    winrate = q[2]/(q[3] + q[2]) * 100
+                    table += f' ({round(winrate, 2)}%)\n'
                 except ZeroDivisionError:
                     table += ' (100%)\n'
                 counter += 1
