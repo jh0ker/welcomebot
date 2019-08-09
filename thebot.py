@@ -5,11 +5,11 @@ Authors (telegrams) - @doitforgachi, @dovaogedot
 import datetime
 import logging
 import random
-from os import environ
-from time import sleep
 import sqlite3
+from time import sleep
 
 import requests
+from os import environ
 from telegram import Bot
 from telegram import TelegramError
 from telegram import Update
@@ -20,10 +20,10 @@ from telegram.ext import MessageHandler
 from telegram.ext import Updater
 from telegram.ext.dispatcher import run_async
 
+from modules.duels import DUELS
 # Import huts, slaps, duels
 from modules.huts import HUTS
 from modules.slaps import SLAPS
-from modules.duels import DUELS
 
 
 # Enable logging into file
@@ -59,11 +59,13 @@ ERROR_DELAY = 5 * 60  # One minute
 REQUEST_TIMEOUT = 1.2
 
 
+@run_async
 def start(update: Update, context: CallbackContext):
     """Send out a start message"""
     _send_reply(update, 'Думер бот в чате. Для списка функций используйте /help.')
 
 
+@run_async
 def help(update: Update, context: CallbackContext):
     """Help message"""
     if _command_antispam_passed(update):
@@ -96,6 +98,7 @@ def help(update: Update, context: CallbackContext):
         _send_reply(update, help_text, parse_mode='HTML')
 
 
+@run_async
 def whatsnew(update: Update, context: CallbackContext):
     """Reply with all new goodies"""
     if _command_antispam_passed(update):
@@ -106,6 +109,7 @@ def whatsnew(update: Update, context: CallbackContext):
         _send_reply(update, latest_changes, parse_mode='Markdown')
 
 
+@run_async
 def rules(update: Update, context: CallbackContext):
     """Reply to the user with the rules of the chat"""
     if _command_antispam_passed(update):
@@ -149,6 +153,7 @@ def farewell(update: Update, context: CallbackContext):
             update, f"{update.message.left_chat_member.first_name}'a убили, красиво, уважаю.")
 
 
+@run_async
 def message_filter(update: Update, context: CallbackContext):
     """Replies to all messages
     Думер > Земляночка > """
@@ -174,6 +179,7 @@ def message_filter(update: Update, context: CallbackContext):
         pass
 
 
+@run_async
 def _doomer_word_handler(update):
     # Make the preparations with variations of the word with latin letters
     variations_with_latin_letters = [
@@ -205,6 +211,7 @@ def _doomer_word_handler(update):
     return reply_word
 
 
+@run_async
 def _anprim_word_handler(update):
     """Image of earth hut"""
     variations = ['земляночку бы', 'земляночкy бы',
@@ -219,12 +226,14 @@ def _anprim_word_handler(update):
     return False
 
 
+@run_async
 def flip(update: Update, context: CallbackContext):
     """Flip a Coin"""
     if _command_antispam_passed(update):
         _send_reply(update, random.choice(['Орёл!', 'Решка!']))
 
 
+@run_async
 def myiq(update: Update, context: CallbackContext):
     """Return IQ level (1 - 200)"""
     if _command_antispam_passed(update):
@@ -241,6 +250,7 @@ def myiq(update: Update, context: CallbackContext):
         _send_reply(update, reply_text)
 
 
+@run_async
 def muhdick(update: Update, context: CallbackContext):
     """Return dick size in cm (1 - 25)"""
     if _command_antispam_passed(update):
@@ -254,6 +264,7 @@ def muhdick(update: Update, context: CallbackContext):
         _send_reply(update, reply_text)
 
 
+@run_async
 def dog(update: Update, context: CallbackContext):
     """Get a random dog image"""
     # Go to a website with a json, that contains a link, pass the link to the BOT,
@@ -282,6 +293,7 @@ def dog(update: Update, context: CallbackContext):
             _send_reply(update, 'Думер умер на пути к серверу.')
 
 
+@run_async
 def cat(update: Update, context: CallbackContext):
     """Get a random cat image"""
     # Go to a website with a json, that contains a link, pass the link to the BOT,
@@ -298,6 +310,7 @@ def cat(update: Update, context: CallbackContext):
             _send_reply(update, 'Думер умер на пути к серверу.')
 
 
+@run_async
 def dadjoke(update: Update, context: CallbackContext):
     """Get a random dad joke"""
     if _command_antispam_passed(update):
@@ -312,6 +325,7 @@ def dadjoke(update: Update, context: CallbackContext):
             _send_reply(update, 'Думер умер на пути к серверу.')
 
 
+@run_async
 def slap(update: Update, context: CallbackContext):
     """Slap with random item"""
     if _command_antispam_passed(update):
@@ -453,6 +467,7 @@ def duel(update: Update, context: CallbackContext):
                                   'Приносим прощения! Заходите ещё!', sleep_time=0)
 
 
+@run_async
 def myscore(update: Update, context: CallbackContext):
     """Give the user his K/D for duels"""
     if _command_antispam_passed(update):
@@ -465,6 +480,7 @@ def myscore(update: Update, context: CallbackContext):
             _send_reply(update, f'Сначала подуэлься, потом спрашивай.')
 
 
+@run_async
 def duelranking(update: Update, context: CallbackContext):
     """Get the top best duelists"""
     if _command_antispam_passed(update):
@@ -478,6 +494,7 @@ def duelranking(update: Update, context: CallbackContext):
                 table += f' ({round(q[3], 2)}%)\n'
                 counter += 1
         _send_reply(update, table, parse_mode='Markdown')
+
 
 @run_async
 def mute(update: Update, context: CallbackContext):
@@ -511,6 +528,7 @@ def mute(update: Update, context: CallbackContext):
     else:
         if _command_antispam_passed(update):
             _send_reply(update, 'Пошёл нахуй, ты не админ.')
+
 
 @run_async
 def unmute(update: Update, context: CallbackContext):
@@ -554,6 +572,7 @@ def unmute(update: Update, context: CallbackContext):
         if _command_antispam_passed(update):
             _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
+
 @run_async
 def _getsqllist(update, query: str):
     """Get the list of muted ids"""
@@ -590,6 +609,7 @@ def _getsqllist(update, query: str):
         if _command_antispam_passed(update):
             _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
+
 @run_async
 def immune(update: Update, context: CallbackContext):
     """Add user to exceptions"""
@@ -605,6 +625,7 @@ def immune(update: Update, context: CallbackContext):
     else:
         if _command_antispam_passed(update):
             _send_reply(update, 'Пошёл нахуй, ты не админ.')
+
 
 @run_async
 def unimmune(update: Update, context: CallbackContext):
@@ -626,10 +647,12 @@ def unimmune(update: Update, context: CallbackContext):
         if _command_antispam_passed(update):
             _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
+
 @run_async
 def immunelist(update: Update, context: CallbackContext):
     """Get the exceptions list"""
     return _getsqllist(update, 'immunelist')
+
 
 @run_async
 def mutelist(update: Update, context: CallbackContext):
@@ -724,6 +747,7 @@ def check_cooldown(update, whattocheck, cooldown):
         return True
 
 
+@run_async
 def dev(update: Update, context: CallbackContext):
     """Send the dev of developer commands"""
     if update.message.from_user.id == DEVELOPER_ID:
@@ -734,6 +758,7 @@ def dev(update: Update, context: CallbackContext):
                     "/unimmune - Снять иммунитет;\n"
                     "/immunelist - Лист людей с имунитетами;\n")
         _send_reply(update, commands)
+
 
 def _create_tables():
     """Create a muted databases"""
