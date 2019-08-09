@@ -784,13 +784,10 @@ def _create_tables():
     firstname TEXT DEFAULT NULL,
     kills NUMERIC DEFAULT 0,
     deaths NUMERIC DEFAULT 0,
+    winpercent NUMERIC DEFAULT 0,
     FOREIGN KEY(user_id) REFERENCES userdata(id),
     FOREIGN KEY(firstname) REFERENCES userdata(firstname))
     ''')
-    dbc.execute(f'''ALTER TABLE "duels" ADD winpercent NUMERIC DEFAULT 0''')
-    for data in dbc.execute(f'''SELECT user_id, kills, deaths from "duels"''').fetchall():
-        dbc.execute(f'''UPDATE "duels" SET winpercent={data[1]/(data[1]+data[2])*100} 
-        WHERE user_id={data[0]}''')
     # Commit the database
     db.commit()
 
