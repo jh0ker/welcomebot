@@ -7,9 +7,10 @@ import logging
 import random
 import sqlite3
 from time import sleep
+from os import environ
 
 import requests
-from os import environ
+import telegram
 from telegram import Bot
 from telegram import TelegramError
 from telegram import Update
@@ -34,14 +35,6 @@ LOGGER = logging.getLogger(__name__)
 # Import the database with muted, exceptions and duel data
 db = sqlite3.connect('doomerbot.db', check_same_thread=False)
 dbc = db.cursor()
-
-# Import the changelog
-try:
-    with open('changelog.md', 'r', encoding='utf-8') as changelog:
-        CHANGES = changelog.read()
-except (EOFError, FileNotFoundError) as changelog_err:
-    LOGGER.error(changelog_err)
-    CHANGES = 'Не смог добраться до изменений. Что-то не так.'
 
 # Bot initialization
 TOKEN = environ.get("TG_BOT_TOKEN")
@@ -102,9 +95,16 @@ def help(update: Update, context: CallbackContext):
 def whatsnew(update: Update, context: CallbackContext):
     """Reply with all new goodies"""
     if _command_antispam_passed(update):
+        # Import the changelog
+        try:
+            with open('changelog.md', 'r', encoding='utf-8') as changelog:
+                CHANGES = changelog.read()
+        except (EOFError, FileNotFoundError) as changelog_err:
+            LOGGER.error(changelog_err)
+            CHANGES = 'Не смог добраться до изменений. Что-то не так.'
         # Get the last 3 day changes
         latest_changes = ''
-        for change in CHANGES.split('\n\n')[:3]:
+        for change in CHANGES.split('\n\n')[:2]:
             latest_changes += change + '\n\n'
         _send_reply(update, latest_changes, parse_mode='Markdown')
 
@@ -149,8 +149,12 @@ def farewell(update: Update, context: CallbackContext):
     """Goodbye message"""
     # A a BOT was removed
     if update.message.left_chat_member.is_bot:
-        _send_reply(
-            update, f"{update.message.left_chat_member.first_name}'a убили, красиво, уважаю.")
+        try:
+            _send_reply(
+                update, f"{update.message.left_chat_member.first_name}'a убили, красиво, уважаю.")
+        # When the bot itself was kicked
+        except telegram.error.Unauthorized:
+            pass
 
 
 @run_async
@@ -365,18 +369,20 @@ def duel(update: Update, context: CallbackContext):
 
     def _getuserstr(userid: int) -> float:
         """Get strength if the user to assist in duels"""
-        nonlocal LOWEST_ACCURACY
-        userfound = dbc.execute(f'''SELECT kills, deaths from "duels"
+        nonlocal THRESHHOLDCAP
+        userfound = dbc.execute(f'''SELECT kills, deaths from {tablename}
         WHERE user_id={userid}''').fetchone()
+        LOW_BASE_ACCURACY = 40
+        HIGH_BASE_ACCURACY = 60
         if userfound:
-            KILLMULTIPLIER, DEATHMULTIPLIER = 0.4, 0.08
-            HARDCAP = 92
-            win_chance = random.uniform(LOWEST_ACCURACY, 55) \
-                         + userfound[0] * KILLMULTIPLIER \
-                         + userfound[1] * DEATHMULTIPLIER
-            return min(win_chance, HARDCAP)
+            HARDCAP = THRESHHOLDCAP * 0.95
+            KILLMULT, DEATHMULT = 0.16, 0.06
+            STRENGTH = random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY) \
+                         + userfound[0] * KILLMULT \
+                         + userfound[1] * DEATHMULT
+            return min(STRENGTH, HARDCAP)
         else:
-            return random.randrange(LOWEST_ACCURACY, 55)
+            return random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY)
 
     def _send_message(text_message, sleep_time: float = 0.25):
         """Shorten normal messages with sleep"""
@@ -389,25 +395,30 @@ def duel(update: Update, context: CallbackContext):
     def _score_the_results(p1_kd, p2_kd):
         """Score the results in the database"""
         nonlocal winners, losers
-        # Set winner (p1) data
-        dbc.execute(f'INSERT OR IGNORE INTO duels (user_id, firstname) '
-                    f'VALUES ("{winners[0][1]}", "{winners[0][0]}")')
-        dbc.execute(f'UPDATE duels SET kills = kills + {p1_kd[0]} WHERE user_id={winners[0][1]}')
-        dbc.execute(f'UPDATE duels SET deaths = deaths + {p1_kd[1]} WHERE user_id={winners[0][1]}')
-        # Set loser (p2) data
-        dbc.execute(f'INSERT OR IGNORE INTO duels (user_id, firstname) '
-                    f'VALUES ("{losers[0][1]}", "{losers[0][0]}")')
-        dbc.execute(f'UPDATE duels SET kills = kills + {p2_kd[0]} WHERE user_id={losers[0][1]}')
-        dbc.execute(f'UPDATE duels SET deaths = deaths + {p2_kd[1]} WHERE user_id={losers[0][1]}')
-        # Update k/d
-        for player in (winners[0][1], losers[0][1]):
-            data = dbc.execute(f'SELECT kills, deaths from duels WHERE user_id={player}').fetchone()
+        # Update data
+        winner, loser = winners[0], losers[0]
+        counter = 0
+        for player in (winner, loser):
+            if counter == 0:
+                kd = p1_kd
+            else:  # counter == 1
+                kd = p2_kd
+            userid, firstname = player[1], player[0]
+            dbc.execute(f'INSERT OR IGNORE INTO {tablename} (user_id, firstname) '
+                        f'VALUES ("{userid}", "{firstname}")')
+            dbc.execute(f'UPDATE {tablename} SET kills = kills + {kd[0]} '
+                        f'WHERE user_id={userid}')
+            dbc.execute(f'UPDATE {tablename} SET deaths = deaths + {kd[1]} '
+                        f'WHERE user_id={userid}')
+            data = dbc.execute(f'SELECT kills, deaths from {tablename} '
+                               f'WHERE user_id={userid}').fetchone()
             try:
                 wr = data[0] / (data[0] + data[1]) * 100
             except ZeroDivisionError:
                 wr = 100
-            dbc.execute(f'UPDATE duels SET '
-                        f'winpercent = {wr} WHERE user_id={player}')
+            dbc.execute(f'UPDATE {tablename} SET winpercent = {wr} '
+                        f'WHERE user_id={userid}')
+            counter += 1
         db.commit()
 
     def _usenames(string: str) -> str:
@@ -417,29 +428,31 @@ def duel(update: Update, context: CallbackContext):
             return string.replace('loser1', losers[0][3]).replace('loser2', losers[1][3])
         elif scenario == 'onedead':
             return string.replace('winner', winners[0][3]).replace('loser', losers[0][3]) + '' \
-                    f'\nПобеда за {winners[0][3]}!'
+                                                                                            f'\nПобеда за ' \
+                                                                                            f'{winners[0][3]}!'
         elif scenario == 'alldead':
             return string.replace('winner1', winners[0][3]).replace('winner2', winners[1][3])
         elif scenario == 'suicide':
             return string.replace('loser', initiator_tag)
 
     if _command_antispam_passed(update):
+        tablename = f"\"duels{update.message.chat_id}\""
+        _create_duel_table(update)
         # If not replied, ask for the target
         if update.message.reply_to_message is None:
             _send_reply(update, 'С кем дуэль проводить будем?\n'
                                 'Чтобы подуэлиться, надо чтобы вы ответили вашему оппоненту.')
         else:
             # Shorten the code, format the names
+            THRESHHOLDCAP = 80
             initiator_name, initiator_id = _get(update, 'init_name'), _get(update, 'init_id')
             target_name, target_id = _get(update, 'target_name'), _get(update, 'target_id')
             initiator_tag = f'[{initiator_name}](tg://user?id={initiator_id})'
             target_tag = f'[{target_name}](tg://user?id={target_id})'
-            answered = False
             # Tree for when the target is not self
             if initiator_id != target_id:
                 # Tree for when the bot is not the target
                 if target_id != BOT.id:
-                    LOWEST_ACCURACY = 45
                     # Get the player list
                     participant_list = [
                         (initiator_name, initiator_id,
@@ -457,7 +470,7 @@ def duel(update: Update, context: CallbackContext):
                     else:
                         _send_message('***RAPE GANG***')
                     # Get the winner and the loser. Check 1
-                    winthreshold = random.uniform(0, 60)
+                    winthreshold = random.uniform(0, THRESHHOLDCAP)
                     winners, losers = [], []
                     for player in participant_list:
                         if player[2] > winthreshold:
@@ -500,17 +513,30 @@ def duel(update: Update, context: CallbackContext):
 def myscore(update: Update, context: CallbackContext):
     """Give the user his K/D for duels"""
     if _command_antispam_passed(update):
-        user_data = dbc.execute(
-            f'''SELECT kills, deaths FROM duels WHERE 
-            user_id={update.message.from_user.id}''').fetchone()
-        if user_data is not None:
-            KILLMULTIPLIER, DEATHMULTIPLIER = 0.4, 0.08
-            ADDITIONALSTR = user_data[0] * KILLMULTIPLIER + user_data[1] * DEATHMULTIPLIER
-            # 50 is maximum strength
-            ADDITIONALSTR = min(47, ADDITIONALSTR)
-            _send_reply(update, f'Твой K/D равен {user_data[0]}/{user_data[1]}.\n'
-                                f'Шанс победы из-за опыта повышен на {round(ADDITIONALSTR, 2)}%. (максимум 47%)\n'
-                                f'P.S. +{KILLMULTIPLIER}% за убийство, +{DEATHMULTIPLIER}% за смерть.')
+        tablename = f"\"duels{update.message.chat_id}\""
+        _create_duel_table(update)
+        u_data = dbc.execute(
+            f'''SELECT kills, deaths FROM {tablename} WHERE 
+            user_id={update.message.from_user.id}
+            ''').fetchone()
+        if u_data is not None:
+            # Get the kill, death multiplier and their percentage to total
+            KILLMULT, DEATHMULT = 0.16, 0.06
+            WINTHRESHOLDMAX = 80
+            KILLMULTPERC = round(KILLMULT / WINTHRESHOLDMAX * 100, 2)
+            DEATHMULTPERC = round(DEATHMULT / WINTHRESHOLDMAX * 100, 2)
+            LOW_BASE_ACCURACY = 40
+            # Get the HARDCAP to additional strength
+            ADDITIONALHARDCAP = WINTHRESHOLDMAX * 0.95 - LOW_BASE_ACCURACY
+            # Get the current additional strength
+            ADDITIONALSTR = u_data[0] * KILLMULT + u_data[1] * DEATHMULT
+            # 36 is maximum additional strength
+            ADDITIONALSTR = min(ADDITIONALHARDCAP, ADDITIONALSTR)
+            # Calculate the winrate increase
+            WRINCREASE = round(ADDITIONALSTR / WINTHRESHOLDMAX * 100, 2)
+            _send_reply(update, f'Твой K/D равен {u_data[0]}/{u_data[1]}.\n'
+                                f'Шанс победы из-за опыта повышен на {WRINCREASE}%. (максимум 45%)\n'
+                                f'P.S. +{KILLMULTPERC}% за убийство, +{DEATHMULTPERC}% за смерть.')
         else:
             _send_reply(update, f'Сначала подуэлься, потом спрашивай.')
 
@@ -520,11 +546,15 @@ def duelranking(update: Update, context: CallbackContext):
     """Get the top best duelists"""
     if _command_antispam_passed(update):
         table = ''
+        # Duels table create
+        _create_duel_table(update)
         for query in (('Лучшие:\n', 'DESC'), ('Худшие:\n', 'ASC')):
             table += query[0]
             counter = 1
             for q in dbc.execute(f'''SELECT firstname, kills, deaths, winpercent 
-                                FROM "duels" WHERE kills>2 and deaths>2 
+                                FROM "duels{update.message.chat_id}" 
+                                WHERE kills>2 
+                                AND deaths>2 
                                 ORDER BY winpercent {query[1]} LIMIT 5'''):
                 table += f'№{counter} {q[0]}\t -\t {q[1]}/{q[2]}'
                 table += f' ({round(q[3], 2)}%)\n'
@@ -610,43 +640,6 @@ def unmute(update: Update, context: CallbackContext):
 
 
 @run_async
-def _getsqllist(update, query: str):
-    """Get the list of muted ids"""
-    # Only for developer
-    if _get(update, 'init_id') == DEVELOPER_ID:
-        insert = {}
-        if query == 'mutelist':
-            insert['variables'] = "\"firstname\", \"reason\""
-            insert['table'] = "\"muted\""
-            insert['constraint'] = f"WHERE chat_id={update.message.chat_id}"
-        else:  # 'immunelist'
-            insert['variables'] = "\"firstname\""
-            insert['table'] = "\"exceptions\""
-            insert['constraint'] = ""
-        # Somewhat of a table
-        table = ''
-        # If there are muted targets, send reply, else say that there is nobody
-        listnumber = 1
-        for entry in dbc.execute(f"""SELECT {insert['variables']} FROM {insert['table']} 
-                                {insert['constraint']}""").fetchall():
-            table += f'{listnumber}. {entry[0]}\n'
-            if query == 'mutelist':
-                if entry[1]:
-                    table += f'Причина: {entry[1].capitalize()}\n'
-                else:
-                    table += 'Причина не указана.\n'
-            listnumber += 1
-        if table:
-            _send_reply(update, table)
-        else:
-            _send_reply(update, 'Список пуст.')
-    # If an ordinary used tries to use the command
-    else:
-        if _command_antispam_passed(update):
-            _send_reply(update, 'Пошёл нахуй, ты не админ.')
-
-
-@run_async
 def immune(update: Update, context: CallbackContext):
     """Add user to exceptions"""
     if update.message.from_user.id == DEVELOPER_ID:
@@ -703,19 +696,6 @@ def leave(update: Update, context: CallbackContext):
     else:
         if _command_antispam_passed(update):
             _send_reply(update, 'Пошёл нахуй, ты не админ.')
-
-
-def _command_antispam_passed(update):
-    """
-    Check if the user is spamming
-    Delay of INDIVIDUAL_USER_DELAY minute(s) for individual user commands, changeable.
-    """
-    return check_cooldown(update, 'lastcommandreply', INDIVIDUAL_USER_DELAY)
-
-
-def _text_antispam_passed(update):
-    """Checks if somebody is spamming reply_all words"""
-    return check_cooldown(update, 'lasttextreply', INDIVIDUAL_REPLY_DELAY)
 
 
 def check_cooldown(update, whattocheck, cooldown):
@@ -796,6 +776,56 @@ def dev(update: Update, context: CallbackContext):
         _send_reply(update, commands)
 
 
+@run_async
+def _getsqllist(update, query: str):
+    """Get the list of muted ids"""
+    # Only for developer
+    if _get(update, 'init_id') == DEVELOPER_ID:
+        insert = {}
+        if query == 'mutelist':
+            insert['variables'] = "\"firstname\", \"reason\""
+            insert['table'] = "\"muted\""
+            insert['constraint'] = f"WHERE chat_id={update.message.chat_id}"
+        else:  # 'immunelist'
+            insert['variables'] = "\"firstname\""
+            insert['table'] = "\"exceptions\""
+            insert['constraint'] = ""
+        # Somewhat of a table
+        table = ''
+        # If there are muted targets, send reply, else say that there is nobody
+        listnumber = 1
+        for entry in dbc.execute(f"""SELECT {insert['variables']} FROM {insert['table']} 
+                                {insert['constraint']}""").fetchall():
+            table += f'{listnumber}. {entry[0]}\n'
+            if query == 'mutelist':
+                if entry[1]:
+                    table += f'Причина: {entry[1].capitalize()}\n'
+                else:
+                    table += 'Причина не указана.\n'
+            listnumber += 1
+        if table:
+            _send_reply(update, table)
+        else:
+            _send_reply(update, 'Список пуст.')
+    # If an ordinary used tries to use the command
+    else:
+        if _command_antispam_passed(update):
+            _send_reply(update, 'Пошёл нахуй, ты не админ.')
+
+
+def _command_antispam_passed(update):
+    """
+    Check if the user is spamming
+    Delay of INDIVIDUAL_USER_DELAY minute(s) for individual user commands, changeable.
+    """
+    return check_cooldown(update, 'lastcommandreply', INDIVIDUAL_USER_DELAY)
+
+
+def _text_antispam_passed(update):
+    """Checks if somebody is spamming reply_all words"""
+    return check_cooldown(update, 'lasttextreply', INDIVIDUAL_REPLY_DELAY)
+
+
 def _create_tables():
     """Create a muted databases"""
     # Userdata
@@ -839,8 +869,14 @@ def _create_tables():
     (413327053, "comradesanya"),
     (205762941, "dovaogedot"),
     (185500059, "mel_a_real_programmer")''')
-    # Duels
-    dbc.execute(f'''CREATE TABLE IF NOT EXISTS "duels"
+    # Commit the database
+    db.commit()
+
+
+def _create_duel_table(update):
+    """Create dueling table for each chat"""
+    tablename = f"\"duels{update.message.chat_id}\""
+    dbc.execute(f'''CREATE TABLE IF NOT EXISTS {tablename}
     (user_id NUMERIC UNIQUE,
     firstname TEXT DEFAULT NULL,
     kills NUMERIC DEFAULT 0,
@@ -849,7 +885,6 @@ def _create_tables():
     FOREIGN KEY(user_id) REFERENCES userdata(id),
     FOREIGN KEY(firstname) REFERENCES userdata(firstname))
     ''')
-    # Commit the database
     db.commit()
 
 
