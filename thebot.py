@@ -106,6 +106,8 @@ def whatsnew(update: Update, context: CallbackContext):
         latest_changes = ''
         for change in CHANGES.split('\n\n')[:2]:
             latest_changes += change + '\n\n'
+        # Link to full changelog
+        latest_changes += 'https://bit.ly/DoomerChangelog'
         _send_reply(update, latest_changes, parse_mode='Markdown')
 
 
