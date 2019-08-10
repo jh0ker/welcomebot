@@ -516,6 +516,7 @@ def myscore(update: Update, context: CallbackContext):
     """Give the user his K/D for duels"""
     if _command_antispam_passed(update):
         u_data = None
+        private = False
         if update.message.chat.type != 'private':
             tablename = f"\"duels{update.message.chat_id}\""
             _create_duel_table(update)
@@ -524,6 +525,7 @@ def myscore(update: Update, context: CallbackContext):
             user_id={update.message.from_user.id}
             ''').fetchone()
         else:
+            private = True
             _send_reply(update, 'Это только для групп.')
         if u_data is not None:
             # Get the kill, death multiplier and their percentage to total
@@ -544,7 +546,8 @@ def myscore(update: Update, context: CallbackContext):
                                 f'Шанс победы из-за опыта повышен на {WRINCREASE}%. (максимум 45%)\n'
                                 f'P.S. +{KILLMULTPERC}% за убийство, +{DEATHMULTPERC}% за смерть.')
         else:
-            _send_reply(update, f'Сначала подуэлься, потом спрашивай.')
+            if not private:
+                _send_reply(update, f'Сначала подуэлься, потом спрашивай.')
 
 
 @run_async
