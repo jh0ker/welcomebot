@@ -437,12 +437,14 @@ def duel(update: Update, context: CallbackContext):
 
     if _command_antispam_passed(update):
         tablename = f"\"duels{update.message.chat_id}\""
-        _create_duel_table(update)
         # If not replied, ask for the target
-        if update.message.reply_to_message is None:
+        if update.message.chat.type == 'private':
+            _send_reply(update, 'Это только для групп.')
+        elif update.message.reply_to_message is None:
             _send_reply(update, 'С кем дуэль проводить будем?\n'
                                 'Чтобы подуэлиться, надо чтобы вы ответили вашему оппоненту.')
         else:
+            _create_duel_table(update)
             # Shorten the code, format the names
             THRESHHOLDCAP = 80
             initiator_name, initiator_id = _get(update, 'init_name'), _get(update, 'init_id')
@@ -513,12 +515,16 @@ def duel(update: Update, context: CallbackContext):
 def myscore(update: Update, context: CallbackContext):
     """Give the user his K/D for duels"""
     if _command_antispam_passed(update):
-        tablename = f"\"duels{update.message.chat_id}\""
-        _create_duel_table(update)
-        u_data = dbc.execute(
+        u_data = None
+        if update.message.chat.type != 'private':
+            tablename = f"\"duels{update.message.chat_id}\""
+            _create_duel_table(update)
+            u_data = dbc.execute(
             f'''SELECT kills, deaths FROM {tablename} WHERE 
             user_id={update.message.from_user.id}
             ''').fetchone()
+        else:
+            _send_reply(update, 'Это только для групп.')
         if u_data is not None:
             # Get the kill, death multiplier and their percentage to total
             KILLMULT, DEATHMULT = 0.16, 0.06
@@ -547,19 +553,22 @@ def duelranking(update: Update, context: CallbackContext):
     if _command_antispam_passed(update):
         table = ''
         # Duels table create
-        _create_duel_table(update)
-        for query in (('Лучшие:\n', 'DESC'), ('Худшие:\n', 'ASC')):
-            table += query[0]
-            counter = 1
-            for q in dbc.execute(f'''SELECT firstname, kills, deaths, winpercent 
-                                FROM "duels{update.message.chat_id}" 
-                                WHERE kills>2 
-                                AND deaths>2 
-                                ORDER BY winpercent {query[1]} LIMIT 5'''):
-                table += f'№{counter} {q[0]}\t -\t {q[1]}/{q[2]}'
-                table += f' ({round(q[3], 2)}%)\n'
-                counter += 1
-        _send_reply(update, table, parse_mode='Markdown')
+        if update.message.chat.type != 'private':
+            _create_duel_table(update)
+            for query in (('Лучшие:\n', 'DESC'), ('Худшие:\n', 'ASC')):
+                table += query[0]
+                counter = 1
+                for q in dbc.execute(f'''SELECT firstname, kills, deaths, winpercent 
+                                    FROM "duels{update.message.chat_id}" 
+                                    WHERE kills>2 
+                                    AND deaths>2 
+                                    ORDER BY winpercent {query[1]} LIMIT 5'''):
+                    table += f'№{counter} {q[0]}\t -\t {q[1]}/{q[2]}'
+                    table += f' ({round(q[3], 2)}%)\n'
+                    counter += 1
+            _send_reply(update, table, parse_mode='Markdown')
+        else:
+            _send_reply(update, 'Это только для групп.')
 
 
 @run_async
