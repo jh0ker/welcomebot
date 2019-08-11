@@ -65,6 +65,7 @@ def help(update: Update, context: CallbackContext):
         help_text = (
             f"<b>Пример команды для бота:</b> /help@{BOT.username}\n"
             "/help - Это меню;\n"
+            "/adminmenu - Админское меню;\n"
             "/whatsnew - Новое в боте;\n"
             "/rules - Правила думерского чата;\n"
             "/slap - Кого-то унизить "
@@ -382,8 +383,8 @@ def duel(update: Update, context: CallbackContext):
             HARDCAP = THRESHHOLDCAP * 0.95
             KILLMULT, DEATHMULT = 0.16, 0.06
             STRENGTH = random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY) \
-                         + userfound[0] * KILLMULT \
-                         + userfound[1] * DEATHMULT
+                       + userfound[0] * KILLMULT \
+                       + userfound[1] * DEATHMULT
             return min(STRENGTH, HARDCAP)
         else:
             return random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY)
@@ -447,7 +448,7 @@ def duel(update: Update, context: CallbackContext):
         elif update.message.reply_to_message is None:
             _send_reply(update, 'С кем дуэль проводить будем?\n'
                                 'Чтобы подуэлиться, надо чтобы вы ответили вашему оппоненту.')
-        else:
+        elif _check_duel_status(update):
             _create_duel_table(update)
             # Shorten the code, format the names
             THRESHHOLDCAP = 80
@@ -513,7 +514,8 @@ def duel(update: Update, context: CallbackContext):
             except TelegramError:
                 _send_message('Пошёл ливень и дуэль была отменена.\n'
                               'Приносим прощения! Заходите ещё!', sleep_time=0)
-
+        else:
+            _send_reply(update, 'На сегодня дуэли всё/дуэли отключены.')
 
 @run_async
 def myscore(update: Update, context: CallbackContext):
@@ -525,7 +527,7 @@ def myscore(update: Update, context: CallbackContext):
             tablename = f"\"duels{update.message.chat_id}\""
             _create_duel_table(update)
             u_data = dbc.execute(
-            f'''SELECT kills, deaths FROM {tablename} WHERE 
+                f'''SELECT kills, deaths FROM {tablename} WHERE 
             user_id={update.message.from_user.id}
             ''').fetchone()
         else:
@@ -579,10 +581,70 @@ def duelranking(update: Update, context: CallbackContext):
 
 
 @run_async
+def duelstatus(update: Update, context: CallbackContext):
+    """Make a global maximum duels per chat and be able to turn them on and off"""
+
+    def _handle_limits():
+        """Handle the global limits to duels of the chat"""
+        nonlocal arg, update
+        # Remove limits
+        if arg == 'none':
+            dbc.execute(f'''UPDATE "duellimits" 
+            set duelmaximum=NULL WHERE chat_id={update.message.chat_id}''')
+            _send_reply(update, 'Был убран лимит дуэлей.')
+        # Set maximum
+        else:
+            try:
+                arg = int(arg)
+                dbc.execute(f'''UPDATE "duellimits" 
+                set duelmaximum={arg} WHERE chat_id={update.message.chat_id}''')
+                _send_reply(update, f'Максимальное количество дуэлей за день стало {arg}.')
+            except ValueError:
+                _send_reply(update, f'{arg} не подходит. Дайте число. /adminmenu для справки.')
+        db.commit()
+
+    def _handle_status():
+        """Handle the on/off state of duels in the chat
+        1 for turned on, 0 for turned off"""
+        nonlocal arg, update
+        status = None
+        # Get the integer from stats
+        if arg == 'on':
+            status = 1
+            _send_reply(update, 'Дуэли были включены для этого чата.')
+        elif arg == 'off':
+            status = 0
+            _send_reply(update, 'Дуэли были выключены для этого чата.')
+        # Update table or say that the argument was wrong
+        if status == 1 or status == 0:
+            dbc.execute(f'''UPDATE "duellimits" 
+            set duelstatusonoff={status} WHERE chat_id={update.message.chat_id}''')
+            db.commit()
+        else:
+            _send_reply(update, 'Всмысле? Или on или off. /adminmenu для справки.')
+
+
+    commands = ['/duellimit', '/duelstatus']
+    # Check if used by admin, a valid command, and there an argument to handle
+    if _creatoradmindev(update) and \
+        update.message.chat.type != 'private' and \
+            len(update.message.text.split()) == 2:
+        # Create table to work with
+        _create_duel_table(update)
+        # Get the argument
+        arg = update.message.text.lower().split()[1]
+        # Pass to handlers
+        if commands[0] in update.message.text.lower():
+            _handle_limits()
+        if commands[1] in update.message.text.lower():
+            _handle_status()
+
+
+@run_async
 def mute(update: Update, context: CallbackContext):
     """Autodelete messages of a user (only usable by the developer)"""
-    # Only works for the dev
-    if _get(update, 'init_id') == DEVELOPER_ID:
+    # Only works for the dev/admin/creator
+    if _creatoradmindev(update):
         try:
             # Shorten code
             to_mute_id, chat_id = _get(update, 'target_id'), _get(update, 'chat_id')
@@ -614,9 +676,9 @@ def mute(update: Update, context: CallbackContext):
 
 @run_async
 def unmute(update: Update, context: CallbackContext):
-    """Stop autodeletion of messages of a user (only usable by the developer)"""
+    """Stop autodeletion of messages of a user (only usable by the admin/dev/creator)"""
     # Only if the developer calls it
-    if _get(update, 'init_id') == DEVELOPER_ID:
+    if _creatoradmindev(update):
         # Get chat id, create the replied flag to not make large trees
         replied = False
         to_unmute_name = 'NULL'
@@ -658,7 +720,7 @@ def unmute(update: Update, context: CallbackContext):
 @run_async
 def immune(update: Update, context: CallbackContext):
     """Add user to exceptions"""
-    if update.message.from_user.id == DEVELOPER_ID:
+    if _creatoradmindev(update):
         if update.message.reply_to_message is not None:
             dbc.execute(f'''INSERT OR IGNORE INTO "exceptions" 
             (user_id, firstname) VALUES 
@@ -675,7 +737,7 @@ def immune(update: Update, context: CallbackContext):
 @run_async
 def unimmune(update: Update, context: CallbackContext):
     """Remove user from exceptions"""
-    if update.message.from_user.id == DEVELOPER_ID:
+    if _creatoradmindev(update):
         if update.message.reply_to_message:
             dbc.execute(f'''DELETE FROM "exceptions" 
             WHERE user_id={update.message.reply_to_message.from_user.id}''')
@@ -706,13 +768,23 @@ def mutelist(update: Update, context: CallbackContext):
 
 
 def leave(update: Update, context: CallbackContext):
-    """Make the bot leave the group, usable only by the developer."""
-    if _get(update, 'init_id') == DEVELOPER_ID:
+    """Make the bot leave the group, usable only by the admin/dev/creator."""
+    if _creatoradmindev(update):
         BOT.leave_chat(chat_id=update.message.chat_id)
     else:
         if _command_antispam_passed(update):
             _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
+
+def _creatoradmindev(update):
+    """Check if the user is creator or admin or dev"""
+    userrank = BOT.get_chat_member(chat_id=update.message.chat_id,
+                                   user_id=update.message.from_user.id)
+    permitted = ['creator', 'administrator']
+    if userrank in permitted or update.message.from_user.id == DEVELOPER_ID:
+        return True
+    else:
+        return False
 
 def check_cooldown(update, whattocheck, cooldown):
     """Check cooldown of command, reply, error
@@ -745,7 +817,7 @@ def check_cooldown(update, whattocheck, cooldown):
     user_id = update.message.from_user.id
     message_time = datetime.datetime.now()
     lastinstance = dbc.execute(f'''
-    SELECT {whattocheck} from "chat"
+    SELECT {whattocheck} from "cooldowns"
     WHERE user_id={user_id} AND chat_id={update.message.chat_id}''').fetchone()
     if isinstance(lastinstance, tuple):
         lastinstance = lastinstance[0]
@@ -757,7 +829,7 @@ def check_cooldown(update, whattocheck, cooldown):
         if message_time > threshold:
             # If it did, update table, return True
             dbc.execute(f'''
-            UPDATE "chat" SET {whattocheck}="{message_time}" 
+            UPDATE "cooldowns" SET {whattocheck}="{message_time}" 
             WHERE user_id={user_id} AND chat_id={update.message.chat_id}''')
             db.commit()
             return True
@@ -769,34 +841,84 @@ def check_cooldown(update, whattocheck, cooldown):
     # If there was none, create entry and return True
     else:
         dbc.execute(f'''INSERT OR IGNORE INTO 
-        "chat" (user_id, chat_id, firstname, {whattocheck}) 
+        "cooldowns" (user_id, chat_id, firstname, {whattocheck}) 
         VALUES ({user_id}, "{update.message.chat_id}", 
         "{update.message.from_user.first_name}", "{message_time}")''')
         dbc.execute(f'''
-        UPDATE "chat" SET {whattocheck}="{message_time}" 
+        UPDATE "cooldowns" SET {whattocheck}="{message_time}" 
         WHERE user_id={user_id} AND chat_id={update.message.chat_id}''')
         db.commit()
         return True
 
 
+def _check_duel_status(update: Update):
+    """Check if the duels are allowed/more possible"""
+    chatid = f"\"{update.message.chat_id}\""
+    chatdata = dbc.execute(f'''SELECT duelstatusonoff, duelmaximum,
+    duelcount, accountingday FROM "duellimits" WHERE chat_id={chatid}''').fetchone()
+    now = f"\"{datetime.datetime.now().date()}\""
+    if chatdata is not None:
+        if chatdata[0] == 0:
+            return False
+        else:
+            if chatdata[1] is None:
+                return True
+            else:
+                if chatdata[3] is None:
+                    dbc.execute(f'''UPDATE "duellimits" SET 
+                    accountingday ={now}
+                    WHERE chat_id={chatid}''')
+                    dbc.execute(f'''UPDATE "duellimits" SET 
+                    duelcount = duelcount + 1
+                    WHERE chat_id={chatid}''')
+                    db.commit()
+                    return True
+                if chatdata[2] >= chatdata[1]:
+                    # Reset every day
+                    if datetime.datetime.now().date() > datetime.date.fromisoformat(chatdata[3]):
+                        dbc.execute(f'''UPDATE "duellimits" SET 
+                        duelcount = 1, accountingday = {now} 
+                        WHERE chat_id={chatid}''')
+                        db.commit()
+                        return True
+                    else:
+                        return False
+                else:
+                    dbc.execute(f'''UPDATE "duellimits" SET 
+                    duelcount = duelcount + 1
+                    WHERE chat_id={chatid}''')
+                    db.commit()
+                    return True
+    else:
+        dbc.execute(f'''INSERT OR IGNORE INTO "duellimits" 
+        (chat_id, duelcount, accountingday) VALUES 
+        ({update.message.chat_id}, 1, {now})''')
+        return True
+
+
 @run_async
-def dev(update: Update, context: CallbackContext):
-    """Send the dev of developer commands"""
-    if update.message.from_user.id == DEVELOPER_ID:
-        commands = ("/mute - Замутить;\n"
-                    "/unmute - Cнять мут;\n"
-                    "/mutelist - Показать всех в муте;\n"
-                    "/immune - Добавить пользователю иммунитет на задержку команд;\n"
-                    "/unimmune - Снять иммунитет;\n"
-                    "/immunelist - Лист людей с имунитетами;\n")
+def adminmenu(update: Update, context: CallbackContext):
+    """Send the admin menu commands"""
+    if _creatoradmindev(update):
+        commands = ("/mute - Замутить человека в этом чате (ответить ему);\n"
+                    "/unmute [имя](опционально) - Cнять мут в этом чате (ответить или имя);\n"
+                    "/mutelist - Показать всех в муте в этом чать;\n"
+                    "/immune - Добавить пользователю иммунитет на задержку команд (ответить ему);\n"
+                    "/unimmune [имя](опционально) - Снять иммунитет (ответить или имя);\n"
+                    "/immunelist - Лист людей с иммунитетом;\n"
+                    "/duellimit [int/None] - Изменить глобальный лимит на дуэли за день (число или убрать через None);\n"
+                    "/duelstatus [on/off] - Включить/Выключить дуэли;\n")
         _send_reply(update, commands)
+    else:
+        if _command_antispam_passed(update):
+            _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
 
 @run_async
 def _getsqllist(update, query: str):
     """Get the list of muted ids"""
-    # Only for developer
-    if _get(update, 'init_id') == DEVELOPER_ID:
+    # Only for developer/admin/creator
+    if _creatoradmindev(update):
         insert = {}
         if query == 'mutelist':
             insert['variables'] = "\"firstname\", \"reason\""
@@ -851,8 +973,8 @@ def _create_tables():
     lastname TEXT DEFAULT NULL,
     username TEXT DEFAULT NULL
     )''')
-    # Chat
-    dbc.execute(f'''CREATE TABLE IF NOT EXISTS "chat" 
+    # Cooldowns
+    dbc.execute(f'''CREATE TABLE IF NOT EXISTS "cooldowns" 
     (user_id NUMERIC UNIQUE, 
     chat_id NUMERIC, 
     firstname TEXT DEFAULT NULL, 
@@ -885,6 +1007,14 @@ def _create_tables():
     (413327053, "comradesanya"),
     (205762941, "dovaogedot"),
     (185500059, "mel_a_real_programmer")''')
+    # Table that tracks limitations of number of duels per day
+    dbc.execute(f'''CREATE TABLE IF NOT EXISTS "duellimits"
+     (chat_id NUMERIC PRIMARY KEY,
+     duelstatusonoff NUMERIC DEFAULT 1,
+     duelmaximum NUMERIC DEFAULT NULL,
+     duelcount NUMERIC DEFAULT 0,
+     accountingday TEXT DEFAULT NULL
+     )''')
     # Commit the database
     db.commit()
 
@@ -892,6 +1022,7 @@ def _create_tables():
 def _create_duel_table(update):
     """Create dueling table for each chat"""
     tablename = f"\"duels{update.message.chat_id}\""
+    # Duel table with stats
     dbc.execute(f'''CREATE TABLE IF NOT EXISTS {tablename}
     (user_id NUMERIC UNIQUE,
     firstname TEXT DEFAULT NULL,
@@ -987,8 +1118,10 @@ def main():
     dispatcher.add_handler(CommandHandler('duel', duel))
     dispatcher.add_handler(CommandHandler('myscore', myscore))
     dispatcher.add_handler(CommandHandler('duelranking', duelranking))
+    dispatcher.add_handler(CommandHandler('duellimit', duelstatus))
+    dispatcher.add_handler(CommandHandler('duelstatus', duelstatus))
     dispatcher.add_handler(CommandHandler('leave', leave))
-    dispatcher.add_handler(CommandHandler('dev', dev))
+    dispatcher.add_handler(CommandHandler('adminmenu', adminmenu))
 
     # add message handlers
     dispatcher.add_handler(MessageHandler(
