@@ -48,13 +48,14 @@ try:
     with open('logs.log', 'r') as logfile:
         LOGDATE = datetime.date.fromisoformat(logfile.readline()[0:10])
         logfile.close()
+        logging.info("Successfully got the logfile date...")
 # Couldn't get the date, rewrite the log file
 except ValueError:
     LOGDATE = datetime.date.today()
     with open('logs.log', 'w') as logfile:
         logfile.write(f'{LOGDATE.isoformat()} - Start of the log file.\n')
         logfile.close()
-logging.info("Successfully got the logfile date...")
+    logging.info("Failed to get the logfile date, using today...")
 
 # Bot initialization
 TOKEN = environ.get("TG_BOT_TOKEN")
@@ -598,10 +599,8 @@ def duel(update: Update, context: CallbackContext):
                     winthreshold = random.uniform(0, THRESHOLDCAP)
                     winners, losers = [], []
                     for player in participant_list:
-                        if player[2] > winthreshold:
-                            winners.append(player)
-                        else:
-                            losers.append(player)
+                        winners.append(player) if player[2] > winthreshold \
+                            else losers.append(player)
                     # Get the winner and the loser. Check 2
                     if len(winners) == 2:
                         random.shuffle(winners)
@@ -632,29 +631,19 @@ def duel(update: Update, context: CallbackContext):
     @run_async
     def _conclude_the_duel(result: str):
         nonlocal update
+        # Send the initial message
         botmsg = BOT.send_message(chat_id=update.message.chat_id,
                                   text='Дуэлисты расходятся...')
-        sleep(0.8)
-        botmsg = BOT.edit_message_text(chat_id=update.message.chat_id,
-                                       text='Готовятся к выстрелу...',
-                                       message_id=botmsg.message_id)
-        sleep(0.8)
-        sound_chance = random.random() * 100
-        if sound_chance <= 96:
-            sound = '***BANG BANG***'
-        elif 96 < sound_chance <= 98:
-            sound = '***ПИФ-ПАФ***'
-        else:
-            sound = '***RAPE GANG***'
-        botmsg = BOT.edit_message_text(chat_id=update.message.chat_id,
-                                       text=sound,
-                                       message_id=botmsg.message_id,
-                                       parse_mode='Markdown')
-        sleep(0.8)
-        BOT.edit_message_text(chat_id=update.message.chat_id,
-                              text=result,
-                              message_id=botmsg.message_id,
-                              parse_mode='Markdown')
+        # Get the sound of the duel
+        sound = '***BANG BANG***' if random.random() * 100 < 90 else '***ПИФ-ПАФ***'
+        # Make the message loop
+        for phrase in ('Готовятся к выстрелу...',
+                       sound, result):
+            sleep(0.8)
+            botmsg = BOT.edit_message_text(chat_id=update.message.chat_id,
+                                           text=phrase,
+                                           message_id=botmsg.message_id,
+                                           parse_mode='Markdown')
 
     tablename = f"\"duels{update.message.chat_id}\""
     # If not replied, ask for the target
