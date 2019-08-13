@@ -42,6 +42,11 @@ logging.info("Connecting to the database 'doomerbot.db'...")
 db = sqlite3.connect('doomerbot.db', check_same_thread=False)
 dbc = db.cursor()
 
+# Get the last logdate
+logging.info("Getting the last logfile date...")
+with open('logs.log', 'r') as logfile:
+    LOGDATE = datetime.date.fromisoformat(logfile.readline()[0:10])
+
 # Bot initialization
 TOKEN = environ.get("TG_BOT_TOKEN")
 BOT = Bot(TOKEN)
@@ -185,19 +190,38 @@ def whatsnew(update: Update, context: CallbackContext):
 
 @run_async
 def getlogs(update: Update, context: CallbackContext):
-    """Get the bot logs"""
-    if update.message.from_user.id == DEVELOPER_ID:
+    """Get the bot logs manually or automatically to chat with id LOGCHATID"""
+    # My call
+    if update.message.from_user.id == DEVELOPER_ID and \
+        update.message.text.lower() == '/logs':
         try:
-            # Send the file
-            BOT.send_document(chat_id=update.message.chat_id,
-                              document=open('logs.log', 'rb'))
-            # Clean the file
-            with open('logs.log', 'w') as logfile:
-                logfile.write('Start of the log file.\n')
-                logfile.close()
+            sendlogs(noworyesterday='now')
         except (EOFError, FileNotFoundError) as changelog_err:
             logging.ERROR(changelog_err)
             _send_reply(update, 'Не смог добраться до логов. Что-то не так.')
+    # Random message for autologs
+    else:
+        global LOGDATE
+        if datetime.date.today() > LOGDATE:
+            LOGDATE = datetime.date.today()
+            sendlogs(noworyesterday='yesterday')
+
+@run_async
+def sendlogs(noworyesterday: str = 'now'):
+    """Send the logs"""
+    # Calculate the file name
+    if noworyesterday == 'yesterday':
+        filename = (LOGDATE - datetime.timedelta(days=1)).isoformat()
+    else:
+        filename = datetime.date.today().isoformat()
+    # Send the file
+    BOT.send_document(chat_id=LOGCHATID,
+                      document=open('logs.log', 'rb'),
+                      filename=f'{filename}.log')
+    # Clean the file
+    with open('logs.log', 'w') as logfile:
+        logfile.write(f'{datetime.date.today().isoformat()} - Start of the log file.\n')
+        logfile.close()
 
 
 @run_async
@@ -229,6 +253,8 @@ def rules(update: Update, context: CallbackContext):
 def message_filter(update: Update, context: CallbackContext):
     """Replies to all messages
     Думер > Земляночка > """
+    # Get logs trigged by messages
+    getlogs(update, context)
     try:
         # If user is in the muted list, delete his message unless he is in exceptions
         # to avoid possible self-mutes
@@ -898,7 +924,11 @@ def mutelist(update: Update, context: CallbackContext):
 def leave(update: Update, context: CallbackContext):
     """Make the bot leave the group, usable only by the admin/dev/creator."""
     if _creatoradmindev(update):
-        BOT.leave_chat(chat_id=update.message.chat_id)
+        try:
+            BOT.leave_chat(chat_id=update.message.chat_id)
+        except telegram.error.BadRequest as leaveerror:
+            logging.info(leaveerror)
+            _send_reply(update, 'Я не могу уйти отсюда. Сам уйди.')
     else:
         informthepleb(update)
 
