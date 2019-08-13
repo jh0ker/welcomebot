@@ -106,7 +106,8 @@ def command_antispam_passed(func):
 @run_async
 def start(update: Update, context: CallbackContext):
     """Send out a start message"""
-    _send_reply(update, 'Думер бот в чате. Для списка функций используйте /help.')
+    _send_reply(update, 'Думер бот в чате. Для списка функций используйте /help.\n'
+                        'Для наилучшего экспириенса, дайте боту права на удаление сообщений.')
 
 
 @run_async
@@ -129,7 +130,21 @@ def welcomer(update: Update, context: CallbackContext):
         else:
             reply_text = (f"Приветствуем вас в Думерском Чате, {tagged_user}!\n"
                           f"По традициям группы, с вас фото своих ног.\n")
-        _send_reply(update, reply_text, parse_mode='Markdown')
+        botmsg = _send_reply(update, reply_text, parse_mode='Markdown')
+        # Sleep and check if user is still there or voicy kicked it
+        sleep(70)
+        if BOT.get_chat_member(chat_id=update.message.chat_id,
+                               user_id=new_member.id).status == 'left':
+            # Delete the bot welcome message
+            BOT.delete_message(chat_id=botmsg.chat_id,
+                               message_id=botmsg.message_id)
+            # Delete the join notification unless no rights or it was deleted
+            try:
+                BOT.delete_message(chat_id=update.message.chat_id,
+                                   message_id=update.message.message_id)
+            except telegram.error.BadRequest:
+                pass
+
 
 
 @run_async
@@ -1147,10 +1162,10 @@ def _try_to_delete_message(update):
 
 def _send_reply(update, text: str, parse_mode: str = None):
     """Shorten replies"""
-    BOT.send_message(chat_id=update.message.chat_id,
-                     text=text,
-                     reply_to_message_id=update.message.message_id,
-                     parse_mode=parse_mode)
+    return BOT.send_message(chat_id=update.message.chat_id,
+                            text=text,
+                            reply_to_message_id=update.message.message_id,
+                            parse_mode=parse_mode)
 
 
 def _get(update: Update, what_is_needed: str):
@@ -1231,7 +1246,7 @@ UNUSUALCOMMANDS = [
 def main():
     """Start the BOT."""
     # Create the Updater and pass it your BOT's token.
-    updater = Updater(token=TOKEN, use_context=True)
+    updater = Updater(token=TOKEN, use_context=True, workers=12)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
