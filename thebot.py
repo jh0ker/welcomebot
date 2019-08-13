@@ -155,8 +155,8 @@ def help(update: Update, context: CallbackContext):
 def adminmenu(update: Update, context: CallbackContext):
     """Send the admin menu commands"""
     if _creatoradmindev(update):
-        text = ''
-        for command in ONLYADMINCOMMANDS:
+        text = ONLYADMINCOMMANDS[0] + '\n'
+        for command in ONLYADMINCOMMANDS[1:]:
             text += f'/{command[0]} - {command[2]};\n'
         _send_reply(update, text)
     else:
@@ -1155,7 +1155,7 @@ USERCOMMANDS = [
     ]
 ONLYADMINCOMMANDS = [
     'Команды для администраторов групп',
-    ('leave', leave, 'Сказать боту уйти.'),
+    ('leave', leave, 'Сказать боту уйти'),
     ('duellimit', duelstatus, 'Изменить глобальный лимит на дуэли за день (число или убрать через None)'),
     ('duelstatus', duelstatus, 'Включить/Выключить дуэли (on/off)'),
     ('immune', immune, 'Добавить пользователю иммунитет на задержку команд (ответить ему)'),
