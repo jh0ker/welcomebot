@@ -46,6 +46,8 @@ dbc = db.cursor()
 logging.info("Getting the last logfile date...")
 with open('logs.log', 'r') as logfile:
     LOGDATE = datetime.date.fromisoformat(logfile.readline()[0:10])
+    logfile.close()
+logging.info("Successfully got the logfile date...")
 
 # Bot initialization
 TOKEN = environ.get("TG_BOT_TOKEN")
