@@ -193,7 +193,7 @@ def getlogs(update: Update, context: CallbackContext):
                               document=open('logs.log', 'rb'))
             # Clean the file
             with open('logs.log', 'w') as logfile:
-                logfile.write('')
+                logfile.write('Start of the log file.')
                 logfile.close()
         except (EOFError, FileNotFoundError) as changelog_err:
             logging.ERROR(changelog_err)
