@@ -44,9 +44,16 @@ dbc = db.cursor()
 
 # Get the last logdate
 logging.info("Getting the last logfile date...")
-with open('logs.log', 'r') as logfile:
-    LOGDATE = datetime.date.fromisoformat(logfile.readline()[0:10])
-    logfile.close()
+try:
+    with open('logs.log', 'r') as logfile:
+        LOGDATE = datetime.date.fromisoformat(logfile.readline()[0:10])
+        logfile.close()
+# Couldn't get the date, rewrite the log file
+except ValueError:
+    LOGDATE = datetime.date.today()
+    with open('logs.log', 'w') as logfile:
+        logfile.write(f'{LOGDATE.isoformat()} - Start of the log file.\n')
+        logfile.close()
 logging.info("Successfully got the logfile date...")
 
 # Bot initialization
