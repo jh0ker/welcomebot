@@ -193,7 +193,7 @@ def getlogs(update: Update, context: CallbackContext):
     """Get the bot logs manually or automatically to chat with id LOGCHATID"""
     # My call
     if update.message.from_user.id == DEVELOPER_ID and \
-        update.message.text.lower() == '/logs':
+            update.message.text.lower() == '/logs':
         try:
             sendlogs(noworyesterday='now')
         except (EOFError, FileNotFoundError) as changelog_err:
@@ -205,6 +205,7 @@ def getlogs(update: Update, context: CallbackContext):
         if datetime.date.today() > LOGDATE:
             LOGDATE = datetime.date.today()
             sendlogs(noworyesterday='yesterday')
+
 
 @run_async
 def sendlogs(noworyesterday: str = 'now'):
@@ -434,7 +435,7 @@ def slap(update: Update, context: CallbackContext):
         # Determine if the initiator failed or succeeded
         success_and_fail = []
         # Add failures and successes if its empty and shuffle (optimize CPU usage)
-        if success_and_fail == []:
+        if not success_and_fail:
             success_and_fail += ['failure'] * len(SLAPS['failure']) + \
                                 ['success'] * len(SLAPS['success'])
             random.shuffle(success_and_fail)
@@ -470,14 +471,6 @@ def duel(update: Update, context: CallbackContext):
             return min(STRENGTH, HARDCAP)
         else:
             return random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY)
-
-    def _send_message(text_message, sleep_time: float = 0.25):
-        """Shorten normal messages with sleep"""
-        nonlocal update
-        BOT.send_message(chat_id=update.message.chat_id,
-                         text=text_message,
-                         parse_mode='Markdown')
-        sleep(sleep_time)
 
     @run_async
     def _score_the_results(winners: list, losers: list, p1_kd: tuple, p2_kd: tuple):
@@ -524,8 +517,9 @@ def duel(update: Update, context: CallbackContext):
         elif scenario == 'suicide':
             return phrase.replace('loser', init_tag)
 
-    def _check_duel_status(update: Update):
+    def _check_duel_status():
         """Check if the duels are allowed/more possible"""
+        nonlocal update
         chatid = f"\"{update.message.chat_id}\""
         chatdata = dbc.execute(f'''SELECT duelstatusonoff, duelmaximum,
         duelcount, accountingday FROM "duellimits" WHERE chat_id={chatid}''').fetchone()
@@ -591,8 +585,6 @@ def duel(update: Update, context: CallbackContext):
                          _getuserstr(initiator_id), initiator_tag),
                         (target_name, target_id,
                          _getuserstr(target_id), target_tag)]
-                    # Start the dueling text
-                    _duel_sounds()
                     # Get the winner and the loser. Check 1
                     winthreshold = random.uniform(0, THRESHOLDCAP)
                     winners, losers = [], []
@@ -615,35 +607,51 @@ def duel(update: Update, context: CallbackContext):
                         scenario = 'alldead'
                     # Get the result
                     duel_result = _usenames(scenario, winners, losers)
+                    _conclude_the_duel(duel_result)
                 else:
                     # If the bot is the target, send an angry message
                     scenario = 'bot'
                     duel_result = random.choice(DUELS[scenario])
+                    _send_reply(update, duel_result, parse_mode='Markdown')
             else:
                 # Suicide message
                 scenario = 'suicide'
                 duel_result = f"{_usenames(scenario)}!\n" \
                               f"За суицид экспа/статы не даются!"
-            # Give result if not answered and unless the connection died.
-            # If it did, try another message.
-            _send_message(duel_result, sleep_time=0)
+                _send_reply(update, duel_result, parse_mode='Markdown')
 
-    def _duel_sounds():
-        _send_message('Дуэлисты расходятся...')
-        _send_message('Готовятся к выстрелу...')
-        shooting_sound = random.random() * 100
-        if shooting_sound <= 96:
-            _send_message('***BANG BANG***')
-        elif 96 < shooting_sound <= 98:
-            _send_message('***ПИФ-ПАФ***')
+    @run_async
+    def _conclude_the_duel(result: str):
+        nonlocal update
+        botmsg = BOT.send_message(chat_id=update.message.chat_id,
+                                  text='Дуэлисты расходятся...')
+        sleep(0.8)
+        botmsg = BOT.edit_message_text(chat_id=update.message.chat_id,
+                                       text='Готовятся к выстрелу...',
+                                       message_id=botmsg.message_id)
+        sleep(0.8)
+        sound_chance = random.random() * 100
+        if sound_chance <= 96:
+            sound = '***BANG BANG***'
+        elif 96 < sound_chance <= 98:
+            sound = '***ПИФ-ПАФ***'
         else:
-            _send_message('***RAPE GANG***')
+            sound = '***RAPE GANG***'
+        botmsg = BOT.edit_message_text(chat_id=update.message.chat_id,
+                                       text=sound,
+                                       message_id=botmsg.message_id,
+                                       parse_mode='Markdown')
+        sleep(0.8)
+        BOT.edit_message_text(chat_id=update.message.chat_id,
+                              text=result,
+                              message_id=botmsg.message_id,
+                              parse_mode='Markdown')
 
     tablename = f"\"duels{update.message.chat_id}\""
     # If not replied, ask for the target
     if update.message.chat.type == 'private':
         _send_reply(update, 'Это только для групп.')
-    elif _check_duel_status(update):
+    elif _check_duel_status():
         trytoduel(update)
     else:
         _send_reply(update, 'На сегодня дуэли всё/дуэли отключены.')
@@ -808,7 +816,7 @@ def mute(update: Update, context: CallbackContext):
             "{update.message.reply_to_message.from_user.first_name}")''')
             # Get mute reason if there is any
             if len(update.message.text.split()) > 1:
-                mutereason = ' '.join((update.message.text).split()[1:])
+                mutereason = ' '.join(update.message.text.split()[1:])
                 dbc.execute(f'''
                     UPDATE "muted" SET reason="{mutereason}" WHERE user_id={to_mute_id} 
                     AND chat_id={update.message.chat_id}''')
