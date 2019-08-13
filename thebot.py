@@ -6,8 +6,8 @@ import datetime
 import logging
 import random
 import sqlite3
-from time import sleep
 from os import environ
+from time import sleep
 
 import requests
 import telegram
@@ -21,18 +21,24 @@ from telegram.ext import MessageHandler
 from telegram.ext import Updater
 from telegram.ext.dispatcher import run_async
 
+# Import constants
+from modules.constants import *
+# Import phrases for slaps, duels and links to images of huts
 from modules.duels import DUELS
-# Import huts, slaps, duels
 from modules.huts import HUTS
 from modules.slaps import SLAPS
 
 
 # Enable logging into file
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO, filename='logs.log')
-LOGGER = logging.getLogger(__name__)
+logging.basicConfig(filename='logs.log',
+                    format='%(asctime)s - %(filename)s - %(levelname)s - %(message)s',
+                    level=logging.INFO)
+logging = logging.getLogger(__name__)
+logging.info('-----------------------------------------------')
+logging.info('Initializing the bot...')
 
 # Import the database with muted, exceptions and duel data
+logging.info("Connecting to the database 'doomerbot.db'...")
 db = sqlite3.connect('doomerbot.db', check_same_thread=False)
 dbc = db.cursor()
 
@@ -40,90 +46,52 @@ dbc = db.cursor()
 TOKEN = environ.get("TG_BOT_TOKEN")
 BOT = Bot(TOKEN)
 
-# Add developer ID
-DEVELOPER_ID = 255295801
 
-# Delays in seconds for the BOT
-INDIVIDUAL_USER_DELAY = 10 * 60  # Ten minutes
-INDIVIDUAL_REPLY_DELAY = 5 * 60  # Five minutes
-ERROR_DELAY = 5 * 60  # One minute
+def create_duel_table(func):
+    """Create dueling table for each chat"""
 
-# Request timeout time in seconds
-REQUEST_TIMEOUT = 1.2
+    def executor(update, *args, **kwargs):
+        tablename = f"\"duels{update.message.chat_id}\""
+        exists = dbc.execute(f'''SELECT name FROM "sqlite_master" 
+                WHERE type="table" AND name={tablename}''').fetchone()
+        if exists is None:
+            chat_title = BOT.get_chat(chat_id=update.message.chat_id).title
+            logging.info(f'First duel happened in chat \"{chat_title}\" '
+                         f'with id {update.message.chat_id}, '
+                         f'creating the duels table for this chat.')
+            # Duel table with stats
+            dbc.execute(f'''CREATE TABLE {tablename}
+            (user_id NUMERIC UNIQUE,
+            firstname TEXT DEFAULT NULL,
+            kills NUMERIC DEFAULT 0,
+            deaths NUMERIC DEFAULT 0,
+            winpercent NUMERIC DEFAULT 0,
+            FOREIGN KEY(user_id) REFERENCES userdata(id),
+            FOREIGN KEY(firstname) REFERENCES userdata(firstname))
+            ''')
+            db.commit()
+        func(update, *args, **kwargs)
+
+    return executor
+
+
+def command_antispam_passed(func):
+    """
+    Check if the user is spamming
+    Delay of INDIVIDUAL_USER_DELAY minute(s) for individual user commands, changeable.
+    """
+
+    def executor(update: Update, *args, **kwargs):
+        if _check_cooldown(update, 'lastcommandreply', INDIVIDUAL_USER_DELAY):
+            func(update, *args, **kwargs)
+
+    return executor
 
 
 @run_async
 def start(update: Update, context: CallbackContext):
     """Send out a start message"""
     _send_reply(update, 'Думер бот в чате. Для списка функций используйте /help.')
-
-
-@run_async
-def help(update: Update, context: CallbackContext):
-    """Help message"""
-    if _command_antispam_passed(update):
-        help_text = (
-            f"<b>Пример команды для бота:</b> /help@{BOT.username}\n"
-            "/help - Это меню;\n"
-            "/adminmenu - Админское меню;\n"
-            "/whatsnew - Новое в боте;\n"
-            "/rules - Правила думерского чата;\n"
-            "/slap - Кого-то унизить "
-            "(надо ответить жертве, чтобы бот понял кого бить);\n"
-            "/duel - Устроить дуэль "
-            "(надо ответить тому, с кем будет дуэль);\n"
-            "/myscore - Мой счёт в дуэлях;\n"
-            "/duelranking - Ранк дуэлей чата "
-            "(показывает только тех, у кого больше 2-х убийств и смертей);\n"
-            "/cat - Случайное фото котика;\n"
-            "/dog - Случайное фото собачки;\n"
-            "/dadjoke - Случайная шутка бати;\n"
-            "\n"
-            "<b>Генераторы чисел:</b>\n"
-            "/myiq - Мой IQ (1 - 200);\n"
-            "/muhdick - Длина моего шланга (1 - 25);\n"
-            "/flip - Бросить монетку (Орёл/Решка);\n"
-            "\n"
-            "<b>Дополнительная информация:</b>\n"
-            "1. Бот здоровается с людьми, прибывшими в чат и просит у них имя, фамилию, фото ног.\n"
-            f"2. Кулдаун на каждую команду {INDIVIDUAL_USER_DELAY // 60} минуту для "
-            f"индивидуального пользователя.\n"
-            f"3. Ошибка о кулдауне даётся минимум через каждую {ERROR_DELAY // 60} минуту. "
-            "Спам команд во время кд удаляется.\n"
-        )
-        _send_reply(update, help_text, parse_mode='HTML')
-
-
-@run_async
-def whatsnew(update: Update, context: CallbackContext):
-    """Reply with all new goodies"""
-    if _command_antispam_passed(update):
-        # Import the changelog
-        try:
-            with open('changelog.md', 'r', encoding='utf-8') as changelog:
-                CHANGES = changelog.read()
-        except (EOFError, FileNotFoundError) as changelog_err:
-            LOGGER.error(changelog_err)
-            CHANGES = 'Не смог добраться до изменений. Что-то не так.'
-        # Get the last 3 day changes
-        latest_changes = ''
-        for change in CHANGES.split('\n\n')[:2]:
-            latest_changes += change + '\n\n'
-        # Link to full changelog
-        latest_changes += 'Вся история изменений: https://bit.ly/DoomerChangelog'
-        _send_reply(update, latest_changes, parse_mode='Markdown')
-
-
-@run_async
-def rules(update: Update, context: CallbackContext):
-    """Reply to the user with the rules of the chat"""
-    if _command_antispam_passed(update):
-        reply_text = ("1. Не быть зумером, не сообщать зумерам о думском клубе;\n"
-                      "2. Всяк сюда входящий, с того фото своих ножек;\n"
-                      "3. Никаких гей-гифок;\n"
-                      "4. За спам - фото своих ног;\n"
-                      "5. Думерскую историю рассказать;\n")
-        _send_reply(update, reply_text)
 
 
 @run_async
@@ -152,14 +120,109 @@ def welcomer(update: Update, context: CallbackContext):
 @run_async
 def farewell(update: Update, context: CallbackContext):
     """Goodbye message"""
+    leftuser = update.message.left_chat_member
     # A a BOT was removed
     if update.message.left_chat_member.is_bot:
         try:
             _send_reply(
-                update, f"{update.message.left_chat_member.first_name}'a убили, красиво, уважаю.")
+                update, f"{leftuser.first_name}'а убили, красиво, уважаю.")
         # When the bot itself was kicked
         except telegram.error.Unauthorized:
             pass
+    # A user was removed
+    else:
+        leftusertag = f"[{leftuser.first_name.strip('[]')}](tg://user?id={leftuser.id})"
+        _send_reply(update, f'Сегодня нас покинул {leftusertag}.', parse_mode='Markdown')
+
+
+@run_async
+@command_antispam_passed
+def help(update: Update, context: CallbackContext):
+    """Help message"""
+    help_text = f"<b>Пример команды для бота:</b> /help@{BOT.username}\n"
+    for commandinfo in USERCOMMANDS[1:]:
+        help_text += f'/{commandinfo[0]} - {commandinfo[2]};\n'
+    help_text += \
+        ("<b>Дополнительная информация:</b>\n"
+         "1. Бот здоровается с людьми, прибывшими в чат и просит у них имя, фамилию, фото ног.\n"
+         f"2. Кулдаун на команды <b>{INDIVIDUAL_USER_DELAY // 60}</b> минут.\n"
+         f"3. Ошибка о кулдауне даётся минимум через каждые <b>{ERROR_DELAY // 60}</b> минут. "
+         "Спам команд во время кд удаляется.\n")
+    _send_reply(update, help_text, parse_mode='HTML')
+
+
+@run_async
+def adminmenu(update: Update, context: CallbackContext):
+    """Send the admin menu commands"""
+    if _creatoradmindev(update):
+        text = ''
+        for command in ONLYADMINCOMMANDS:
+            text += f'/{command[0]} - {command[2]};\n'
+        _send_reply(update, text)
+    else:
+        informthepleb(update)
+
+
+@run_async
+@command_antispam_passed
+def whatsnew(update: Update, context: CallbackContext):
+    """Reply with all new goodies"""
+    # Import the changelog
+    try:
+        with open('changelog.md', 'r', encoding='utf-8') as changelog:
+            CHANGES = changelog.read()
+    except (EOFError, FileNotFoundError) as changelog_err:
+        logging.error(changelog_err)
+        CHANGES = 'Не смог добраться до изменений. Что-то не так.'
+    # Get the last 3 day changes
+    latest_changes = ''
+    for change in CHANGES.split('\n\n')[:3]:
+        latest_changes += change + '\n\n'
+    # Add Link to full changelog
+    latest_changes += 'Вся история изменений: https://bit.ly/DoomerChangelog'
+    _send_reply(update, latest_changes, parse_mode='Markdown')
+
+
+@run_async
+def getlogs(update: Update, context: CallbackContext):
+    """Get the bot logs"""
+    if update.message.from_user.id == DEVELOPER_ID:
+        try:
+            # Send the file
+            BOT.send_document(chat_id=update.message.chat_id,
+                              document=open('logs.log', 'rb'))
+            # Clean the file
+            with open('logs.log', 'w') as logfile:
+                logfile.write('')
+                logfile.close()
+        except (EOFError, FileNotFoundError) as changelog_err:
+            logging.ERROR(changelog_err)
+            _send_reply(update, 'Не смог добраться до логов. Что-то не так.')
+
+
+@run_async
+@command_antispam_passed
+def allcommands(update: Update, context: CallbackContext):
+    """Get all commands"""
+    if update.message.from_user.id == DEVELOPER_ID:
+        text = ''
+        for commandlists in (USERCOMMANDS, ONLYADMINCOMMANDS, UNUSUALCOMMANDS):
+            text += f'<b>{commandlists[0]}:</b>\n'
+            for commands in commandlists[1:]:
+                text += f'/{commands[0]} - {commands[2]};\n'
+        _send_reply(update, text, parse_mode='HTML')
+
+
+@run_async
+@command_antispam_passed
+def rules(update: Update, context: CallbackContext):
+    """Reply to the user with the rules of the chat"""
+    reply_text = ("1. Не быть зумером, не сообщать зумерам о думском клубе;\n"
+                  "2. Всяк сюда входящий, с того фото своих ножек;\n"
+                  "3. Никаких гей-гифок;\n"
+                  "4. За спам - фото своих ног;\n"
+                  "5. Думерскую историю рассказать;\n")
+    _send_reply(update, reply_text)
 
 
 @run_async
@@ -188,8 +251,7 @@ def message_filter(update: Update, context: CallbackContext):
         pass
 
 
-@run_async
-def _doomer_word_handler(update):
+def _doomer_word_handler(update) -> str:
     # Make the preparations with variations of the word with latin letters
     variations_with_latin_letters = [
         'думер', 'дyмер', 'дyмeр', 'дyмep', 'думeр', 'думep', 'думеp'
@@ -217,11 +279,10 @@ def _doomer_word_handler(update):
             else:
                 break
     # If the word is not found, return False
-    return reply_word
+    return reply_word if not None else False
 
 
-@run_async
-def _anprim_word_handler(update):
+def _anprim_word_handler(update) -> bool:
     """Image of earth hut"""
     variations = ['земляночку бы', 'земляночкy бы',
                   'землянoчку бы', 'зeмляночку бы',
@@ -236,137 +297,136 @@ def _anprim_word_handler(update):
 
 
 @run_async
+@command_antispam_passed
 def flip(update: Update, context: CallbackContext):
     """Flip a Coin"""
-    if _command_antispam_passed(update):
-        _send_reply(update, random.choice(['Орёл!', 'Решка!']))
+    _send_reply(update, random.choice(['Орёл!', 'Решка!']))
 
 
 @run_async
+@command_antispam_passed
 def myiq(update: Update, context: CallbackContext):
     """Return IQ level (1 - 200)"""
-    if _command_antispam_passed(update):
-        iq_level = random.randint(1, 200)
-        reply_text = f"Твой уровень IQ {iq_level}. "
-        if iq_level < 85:
-            reply_text += "Грустно за тебя, братишка. (1 - 200)"
-        elif 85 <= iq_level <= 115:
-            reply_text += "Ты норми, братишка. (1 - 200)"
-        elif 115 < iq_level <= 125:
-            reply_text += "Ты умный, братишка! (1 - 200)"
-        else:
-            reply_text += "Ты гений, братишка! (1 - 200)"
-        _send_reply(update, reply_text)
+    iq_level = random.randint(1, 200)
+    reply_text = f"Твой уровень IQ {iq_level}. "
+    if iq_level < 85:
+        reply_text += "Грустно за тебя, братишка. (1 - 200)"
+    elif 85 <= iq_level <= 115:
+        reply_text += "Ты норми, братишка. (1 - 200)"
+    elif 115 < iq_level <= 125:
+        reply_text += "Ты умный, братишка! (1 - 200)"
+    else:
+        reply_text += "Ты гений, братишка! (1 - 200)"
+    _send_reply(update, reply_text)
 
 
 @run_async
+@command_antispam_passed
 def muhdick(update: Update, context: CallbackContext):
     """Return dick size in cm (1 - 25)"""
-    if _command_antispam_passed(update):
-        muh_dick = random.randint(1, 25)
-        reply_text = f"Длина твоей палочки {muh_dick} см! "
-        if 1 <= muh_dick <= 11:
-            reply_text += "\U0001F92D "
-        elif 21 <= muh_dick <= 25:
-            reply_text += "\U0001F631 "
-        reply_text += "(1 - 25)"
-        _send_reply(update, reply_text)
+    muh_dick = random.randint(1, 25)
+    reply_text = f"Длина твоей палочки {muh_dick} см! "
+    if 1 <= muh_dick <= 11:
+        reply_text += "\U0001F92D "
+    elif 21 <= muh_dick <= 25:
+        reply_text += "\U0001F631 "
+    reply_text += "(1 - 25)"
+    _send_reply(update, reply_text)
 
 
 @run_async
-def dog(update: Update, context: CallbackContext):
-    """Get a random dog image"""
-    # Go to a website with a json, that contains a link, pass the link to the BOT,
-    # let the server download the image/video/gif
-    if _command_antispam_passed(update):
-        try:
-            response = requests.get(
-                'https://random.dog/woof.json', timeout=REQUEST_TIMEOUT).json()
-            # Get the file extension of the file
-            file_extension = response['url'].split('.')[-1]
-            # Depending on the file extension, use the proper BOT method
-            if 'mp4' in file_extension:
-                BOT.send_video(chat_id=update.message.chat_id,
-                               video=response['url'],
-                               reply_to_message_id=update.message.message_id)
-            elif 'gif' in file_extension:
-                BOT.send_animation(chat_id=update.message.chat_id,
-                                   animation=response['url'],
-                                   reply_to_message_id=update.message.message_id)
-            else:
-                BOT.send_photo(chat_id=update.message.chat_id,
-                               photo=response['url'],
-                               reply_to_message_id=update.message.message_id)
-        except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as err:
-            LOGGER.error(err)
-            _send_reply(update, 'Думер умер на пути к серверу.')
+def animal(update: Update, context: CallbackContext):
+    """Get photo/video/gif of dog or cat"""
 
-
-@run_async
-def cat(update: Update, context: CallbackContext):
-    """Get a random cat image"""
-    # Go to a website with a json, that contains a link, pass the link to the BOT,
-    # let the server download the image
-    if _command_antispam_passed(update):
-        try:
-            response = requests.get(
-                'http://aws.random.cat/meow', timeout=REQUEST_TIMEOUT).json()
-            BOT.send_photo(chat_id=update.message.chat_id,
-                           photo=response['file'],
+    @run_async
+    @command_antispam_passed
+    def _handle_format_and_reply(update):
+        """Handle the format of the file and reply accordingly"""
+        nonlocal response
+        file_link = list(response.values())[0]
+        file_extension = file_link.split('.')[-1]
+        if 'mp4' in file_extension:
+            BOT.send_video(chat_id=update.message.chat_id,
+                           video=file_link,
                            reply_to_message_id=update.message.message_id)
-        except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as err:
-            LOGGER.error(err)
-            _send_reply(update, 'Думер умер на пути к серверу.')
+        elif 'gif' in file_extension:
+            BOT.send_animation(chat_id=update.message.chat_id,
+                               animation=file_link,
+                               reply_to_message_id=update.message.message_id)
+        else:
+            BOT.send_photo(chat_id=update.message.chat_id,
+                           photo=file_link,
+                           reply_to_message_id=update.message.message_id)
+
+    # Cat link
+    if '/cat' in update.message.text.lower():
+        link = 'http://aws.random.cat/meow'
+    # Dog link
+    else:
+        link = 'https://random.dog/woof.json'
+    try:
+        response = requests.get(link, timeout=REQUEST_TIMEOUT).json()
+        _handle_format_and_reply(update)
+    except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as err:
+        logging.error(err)
+        _send_reply(update, 'Думер умер на пути к серверу.')
 
 
 @run_async
 def dadjoke(update: Update, context: CallbackContext):
     """Get a random dad joke"""
-    if _command_antispam_passed(update):
-        # Retrieve the website source, find the joke in the code.
-        headers = {'Accept': 'application/json'}
-        try:
-            response = requests.get(
-                'https://icanhazdadjoke.com/', headers=headers, timeout=REQUEST_TIMEOUT).json()
-            _send_reply(update, response['joke'])
-        except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as err:
-            LOGGER.error(err)
-            _send_reply(update, 'Думер умер на пути к серверу.')
+
+    @run_async
+    @command_antispam_passed
+    def _handle_joke(update):
+        """Reply using this to account for the antispam decorator."""
+        _send_reply(update, response['joke'])
+
+    # Retrieve the json with, the joke
+    try:
+        response = requests.get(
+            'https://icanhazdadjoke.com/', headers={'Accept': 'application/json'},
+            timeout=REQUEST_TIMEOUT).json()
+        _handle_joke(update)
+    except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as err:
+        logging.error(err)
+        _send_reply(update, 'Думер умер на пути к серверу.')
 
 
 @run_async
+@command_antispam_passed
 def slap(update: Update, context: CallbackContext):
     """Slap with random item"""
-    if _command_antispam_passed(update):
-        # List the items that the target will be slapped with
-        # Check if the user has indicated the target by making his message a reply
-        if update.message.reply_to_message is None:
-            reply_text = ('Кого унижать то будем?\n'
-                          'Чтобы унизить, надо чтобы вы ответили вашей жертве.')
+    # List the items that the target will be slapped with
+    # Check if the user has indicated the target by making his message a reply
+    if update.message.reply_to_message is None:
+        reply = ('Кого унижать то будем?\n'
+                 'Чтобы унизить, надо чтобы вы ответили вашей жертве.')
+    else:
+        """Do the slap"""
+        # Generate the answer + create the reply using markdown. Use weighted actions.
+        # Determine if the initiator failed or succeeded
+        success_and_fail = []
+        # Add failures and successes if its empty and shuffle (optimize CPU usage)
+        if success_and_fail == []:
+            success_and_fail += ['failure'] * len(SLAPS['failure']) + \
+                                ['success'] * len(SLAPS['success'])
+            random.shuffle(success_and_fail)
+        # Get init as it is used in both cases
+        init_tag = f"[{_get(update, 'init_name')}](tg://user?id={_get(update, 'init_id')})"
+        # Different replies if the user failed or succeeded to slap
+        if success_and_fail.pop() == 'success':
+            # Get the phrase
+            action = random.choice(SLAPS['success'])
+            # Slap using markdown, as some people don't have usernames to use them for notification
+            target_tag = f"[{_get(update, 'target_name')}](tg://user?id={_get(update, 'target_id')})"
+            reply = action.replace('init', init_tag).replace('target', target_tag)
         else:
-            # Generate the answer + create the reply using markdown. Use weighted actions.
-            # Determine if the initiator failed or succeeded
-            success_and_fail = []
-            # Add successes
-            for action, items in SLAPS['success'].items():
-                success_and_fail += ['success'] * len(items)
-            # Add failures
-            success_and_fail += ['failure'] * len(SLAPS['failure'])
-            # Different replies if the user failed or succeeded to slap
-            if random.choice(success_and_fail) == 'success':
-                weighted_keys = []
-                for action, items in SLAPS['success'].items():
-                    weighted_keys += [action] * len(items)
-                action = random.choice(weighted_keys)
-                # Slap using markdown, as some people don't have usernames to use them for notification
-                reply_text = f"[{_get(update, 'init_name')}](tg://user?id={_get(update, 'init_id')}) {action} " \
-                             f"[{_get(update, 'target_name')}](tg://user?id={_get(update, 'target_id')}) " \
-                             f"{random.choice(SLAPS['success'][action])}"
-            else:
-                action = random.choice(SLAPS['failure'])
-                reply_text = f"[{_get(update, 'init_name')}](tg://user?id={_get(update, 'init_id')}) {action}"
-        # Send the reply with result
-        _send_reply(update, reply_text, parse_mode='Markdown')
+            # Get phrase
+            action = random.choice(SLAPS['failure'])
+            # Prepare text
+            reply = action.replace('init', init_tag)
+    _send_reply(update, reply, parse_mode='Markdown')
 
 
 def duel(update: Update, context: CallbackContext):
@@ -374,14 +434,10 @@ def duel(update: Update, context: CallbackContext):
 
     def _getuserstr(userid: int) -> float:
         """Get strength if the user to assist in duels"""
-        nonlocal THRESHHOLDCAP
         userfound = dbc.execute(f'''SELECT kills, deaths from {tablename}
         WHERE user_id={userid}''').fetchone()
-        LOW_BASE_ACCURACY = 40
-        HIGH_BASE_ACCURACY = 60
         if userfound:
-            HARDCAP = THRESHHOLDCAP * 0.95
-            KILLMULT, DEATHMULT = 0.16, 0.06
+            HARDCAP = THRESHOLDCAP * 0.95
             STRENGTH = random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY) \
                        + userfound[0] * KILLMULT \
                        + userfound[1] * DEATHMULT
@@ -397,9 +453,9 @@ def duel(update: Update, context: CallbackContext):
                          parse_mode='Markdown')
         sleep(sleep_time)
 
-    def _score_the_results(p1_kd, p2_kd):
+    @run_async
+    def _score_the_results(winners: list, losers: list, p1_kd: tuple, p2_kd: tuple):
         """Score the results in the database"""
-        nonlocal winners, losers
         # Update data
         winner, loser = winners[0], losers[0]
         counter = 0
@@ -426,32 +482,75 @@ def duel(update: Update, context: CallbackContext):
             counter += 1
         db.commit()
 
-    def _usenames(string: str) -> str:
+    def _usenames(scenario: str, winners: list = None, losers: list = None) -> str:
         """Insert names into the strings"""
-        nonlocal winners, losers, scenario
+        nonlocal update
+        init_tag = f"[{_get(update, 'init_name')}](tg://user?id={_get(update, 'init_id')})"
+        phrase = random.choice(DUELS['1v1'][scenario])
         if scenario == 'nonedead':
-            return string.replace('loser1', losers[0][3]).replace('loser2', losers[1][3])
+            return phrase.replace('loser1', losers[0][3]).replace('loser2', losers[1][3])
         elif scenario == 'onedead':
-            return string.replace('winner', winners[0][3]).replace('loser', losers[0][3]) + '' \
-                                                                                            f'\nПобеда за ' \
-                                                                                            f'{winners[0][3]}!'
+            phrase = phrase.replace('winner', winners[0][3]).replace('loser', losers[0][3])
+            phrase += f'\nПобеда за {winners[0][3]}!'
+            return phrase
         elif scenario == 'alldead':
-            return string.replace('winner1', winners[0][3]).replace('winner2', winners[1][3])
+            return phrase.replace('winner1', winners[0][3]).replace('winner2', winners[1][3])
         elif scenario == 'suicide':
-            return string.replace('loser', initiator_tag)
+            return phrase.replace('loser', init_tag)
 
-    if _command_antispam_passed(update):
-        tablename = f"\"duels{update.message.chat_id}\""
-        # If not replied, ask for the target
-        if update.message.chat.type == 'private':
-            _send_reply(update, 'Это только для групп.')
-        elif update.message.reply_to_message is None:
+    def _check_duel_status(update: Update):
+        """Check if the duels are allowed/more possible"""
+        chatid = f"\"{update.message.chat_id}\""
+        chatdata = dbc.execute(f'''SELECT duelstatusonoff, duelmaximum,
+        duelcount, accountingday FROM "duellimits" WHERE chat_id={chatid}''').fetchone()
+        now = f"\"{datetime.datetime.now().date()}\""
+        if chatdata is not None:
+            if chatdata[0] == 0:
+                return False
+            else:
+                if chatdata[1] is None:
+                    return True
+                else:
+                    if chatdata[3] is None:
+                        dbc.execute(f'''UPDATE "duellimits" SET 
+                        accountingday ={now}
+                        WHERE chat_id={chatid}''')
+                        dbc.execute(f'''UPDATE "duellimits" SET 
+                        duelcount = duelcount + 1
+                        WHERE chat_id={chatid}''')
+                        db.commit()
+                        return True
+                    if chatdata[2] >= chatdata[1]:
+                        # Reset every day
+                        if datetime.datetime.now().date() > datetime.date.fromisoformat(chatdata[3]):
+                            dbc.execute(f'''UPDATE "duellimits" SET 
+                            duelcount = 1, accountingday = {now} 
+                            WHERE chat_id={chatid}''')
+                            db.commit()
+                            return True
+                        else:
+                            return False
+                    else:
+                        dbc.execute(f'''UPDATE "duellimits" SET 
+                        duelcount = duelcount + 1
+                        WHERE chat_id={chatid}''')
+                        db.commit()
+                        return True
+        else:
+            dbc.execute(f'''INSERT OR IGNORE INTO "duellimits" 
+            (chat_id, duelcount, accountingday) VALUES 
+            ({update.message.chat_id}, 1, {now})''')
+            db.commit()
+            return True
+
+    @command_antispam_passed
+    @create_duel_table
+    def trytoduel(update):
+        if update.message.reply_to_message is None:
             _send_reply(update, 'С кем дуэль проводить будем?\n'
                                 'Чтобы подуэлиться, надо чтобы вы ответили вашему оппоненту.')
-        elif _check_duel_status(update):
-            _create_duel_table(update)
+        else:
             # Shorten the code, format the names
-            THRESHHOLDCAP = 80
             initiator_name, initiator_id = _get(update, 'init_name'), _get(update, 'init_id')
             target_name, target_id = _get(update, 'target_name'), _get(update, 'target_id')
             initiator_tag = f'[{initiator_name}](tg://user?id={initiator_id})'
@@ -467,17 +566,9 @@ def duel(update: Update, context: CallbackContext):
                         (target_name, target_id,
                          _getuserstr(target_id), target_tag)]
                     # Start the dueling text
-                    _send_message('Дуэлисты расходятся...')
-                    _send_message('Готовятся к выстрелу...')
-                    shooting_sound = random.random() * 100
-                    if shooting_sound <= 96:
-                        _send_message('***BANG BANG***')
-                    elif 96 < shooting_sound <= 98:
-                        _send_message('***ПИФ-ПАФ***')
-                    else:
-                        _send_message('***RAPE GANG***')
+                    _duel_sounds()
                     # Get the winner and the loser. Check 1
-                    winthreshold = random.uniform(0, THRESHHOLDCAP)
+                    winthreshold = random.uniform(0, THRESHOLDCAP)
                     winners, losers = [], []
                     for player in participant_list:
                         if player[2] > winthreshold:
@@ -493,11 +584,11 @@ def duel(update: Update, context: CallbackContext):
                         scenario = 'nonedead'
                     elif len(winners) == 1:
                         scenario = 'onedead'
-                        _score_the_results((1, 0), (0, 1))
+                        _score_the_results(winners, losers, (1, 0), (0, 1))
                     else:
                         scenario = 'alldead'
                     # Get the result
-                    duel_result = _usenames(random.choice(DUELS['1v1'][scenario]))
+                    duel_result = _usenames(scenario, winners, losers)
                 else:
                     # If the bot is the target, send an angry message
                     scenario = 'bot'
@@ -505,85 +596,121 @@ def duel(update: Update, context: CallbackContext):
             else:
                 # Suicide message
                 scenario = 'suicide'
-                duel_result = f"{_usenames(random.choice(DUELS[scenario]))}!\n" \
+                duel_result = f"{_usenames(scenario)}!\n" \
                               f"За суицид экспа/статы не даются!"
             # Give result if not answered and unless the connection died.
             # If it did, try another message.
-            try:
-                _send_message(duel_result, sleep_time=0)
-            except TelegramError:
-                _send_message('Пошёл ливень и дуэль была отменена.\n'
-                              'Приносим прощения! Заходите ещё!', sleep_time=0)
+            _send_message(duel_result, sleep_time=0)
+
+    def _duel_sounds():
+        _send_message('Дуэлисты расходятся...')
+        _send_message('Готовятся к выстрелу...')
+        shooting_sound = random.random() * 100
+        if shooting_sound <= 96:
+            _send_message('***BANG BANG***')
+        elif 96 < shooting_sound <= 98:
+            _send_message('***ПИФ-ПАФ***')
         else:
-            _send_reply(update, 'На сегодня дуэли всё/дуэли отключены.')
+            _send_message('***RAPE GANG***')
+
+    tablename = f"\"duels{update.message.chat_id}\""
+    # If not replied, ask for the target
+    if update.message.chat.type == 'private':
+        _send_reply(update, 'Это только для групп.')
+    elif _check_duel_status(update):
+        trytoduel(update)
+    else:
+        _send_reply(update, 'На сегодня дуэли всё/дуэли отключены.')
+
 
 @run_async
 def myscore(update: Update, context: CallbackContext):
     """Give the user his K/D for duels"""
-    if _command_antispam_passed(update):
-        u_data = None
-        private = False
-        if update.message.chat.type != 'private':
-            tablename = f"\"duels{update.message.chat_id}\""
-            _create_duel_table(update)
-            u_data = dbc.execute(
-                f'''SELECT kills, deaths FROM {tablename} WHERE 
-            user_id={update.message.from_user.id}
-            ''').fetchone()
+
+    @run_async
+    @command_antispam_passed
+    def _handle_score(update):
+        nonlocal u_data
+        # Get the kill, death multiplier and their percentage to total
+        KILLMULTPERC = round(KILLMULT / THRESHOLDCAP * 100, 2)
+        DEATHMULTPERC = round(DEATHMULT / THRESHOLDCAP * 100, 2)
+        # Get the current additional strength
+        ADDITIONALSTR = u_data[0] * KILLMULT + u_data[1] * DEATHMULT
+        # 36 is maximum additional strength
+        ADDITIONALSTR = min(ADDITIONALHARDCAP, ADDITIONALSTR)
+        # Calculate the winrate increase
+        WRINCREASE = round(ADDITIONALSTR / THRESHOLDCAP * 100, 2)
+        reply = (f'Твой K/D равен {u_data[0]}/{u_data[1]}.\n'
+                 f'Шанс победы из-за опыта повышен на {WRINCREASE}%. (максимум 45%)\n'
+                 f'P.S. +{KILLMULTPERC}% за убийство, +{DEATHMULTPERC}% за смерть.')
+        _send_reply(update, reply)
+
+    # Check if not private
+    if update.message.chat.type != 'private':
+        # If private, assume that there was no userdata
+        tablename = f"duels{update.message.chat_id}"
+        # Check if the chat table exists
+        if dbc.execute(f'''SELECT name FROM "sqlite_master" 
+        WHERE type="table" AND name="{tablename}"''').fetchone() is not None:
+            # If exists, get user data
+            u_data = dbc.execute(f'''SELECT kills, deaths FROM "{tablename}" WHERE 
+                user_id={update.message.from_user.id}''').fetchone()
+            # If there is user data, get it
+            if u_data is not None:
+                _handle_score(update)
         else:
-            private = True
-            _send_reply(update, 'Это только для групп.')
-        if u_data is not None:
-            # Get the kill, death multiplier and their percentage to total
-            KILLMULT, DEATHMULT = 0.16, 0.06
-            WINTHRESHOLDMAX = 80
-            KILLMULTPERC = round(KILLMULT / WINTHRESHOLDMAX * 100, 2)
-            DEATHMULTPERC = round(DEATHMULT / WINTHRESHOLDMAX * 100, 2)
-            LOW_BASE_ACCURACY = 40
-            # Get the HARDCAP to additional strength
-            ADDITIONALHARDCAP = WINTHRESHOLDMAX * 0.95 - LOW_BASE_ACCURACY
-            # Get the current additional strength
-            ADDITIONALSTR = u_data[0] * KILLMULT + u_data[1] * DEATHMULT
-            # 36 is maximum additional strength
-            ADDITIONALSTR = min(ADDITIONALHARDCAP, ADDITIONALSTR)
-            # Calculate the winrate increase
-            WRINCREASE = round(ADDITIONALSTR / WINTHRESHOLDMAX * 100, 2)
-            _send_reply(update, f'Твой K/D равен {u_data[0]}/{u_data[1]}.\n'
-                                f'Шанс победы из-за опыта повышен на {WRINCREASE}%. (максимум 45%)\n'
-                                f'P.S. +{KILLMULTPERC}% за убийство, +{DEATHMULTPERC}% за смерть.')
-        else:
-            if not private:
-                _send_reply(update, f'Сначала подуэлься, потом спрашивай.')
+            _send_reply(update, 'Сначала подуэлься, потом спрашивай.')
+    else:
+        # Send error
+        _send_reply(update, 'Это только для групп.')
 
 
 @run_async
 def duelranking(update: Update, context: CallbackContext):
     """Get the top best duelists"""
-    if _command_antispam_passed(update):
-        table = ''
-        # Duels table create
-        if update.message.chat.type != 'private':
-            _create_duel_table(update)
-            for query in (('Лучшие:\n', 'DESC'), ('Худшие:\n', 'ASC')):
-                table += query[0]
-                counter = 1
-                for q in dbc.execute(f'''SELECT firstname, kills, deaths, winpercent 
-                                    FROM "duels{update.message.chat_id}" 
-                                    WHERE kills>2 
-                                    AND deaths>2 
-                                    ORDER BY winpercent {query[1]} LIMIT 5'''):
-                    table += f'№{counter} {q[0]}\t -\t {q[1]}/{q[2]}'
-                    table += f' ({round(q[3], 2)}%)\n'
-                    counter += 1
-            _send_reply(update, table, parse_mode='Markdown')
+
+    @run_async
+    @command_antispam_passed
+    def _handle_ranking(update):
+        ranking, headers = '', ''
+        for query in (('Лучшие:\n', 'DESC'), ('Худшие:\n', 'ASC')):
+            # Create headers to see if there was data
+            headers += query[0]
+            # Start the table
+            ranking += query[0]
+            counter = 1
+            # Add to the table the five best and five worst
+            for q in dbc.execute(f'''SELECT firstname, kills, deaths, winpercent 
+                                        FROM "duels{update.message.chat_id}" 
+                                        WHERE kills>2 AND deaths>2 
+                                        ORDER BY winpercent {query[1]} LIMIT 5'''):
+                ranking += f'№{counter} {q[0]}\t -\t {q[1]}/{q[2]}'
+                ranking += f' ({round(q[3], 2)}%)\n'
+                counter += 1
+        # If got no data, inform the user
+        if ranking == headers:
+            ranking = 'Пока что недостаточно данных. Продолжайте дуэлиться.'
+        _send_reply(update, ranking, parse_mode='Markdown')
+
+    # Duels table create
+    if update.message.chat.type != 'private':
+        # Get tablename
+        tablename = f"duels{update.message.chat_id}"
+        # Check if the chat table exists
+        if dbc.execute(f'''SELECT name FROM "sqlite_master" 
+                WHERE type="table" AND name="{tablename}"''').fetchone() is not None:
+            _handle_ranking(update)
         else:
-            _send_reply(update, 'Это только для групп.')
+            _send_reply(update, 'Для этого чата нет данных.')
+    else:
+        _send_reply(update, 'Это только для групп.')
 
 
 @run_async
 def duelstatus(update: Update, context: CallbackContext):
     """Make a global maximum duels per chat and be able to turn them on and off"""
 
+    @run_async
     def _handle_limits():
         """Handle the global limits to duels of the chat"""
         nonlocal arg, update
@@ -603,6 +730,7 @@ def duelstatus(update: Update, context: CallbackContext):
                 _send_reply(update, f'{arg} не подходит. Дайте число. /adminmenu для справки.')
         db.commit()
 
+    @run_async
     def _handle_status():
         """Handle the on/off state of duels in the chat
         1 for turned on, 0 for turned off"""
@@ -623,14 +751,11 @@ def duelstatus(update: Update, context: CallbackContext):
         else:
             _send_reply(update, 'Всмысле? Или on или off. /adminmenu для справки.')
 
-
     commands = ['/duellimit', '/duelstatus']
     # Check if used by admin, a valid command, and there an argument to handle
     if _creatoradmindev(update) and \
-        update.message.chat.type != 'private' and \
+            update.message.chat.type != 'private' and \
             len(update.message.text.split()) == 2:
-        # Create table to work with
-        _create_duel_table(update)
         # Get the argument
         arg = update.message.text.lower().split()[1]
         # Pass to handlers
@@ -670,8 +795,13 @@ def mute(update: Update, context: CallbackContext):
             _send_reply(update, 'Пожалуйста, выберите цель.')
     # If an ordinary used tries to use the command
     else:
-        if _command_antispam_passed(update):
-            _send_reply(update, 'Пошёл нахуй, ты не админ.')
+        informthepleb(update)
+
+
+@run_async
+@command_antispam_passed
+def informthepleb(update):
+    _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
 
 @run_async
@@ -713,8 +843,7 @@ def unmute(update: Update, context: CallbackContext):
             _send_reply(update, 'Такого в списке нет.')
     # If an ordinary used tries to use the command
     else:
-        if _command_antispam_passed(update):
-            _send_reply(update, 'Пошёл нахуй, ты не админ.')
+        informthepleb(update)
 
 
 @run_async
@@ -730,8 +859,7 @@ def immune(update: Update, context: CallbackContext):
         else:
             _send_reply(update, 'Дай цель.')
     else:
-        if _command_antispam_passed(update):
-            _send_reply(update, 'Пошёл нахуй, ты не админ.')
+        informthepleb(update)
 
 
 @run_async
@@ -751,8 +879,7 @@ def unimmune(update: Update, context: CallbackContext):
             else:
                 _send_reply(update, 'Дай цель.')
     else:
-        if _command_antispam_passed(update):
-            _send_reply(update, 'Пошёл нахуй, ты не админ.')
+        informthepleb(update)
 
 
 @run_async
@@ -767,13 +894,13 @@ def mutelist(update: Update, context: CallbackContext):
     return _getsqllist(update, 'mutelist')
 
 
+@run_async
 def leave(update: Update, context: CallbackContext):
     """Make the bot leave the group, usable only by the admin/dev/creator."""
     if _creatoradmindev(update):
         BOT.leave_chat(chat_id=update.message.chat_id)
     else:
-        if _command_antispam_passed(update):
-            _send_reply(update, 'Пошёл нахуй, ты не админ.')
+        informthepleb(update)
 
 
 def _creatoradmindev(update):
@@ -786,27 +913,34 @@ def _creatoradmindev(update):
     else:
         return False
 
-def check_cooldown(update, whattocheck, cooldown):
+
+def _check_cooldown(update, whattocheck, cooldown):
     """Check cooldown of command, reply, error
     Whattocheck should be the sql column name"""
 
     def _give_command_error():
         """Give command cooldown error, if the user still spams, delete his message"""
         nonlocal update
-        if check_cooldown(update, 'lastusercommanderror', ERROR_DELAY):
-            time_remaining = str((threshold - message_time)).split('.')[0][3:]
+        # Check if the error was given
+        if dbc.execute(f'''SELECT errorgiven from "cooldowns" WHERE
+        chat_id={update.message.chat_id} AND 
+        user_id={update.message.from_user.id}''').fetchone()[0] == 0:
+            # If it wasn't, give the time remaining and update the flag.
+            time_remaining = str((timediff - message_time)).split('.')[0][3:]
             _send_reply(update, f'До команды осталось {time_remaining} (ММ:СС). '
-                                f'Пока можешь идти нахуй, я буду удалять твои команды.')
+                                f'Пока можешь идти нахуй, я буду пытаться удалять твои команды.')
+            dbc.execute(f'''UPDATE "cooldowns" SET errorgiven = 1
+            WHERE chat_id={update.message.chat_id} AND user_id={update.message.from_user.id}''')
+            db.commit()
+        # If it was, try to delete the message
         else:
             _try_to_delete_message(update)
 
     if update.message.chat.type == 'private':
         return True
     # Add exceptions for some users
-    if dbc.execute(f'''
-    SELECT * FROM exceptions 
-    WHERE user_id={update.message.from_user.id}
-    ''').fetchone():
+    if dbc.execute(f'''SELECT * FROM exceptions 
+    WHERE user_id={update.message.from_user.id}''').fetchone():
         return True
     if whattocheck == 'lastcommandreply':
         if _muted(update):
@@ -816,20 +950,20 @@ def check_cooldown(update, whattocheck, cooldown):
     # Shorten code
     user_id = update.message.from_user.id
     message_time = datetime.datetime.now()
-    lastinstance = dbc.execute(f'''
-    SELECT {whattocheck} from "cooldowns"
+    # Find last instance
+    lastinstance = dbc.execute(f'''SELECT {whattocheck} from "cooldowns"
     WHERE user_id={user_id} AND chat_id={update.message.chat_id}''').fetchone()
     if isinstance(lastinstance, tuple):
         lastinstance = lastinstance[0]
     # If there was a last one
     if lastinstance is not None:
         # Check if the cooldown has passed
-        threshold = datetime.datetime.fromisoformat(lastinstance) + \
-                    datetime.timedelta(seconds=cooldown)
-        if message_time > threshold:
+        timediff = datetime.datetime.fromisoformat(lastinstance) + \
+                   datetime.timedelta(seconds=cooldown)
+        if message_time > timediff:
             # If it did, update table, return True
-            dbc.execute(f'''
-            UPDATE "cooldowns" SET {whattocheck}="{message_time}" 
+            dbc.execute(f'''UPDATE "cooldowns" SET 
+            {whattocheck}="{message_time}", errorgiven=0 
             WHERE user_id={user_id} AND chat_id={update.message.chat_id}''')
             db.commit()
             return True
@@ -840,78 +974,14 @@ def check_cooldown(update, whattocheck, cooldown):
             return False
     # If there was none, create entry and return True
     else:
-        dbc.execute(f'''INSERT OR IGNORE INTO 
-        "cooldowns" (user_id, chat_id, firstname, {whattocheck}) 
+        dbc.execute(f'''INSERT OR IGNORE INTO "cooldowns" 
+        (user_id, chat_id, firstname, {whattocheck}) 
         VALUES ({user_id}, "{update.message.chat_id}", 
         "{update.message.from_user.first_name}", "{message_time}")''')
-        dbc.execute(f'''
-        UPDATE "cooldowns" SET {whattocheck}="{message_time}" 
+        dbc.execute(f'''UPDATE "cooldowns" SET {whattocheck}="{message_time}" 
         WHERE user_id={user_id} AND chat_id={update.message.chat_id}''')
         db.commit()
         return True
-
-
-def _check_duel_status(update: Update):
-    """Check if the duels are allowed/more possible"""
-    chatid = f"\"{update.message.chat_id}\""
-    chatdata = dbc.execute(f'''SELECT duelstatusonoff, duelmaximum,
-    duelcount, accountingday FROM "duellimits" WHERE chat_id={chatid}''').fetchone()
-    now = f"\"{datetime.datetime.now().date()}\""
-    if chatdata is not None:
-        if chatdata[0] == 0:
-            return False
-        else:
-            if chatdata[1] is None:
-                return True
-            else:
-                if chatdata[3] is None:
-                    dbc.execute(f'''UPDATE "duellimits" SET 
-                    accountingday ={now}
-                    WHERE chat_id={chatid}''')
-                    dbc.execute(f'''UPDATE "duellimits" SET 
-                    duelcount = duelcount + 1
-                    WHERE chat_id={chatid}''')
-                    db.commit()
-                    return True
-                if chatdata[2] >= chatdata[1]:
-                    # Reset every day
-                    if datetime.datetime.now().date() > datetime.date.fromisoformat(chatdata[3]):
-                        dbc.execute(f'''UPDATE "duellimits" SET 
-                        duelcount = 1, accountingday = {now} 
-                        WHERE chat_id={chatid}''')
-                        db.commit()
-                        return True
-                    else:
-                        return False
-                else:
-                    dbc.execute(f'''UPDATE "duellimits" SET 
-                    duelcount = duelcount + 1
-                    WHERE chat_id={chatid}''')
-                    db.commit()
-                    return True
-    else:
-        dbc.execute(f'''INSERT OR IGNORE INTO "duellimits" 
-        (chat_id, duelcount, accountingday) VALUES 
-        ({update.message.chat_id}, 1, {now})''')
-        return True
-
-
-@run_async
-def adminmenu(update: Update, context: CallbackContext):
-    """Send the admin menu commands"""
-    if _creatoradmindev(update):
-        commands = ("/mute - Замутить человека в этом чате (ответить ему);\n"
-                    "/unmute [имя](опционально) - Cнять мут в этом чате (ответить или имя);\n"
-                    "/mutelist - Показать всех в муте в этом чать;\n"
-                    "/immune - Добавить пользователю иммунитет на задержку команд (ответить ему);\n"
-                    "/unimmune [имя](опционально) - Снять иммунитет (ответить или имя);\n"
-                    "/immunelist - Лист людей с иммунитетом;\n"
-                    "/duellimit [int/None] - Изменить глобальный лимит на дуэли за день (число или убрать через None);\n"
-                    "/duelstatus [on/off] - Включить/Выключить дуэли;\n")
-        _send_reply(update, commands)
-    else:
-        if _command_antispam_passed(update):
-            _send_reply(update, 'Пошёл нахуй, ты не админ.')
 
 
 @run_async
@@ -947,21 +1017,12 @@ def _getsqllist(update, query: str):
             _send_reply(update, 'Список пуст.')
     # If an ordinary used tries to use the command
     else:
-        if _command_antispam_passed(update):
-            _send_reply(update, 'Пошёл нахуй, ты не админ.')
-
-
-def _command_antispam_passed(update):
-    """
-    Check if the user is spamming
-    Delay of INDIVIDUAL_USER_DELAY minute(s) for individual user commands, changeable.
-    """
-    return check_cooldown(update, 'lastcommandreply', INDIVIDUAL_USER_DELAY)
+        informthepleb(update)
 
 
 def _text_antispam_passed(update):
     """Checks if somebody is spamming reply_all words"""
-    return check_cooldown(update, 'lasttextreply', INDIVIDUAL_REPLY_DELAY)
+    return _check_cooldown(update, 'lasttextreply', INDIVIDUAL_REPLY_DELAY)
 
 
 def _create_tables():
@@ -979,7 +1040,7 @@ def _create_tables():
     chat_id NUMERIC, 
     firstname TEXT DEFAULT NULL, 
     lastcommandreply TEXT DEFAULT NULL, 
-    lastusercommanderror TEXT DEFAULT NULL, 
+    errorgiven NUMERIC DEFAULT 0, 
     lasttextreply TEXT DEFAULT NULL,
     FOREIGN KEY(user_id) REFERENCES userdata(id),
     FOREIGN KEY(firstname) REFERENCES userdata(firstname)
@@ -1019,22 +1080,7 @@ def _create_tables():
     db.commit()
 
 
-def _create_duel_table(update):
-    """Create dueling table for each chat"""
-    tablename = f"\"duels{update.message.chat_id}\""
-    # Duel table with stats
-    dbc.execute(f'''CREATE TABLE IF NOT EXISTS {tablename}
-    (user_id NUMERIC UNIQUE,
-    firstname TEXT DEFAULT NULL,
-    kills NUMERIC DEFAULT 0,
-    deaths NUMERIC DEFAULT 0,
-    winpercent NUMERIC DEFAULT 0,
-    FOREIGN KEY(user_id) REFERENCES userdata(id),
-    FOREIGN KEY(firstname) REFERENCES userdata(firstname))
-    ''')
-    db.commit()
-
-
+@run_async
 def _try_to_delete_message(update):
     """Try to delete user message using admin rights. If no rights, pass."""
     try:
@@ -1052,7 +1098,7 @@ def _send_reply(update, text: str, parse_mode: str = None):
                      parse_mode=parse_mode)
 
 
-def _get(update, what_is_needed: str):
+def _get(update: Update, what_is_needed: str):
     """Get something from update"""
     update_data = {
         'chat_id': update.message.chat_id,
@@ -1086,7 +1132,45 @@ def _muted(update):
 
 def error_callback(update: Update, context: CallbackContext):
     """Log Errors caused by Updates."""
-    LOGGER.warning('Error "%s" caused by update "%s"', context.error, update)
+    logging.warning('Error "%s" caused by update "%s"', context.error, update)
+
+
+# Bot commands
+USERCOMMANDS = [
+    'Команды для рядовых пользователей',
+    ("help", help, 'Меню помощи'),
+    ('whatsnew', whatsnew, 'Новое в боте'),
+    ("rules", rules, 'Правила думерского чата'),
+    ('adminmenu', adminmenu, 'Админское меню'),
+    ("slap", slap, 'Кого-то унизить (надо ответить жертве, чтобы бот понял кого бить)'),
+    ('duel', duel, 'Устроить дуэль (надо ответить тому, с кем будет дуэль)'),
+    ('myscore', myscore, 'Мой счёт в дуэлях'),
+    ('duelranking', duelranking, 'Ранкинг дуэлей чата (показывает только тех, у кого больше 2-х убийств и смертей)'),
+    ("flip", flip, 'Бросить монетку (Орёл/Решка)'),
+    ("dadjoke", dadjoke, 'Случайная шутка бати'),
+    ("myiq", myiq, 'Мой IQ (1 - 200)'),
+    ("muhdick", muhdick, 'Длина моего шланга (1 - 25)'),
+    ("dog", animal, 'Случайное фото собачки'),
+    ("cat", animal, 'Случайное фото котика'),
+    ]
+ONLYADMINCOMMANDS = [
+    'Команды для администраторов групп',
+    ('leave', leave, 'Сказать боту уйти.'),
+    ('duellimit', duelstatus, 'Изменить глобальный лимит на дуэли за день (число или убрать через None)'),
+    ('duelstatus', duelstatus, 'Включить/Выключить дуэли (on/off)'),
+    ('immune', immune, 'Добавить пользователю иммунитет на задержку команд (ответить ему)'),
+    ('unimmune', unimmune, 'Снять иммунитет (ответить или имя)'),
+    ('immunelist', immunelist, 'Лист людей с иммунитетом'),
+    ('mute', mute, 'Замутить человека в этом чате (надо ему ответить командой)'),
+    ('unmute', unmute, 'Cнять мут в этом чате (ответить или имя)'),
+    ('mutelist', mutelist, 'Показать всех в муте в этом чате'),
+    ]
+UNUSUALCOMMANDS = [
+    'Нечастые команды',
+    ('allcommands', allcommands, 'Все команды бота'),
+    ('start', start, 'Начальное сообщение бота'),
+    ('logs', getlogs, 'Получить логи бота (только для разработчика)')
+    ]
 
 
 def main():
@@ -1095,46 +1179,27 @@ def main():
     updater = Updater(token=TOKEN, use_context=True)
 
     # Get the dispatcher to register handlers
-    dispatcher = updater.dispatcher
+    dp = updater.dispatcher
 
-    # on different commands - answer in Telegram
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("help", help))
-    dispatcher.add_handler(CommandHandler('whatsnew', whatsnew))
-    dispatcher.add_handler(CommandHandler("flip", flip))
-    dispatcher.add_handler(CommandHandler("myiq", myiq))
-    dispatcher.add_handler(CommandHandler("muhdick", muhdick))
-    dispatcher.add_handler(CommandHandler("dog", dog))
-    dispatcher.add_handler(CommandHandler("cat", cat))
-    dispatcher.add_handler(CommandHandler("dadjoke", dadjoke))
-    dispatcher.add_handler(CommandHandler("slap", slap))
-    dispatcher.add_handler(CommandHandler("rules", rules))
-    dispatcher.add_handler(CommandHandler('mute', mute))
-    dispatcher.add_handler(CommandHandler('unmute', unmute))
-    dispatcher.add_handler(CommandHandler('mutelist', mutelist))
-    dispatcher.add_handler(CommandHandler('immune', immune))
-    dispatcher.add_handler(CommandHandler('unimmune', unimmune))
-    dispatcher.add_handler(CommandHandler('immunelist', immunelist))
-    dispatcher.add_handler(CommandHandler('duel', duel))
-    dispatcher.add_handler(CommandHandler('myscore', myscore))
-    dispatcher.add_handler(CommandHandler('duelranking', duelranking))
-    dispatcher.add_handler(CommandHandler('duellimit', duelstatus))
-    dispatcher.add_handler(CommandHandler('duelstatus', duelstatus))
-    dispatcher.add_handler(CommandHandler('leave', leave))
-    dispatcher.add_handler(CommandHandler('adminmenu', adminmenu))
+    logging.info('Adding handlers...')
+    # Add command handles
+    for commandlists in (USERCOMMANDS, ONLYADMINCOMMANDS, UNUSUALCOMMANDS):
+        for command in commandlists[1:]:
+            dp.add_handler(CommandHandler(command[0], command[1]))
 
     # add message handlers
-    dispatcher.add_handler(MessageHandler(
+    dp.add_handler(MessageHandler(
         Filters.status_update.new_chat_members, welcomer))
-    dispatcher.add_handler(MessageHandler(
+    dp.add_handler(MessageHandler(
         Filters.status_update.left_chat_member, farewell))
-    dispatcher.add_handler(MessageHandler(
+    dp.add_handler(MessageHandler(
         Filters.all, message_filter))
 
     # log all errors
-    dispatcher.add_error_handler(error_callback)
+    dp.add_error_handler(error_callback)
 
     # Create databases
+    logging.info('Creating database tables if needed...')
     _create_tables()
 
     # Start the Bot
@@ -1142,6 +1207,8 @@ def main():
     # actually starting to poll. Otherwise the BOT may spam the chat on coming
     # back online
     updater.start_polling(clean=True)
+    logging.info('Polling started.')
+    logging.info('-----------------------------------------------')
 
     # Run the BOT until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since
