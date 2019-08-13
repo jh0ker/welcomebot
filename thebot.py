@@ -606,7 +606,7 @@ def duel(update: Update, context: CallbackContext):
                         random.shuffle(winners)
                         losers.append(winners.pop())
                     # Make the scenario tree
-                    if len(winners) == 0:
+                    if not winners:
                         scenario = 'nonedead'
                     elif len(winners) == 1:
                         scenario = 'onedead'
@@ -630,6 +630,7 @@ def duel(update: Update, context: CallbackContext):
 
     @run_async
     def _conclude_the_duel(result: str):
+        """Send all the messages for the duel."""
         nonlocal update
         # Send the initial message
         botmsg = BOT.send_message(chat_id=update.message.chat_id,
@@ -637,8 +638,7 @@ def duel(update: Update, context: CallbackContext):
         # Get the sound of the duel
         sound = '***BANG BANG***' if random.random() * 100 < 90 else '***ПИФ-ПАФ***'
         # Make the message loop
-        for phrase in ('Готовятся к выстрелу...',
-                       sound, result):
+        for phrase in ('Готовятся к выстрелу...', sound, result):
             sleep(0.8)
             botmsg = BOT.edit_message_text(chat_id=update.message.chat_id,
                                            text=phrase,
@@ -750,51 +750,70 @@ def duelstatus(update: Update, context: CallbackContext):
         if arg == 'none':
             dbc.execute(f'''UPDATE "duellimits" 
             set duelmaximum=NULL WHERE chat_id={update.message.chat_id}''')
-            _send_reply(update, 'Был убран лимит дуэлей.')
+            reply = 'Был убран лимит дуэлей.'
+        # Get current status if no argument was given
+        elif arg is None:
+            status = dbc.execute(f'''SELECT duelmaximum from "duellimits"
+            WHERE chat_id={update.message.chat_id}''').fetchone()[0]
+            # If nothing, means no limit
+            if status is None:
+                reply = 'Лимита на дуэли нет.'
+            else:
+                duelsused = dbc.execute(f'''SELECT duelcount from "duellimits"
+                WHERE chat_id={update.message.chat_id}''').fetchone()[0]
+                reply = f'Лимит дуэлей составляет {status}. Уже использовано {duelsused}.'
         # Set maximum
         else:
             try:
                 arg = int(arg)
                 dbc.execute(f'''UPDATE "duellimits" 
                 set duelmaximum={arg} WHERE chat_id={update.message.chat_id}''')
-                _send_reply(update, f'Максимальное количество дуэлей за день стало {arg}.')
+                reply = f'Максимальное количество дуэлей за день стало {arg}.'
             except ValueError:
-                _send_reply(update, f'{arg} не подходит. Дайте число. /adminmenu для справки.')
+                reply = f'\"{arg}\" не подходит. Дайте число. /adminmenu для справки.'
+        _send_reply(update, reply)
         db.commit()
 
     @run_async
     def _handle_status():
         """Handle the on/off state of duels in the chat
-        1 for turned on, 0 for turned off"""
+        1 for turned on, 0 for turned off
+        If no argument, get the current status"""
         nonlocal arg, update
         status = None
-        # Get the integer from stats
-        if arg == 'on':
-            status = 1
-            _send_reply(update, 'Дуэли были включены для этого чата.')
-        elif arg == 'off':
-            status = 0
-            _send_reply(update, 'Дуэли были выключены для этого чата.')
-        # Update table or say that the argument was wrong
-        if status == 1 or status == 0:
+        if arg in ['on', 'off']:
+            status = 1 if arg == 'on' else 0
             dbc.execute(f'''UPDATE "duellimits" 
             set duelstatusonoff={status} WHERE chat_id={update.message.chat_id}''')
             db.commit()
+        elif arg is None:
+            status = dbc.execute(f'''SELECT duelstatusonoff from "duellimits"
+            WHERE chat_id={update.message.chat_id}''').fetchone()[0]
         else:
-            _send_reply(update, 'Всмысле? Или on или off. /adminmenu для справки.')
+            reply = 'Всмысле? Ты обосрался. /adminmenu для справки.'
+        if status == 1:
+            reply = 'Дуэли включены для этого чата.'
+        elif status == 0:
+            reply = 'Дуэли выключены для этого чата.'
+        _send_reply(update, reply)
 
     commands = ['/duellimit', '/duelstatus']
     # Check if used by admin, a valid command, and there an argument to handle
     if _creatoradmindev(update) and \
-            update.message.chat.type != 'private' and \
-            len(update.message.text.split()) == 2:
-        # Get the argument
-        arg = update.message.text.lower().split()[1]
-        # Pass to handlers
-        if commands[0] in update.message.text.lower():
-            _handle_limits()
-        if commands[1] in update.message.text.lower():
-            _handle_status()
+            update.message.chat.type != 'private':
+        if len(update.message.text.split()) < 3:
+            # Get the argument
+            try:
+                arg = update.message.text.lower().split()[1]
+            except IndexError:
+                arg = None
+            # Pass to handlers
+            if commands[0] in update.message.text.lower():
+                _handle_limits()
+            if commands[1] in update.message.text.lower():
+                _handle_status()
+        else:
+            _send_reply(update, 'Всмысле? Ты обосрался. /adminmenu для справки.')
 
 
 @run_async
