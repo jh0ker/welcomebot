@@ -694,7 +694,7 @@ def myscore(update: Update, context: CallbackContext):
         if dbc.execute(f'''SELECT name FROM "sqlite_master" 
         WHERE type="table" AND name="{tablename}"''').fetchone() is not None:
             # If exists, get user data
-            u_data = dbc.execute(f'''SELECT kills, deaths FROM "{tablename}" WHERE 
+            u_data = dbc.execute(f'''SELECT kills, deaths FROM "{tablename}" WHERE
                 user_id={update.message.from_user.id}''').fetchone()
             # If there is user data, get it
             if u_data is not None:
@@ -855,7 +855,7 @@ def mute(update: Update, context: CallbackContext):
         # Get mute reason if there is any
         if len(update.message.text.split()) > 1:
             mutereason = ' '.join(update.message.text.split()[1:])
-            dbc.execute(f'''UPDATE "muted" SET reason="{mutereason}" 
+            dbc.execute(f'''UPDATE "muted" SET reason="{mutereason}"
             WHERE user_id={to_mute_id} AND chat_id={update.message.chat_id}''')
         db.commit()
         # Send photo and explanation to the silenced person
@@ -991,8 +991,8 @@ def _check_cooldown(update, whattocheck, cooldown):
     if update.message.chat.type == 'private':
         return True
     # Add exceptions for some users
-    if dbc.execute(f'''SELECT * FROM exceptions 
-    WHERE user_id={update.message.from_user.id}''').fetchone():
+    user_id = update.message.from_user.id
+    if dbc.execute(f'''SELECT * FROM exceptions WHERE user_id={user_id}''').fetchone():
         return True
     if whattocheck == 'lastcommandreply':
         if _muted(update):
@@ -1000,7 +1000,6 @@ def _check_cooldown(update, whattocheck, cooldown):
             return False
     # Create table if doesn't exist
     # Shorten code
-    user_id = update.message.from_user.id
     message_time = datetime.datetime.now()
     # Find last instance
     lastinstance = dbc.execute(f'''SELECT {whattocheck} from "cooldowns"
@@ -1030,7 +1029,7 @@ def _check_cooldown(update, whattocheck, cooldown):
         (user_id, chat_id, firstname, {whattocheck}) 
         VALUES ({user_id}, "{update.message.chat_id}", 
         "{update.message.from_user.first_name}", "{message_time}")''')
-        dbc.execute(f'''UPDATE "cooldowns" SET {whattocheck}="{message_time}" 
+        dbc.execute(f'''UPDATE "cooldowns" SET {whattocheck}="{message_time}"
         WHERE user_id={user_id} AND chat_id={update.message.chat_id}''')
         db.commit()
         return True
