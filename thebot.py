@@ -742,6 +742,9 @@ def duelranking(update: Update, context: CallbackContext):
         # If got no data, inform the user
         if ranking == headers:
             ranking = 'Пока что недостаточно данных. Продолжайте дуэлиться.'
+        # Add a footer to the table
+        else:
+            ranking += 'Показываются только дуэлянты у которых больше одной смерти и убийств.'
         _send_reply(update, ranking, parse_mode='Markdown')
 
     # Duels table create
