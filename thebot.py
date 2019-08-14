@@ -134,7 +134,7 @@ def welcomer(update: Update, context: CallbackContext):
         # Sleep and check if user is still there or voicy kicked it
         sleep(70)
         if BOT.get_chat_member(chat_id=update.message.chat_id,
-                               user_id=new_member.id).status == 'left':
+                               user_id=new_member.id).status in ['restricted', 'left', 'kicked']:
             # Delete the bot welcome message
             BOT.delete_message(chat_id=botmsg.chat_id,
                                message_id=botmsg.message_id)
@@ -216,20 +216,25 @@ def whatsnew(update: Update, context: CallbackContext):
 @run_async
 def getlogs(update: Update, context: CallbackContext):
     """Get the bot logs manually or automatically to chat with id LOGCHATID"""
-    # My call
-    if update.message.from_user.id == DEVELOPER_ID and \
-            update.message.text.lower() == '/logs':
-        try:
-            sendlogs(noworyesterday='now')
-        except (EOFError, FileNotFoundError) as changelog_err:
-            logging.ERROR(changelog_err)
-            _send_reply(update, 'Не смог добраться до логов. Что-то не так.')
-    # Random message for autologs
-    else:
-        global LOGDATE
-        if datetime.date.today() > LOGDATE:
-            LOGDATE = datetime.date.today()
-            sendlogs(noworyesterday='yesterday')
+    # Check if edited message
+    try:
+        # My call
+        if update.message.from_user.id == DEVELOPER_ID and \
+                update.message.text.lower() == '/logs':
+            try:
+                sendlogs(noworyesterday='now')
+            except (EOFError, FileNotFoundError) as changelog_err:
+                logging.ERROR(changelog_err)
+                _send_reply(update, 'Не смог добраться до логов. Что-то не так.')
+        # Random message for autologs
+        else:
+            global LOGDATE
+            if datetime.date.today() > LOGDATE:
+                LOGDATE = datetime.date.today()
+                sendlogs(noworyesterday='yesterday')
+    # If edited, pass
+    except AttributeError:
+        pass
 
 
 @run_async
@@ -280,8 +285,8 @@ def message_filter(update: Update, context: CallbackContext):
     """Replies to all messages
     Думер > Земляночка > """
     # Get logs trigged by messages
-    getlogs(update, context)
     try:
+        getlogs(update, context)
         # If user is in the muted list, delete his message unless he is in exceptions
         # to avoid possible self-mutes
         doomer_word = _doomer_word_handler(update)
