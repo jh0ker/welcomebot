@@ -734,7 +734,7 @@ def duelranking(update: Update, context: CallbackContext):
             # Add to the table the five best and five worst
             for q in dbc.execute(f'''SELECT firstname, kills, deaths, winpercent 
                                         FROM "duels{update.message.chat_id}" 
-                                        WHERE kills>2 AND deaths>2 
+                                        WHERE kills>1 AND deaths>1 
                                         ORDER BY winpercent {query[1]} LIMIT 5'''):
                 ranking += f'№{counter} {q[0]}\t -\t {q[1]}/{q[2]}'
                 ranking += f' ({round(q[3], 2)}%)\n'
