@@ -12,10 +12,10 @@ LOGCHATID = -398564859
 # Maximum STR the bot can roll
 THRESHOLDCAP = 80
 # Low and high accuracy that the user can get without exp
-LOW_BASE_ACCURACY = 40
-HIGH_BASE_ACCURACY = 60
+LOW_BASE_ACCURACY = 35
+HIGH_BASE_ACCURACY = 50
 # Exp multiplier for kills, deaths and misses
-KILLMULT = 0.25
+KILLMULT = 0.28
 DEATHMULT = -0.12
 MISSMULT = -0.05
 # Always lose percent

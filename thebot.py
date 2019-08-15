@@ -594,16 +594,20 @@ def duel(update: Update, context: CallbackContext):
         duelcount, accountingday FROM "duellimits" WHERE chat_id={chatid}''').fetchone()
         now = f"\"{datetime.datetime.now().date()}\""
         if chatdata is not None:
+            # If duels are turned off, disallow duels
             if chatdata[0] == 0:
                 return False
+            # If there is no maximum, allow for duels
             if chatdata[1] is None:
                 return True
+            # If no duels have been counted, increment by 1
             if chatdata[3] is None:
                 DBC.execute(f'''UPDATE "duellimits" SET
                 accountingday ={now}, duelcount = duelcount + 1
                 WHERE chat_id={chatid}''')
                 DB.commit()
                 return True
+            # If number of duels done is higher than the maximum
             if chatdata[2] >= chatdata[1]:
                 # Reset every day
                 if datetime.datetime.now().date() > \
@@ -614,11 +618,13 @@ def duel(update: Update, context: CallbackContext):
                     DB.commit()
                     return True
                 return False
+            # Increment if none of the conditions were met
             DBC.execute(f'''UPDATE "duellimits" SET
             duelcount = duelcount + 1
             WHERE chat_id={chatid}''')
             DB.commit()
             return True
+        # If there is no chat data, create it
         DBC.execute(f'''INSERT OR IGNORE INTO "duellimits"
         (chat_id, duelcount, accountingday) VALUES 
         ({update.message.chat_id}, 1, {now})''')
@@ -649,7 +655,8 @@ def duel(update: Update, context: CallbackContext):
                     # Get the winner and the loser. Check 1
                     winners, losers = [], []
                     for player in participant_list:
-                        winners.append(player) if player[2] > random.uniform(0, THRESHOLDCAP) \
+                        individualwinreq = random.uniform(0, THRESHOLDCAP)
+                        winners.append(player) if player[2] > individualwinreq \
                             else losers.append(player)
                     # Get the winner and the loser. Check 2
                     if len(winners) == 2:
