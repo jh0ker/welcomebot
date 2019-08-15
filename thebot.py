@@ -631,8 +631,8 @@ def duel(update: Update, context: CallbackContext):
         DB.commit()
         return True
 
-    @command_antispam_passed
     @run_async
+    @command_antispam_passed
     def trytoduel(update):
         if update.message.reply_to_message is None:
             _send_reply(update, 'С кем дуэль проводить будем?\n'
