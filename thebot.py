@@ -111,7 +111,7 @@ def rightscheck(func):
         rank = BOT.get_chat_member(chat_id=update.message.chat_id,
                                    user_id=update.message.from_user.id)
         permitted = ['creator', 'administrator']
-        if rank in permitted or update.message.from_user.id == DEVELOPER_ID:
+        if rank in permitted or update.message.from_user.id == DEV:
             func(update, *args, **kwargs)
         else:
             informthepleb(update)
@@ -232,7 +232,7 @@ def getlogs(update: Update, context: CallbackContext):
     # Check if edited message
     try:
         # My call
-        if update.message.from_user.id == DEVELOPER_ID and \
+        if update.message.from_user.id == DEV and \
                 update.message.text.lower() == '/logs':
             try:
                 sendlogs(noworyesterday='now')
@@ -269,10 +269,9 @@ def sendlogs(noworyesterday: str = 'now'):
 
 
 @run_async
-@command_antispam_passed
 def allcommands(update: Update, context: CallbackContext):
     """Get all commands"""
-    if update.message.from_user.id == DEVELOPER_ID:
+    if update.message.from_user.id == DEV:
         text = ''
         for commandlists in (USERCOMMANDS, ONLYADMINCOMMANDS, UNUSUALCOMMANDS):
             text += f'<b>{commandlists[0]}:</b>\n'
@@ -483,38 +482,36 @@ def duel(update: Update, context: CallbackContext):
 
     def _getuserstr(userid: int) -> float:
         """Get strength if the user to assist in duels"""
-        userfound = dbc.execute(f'''SELECT kills, deaths from {tablename}
-        WHERE user_id={userid}''').fetchone()
-        if userfound:
-            HARDCAP = THRESHOLDCAP * 0.95
-            STRENGTH = random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY) \
-                       + userfound[0] * KILLMULT \
-                       + userfound[1] * DEATHMULT
-            return min(STRENGTH, HARDCAP)
-        else:
-            return random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY)
+        # Check if table exists
+        nonlocal tablename
+        if dbc.execute(f'''SELECT name FROM "sqlite_master" 
+                WHERE type="table" AND name={tablename}''').fetchone() is not None:
+            userfound = dbc.execute(f'''SELECT kills, deaths from {tablename}
+            WHERE user_id={userid}''').fetchone()
+            if userfound:
+                HARDCAP = THRESHOLDCAP * 0.95
+                STRENGTH = random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY) \
+                           + userfound[0] * KILLMULT \
+                           + userfound[1] * DEATHMULT
+                return min(STRENGTH, HARDCAP)
+        # Return base if table not found or user not found
+        return random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY)
 
     @run_async
-    def _score_the_results(winners: list, losers: list, p1_kd: tuple, p2_kd: tuple):
+    @create_duel_table
+    def _score_the_results(update: Update, winners: list, losers: list, p1_kd: tuple, p2_kd: tuple):
         """Score the results in the database"""
         # Update data
+        nonlocal tablename
         winner, loser = winners[0], losers[0]
         counter = 0
         for player in (winner, loser):
-            kd = p1_kd if counter == 0 else p2_kd
+            kd = p1_kd if   counter == 0 else p2_kd
             userid, firstname = player[1], player[0]
             dbc.execute(f'INSERT OR IGNORE INTO {tablename} (user_id, firstname) '
                         f'VALUES ("{userid}", "{firstname}")')
             dbc.execute(f'UPDATE {tablename} SET kills = kills + {kd[0]}, '
                         f'deaths = deaths + {kd[1]} WHERE user_id={userid}')
-            data = dbc.execute(f'SELECT kills, deaths from {tablename} '
-                               f'WHERE user_id={userid}').fetchone()
-            try:
-                wr = data[0] / (data[0] + data[1]) * 100
-            except ZeroDivisionError:
-                wr = 100
-            dbc.execute(f'UPDATE {tablename} SET winpercent = {wr} '
-                        f'WHERE user_id={userid}')
             counter += 1
         db.commit()
 
@@ -532,7 +529,7 @@ def duel(update: Update, context: CallbackContext):
         elif scenario == 'suicide':
             return phrase.replace('loser', init_tag)
 
-    def _check_duel_status():
+    def _check_duel_status() -> bool:
         """Check if the duels are allowed/more possible"""
         nonlocal update
         chatid = f"\"{update.message.chat_id}\""
@@ -576,7 +573,6 @@ def duel(update: Update, context: CallbackContext):
             return True
 
     @command_antispam_passed
-    @create_duel_table
     def trytoduel(update):
         if update.message.reply_to_message is None:
             _send_reply(update, 'С кем дуэль проводить будем?\n'
@@ -609,7 +605,7 @@ def duel(update: Update, context: CallbackContext):
                     # Make the scenario tree
                     scenario = 'onedead' if winners else 'nonedead'
                     if scenario == 'onedead':
-                        _score_the_results(winners, losers, (1, 0), (0, 1))
+                        _score_the_results(update, winners, losers, (1, 0), (0, 1))
                     # Get the result
                     duel_result = _usenames(scenario, winners, losers)
                     _conclude_the_duel(duel_result)
@@ -701,6 +697,7 @@ def duelranking(update: Update, context: CallbackContext):
     @run_async
     @command_antispam_passed
     def _handle_ranking(update):
+        nonlocal tablename
         ranking, headers = '', ''
         for query in (('Лучшие:\n', 'DESC'), ('Худшие:\n', 'ASC')):
             # Create headers to see if there was data
@@ -709,10 +706,13 @@ def duelranking(update: Update, context: CallbackContext):
             ranking += query[0]
             counter = 1
             # Add to the table the five best and five worst
-            for q in dbc.execute(f'''SELECT firstname, kills, deaths, winpercent 
-                                        FROM "duels{update.message.chat_id}" 
-                                        WHERE kills>1 AND deaths>1 
-                                        ORDER BY winpercent {query[1]} LIMIT 5'''):
+            for q in dbc.execute(f'''SELECT winrate.firstname, doom.kills, doom.deaths, winrate.wr
+            FROM "{tablename}" AS doom JOIN
+            (SELECT firstname, kills * 100.0/(kills+deaths) AS wr
+                FROM "{tablename}"
+                    WHERE deaths!=0 AND kills!=0) AS winrate
+            ON doom.firstname=winrate.firstname
+            ORDER BY wr {query[1]} LIMIT 5'''):
                 ranking += f'№{counter} {q[0]}\t -\t {q[1]}/{q[2]}'
                 ranking += f' ({round(q[3], 2)}%)\n'
                 counter += 1
@@ -721,7 +721,7 @@ def duelranking(update: Update, context: CallbackContext):
             ranking = 'Пока что недостаточно данных. Продолжайте дуэлиться.'
         # Add a footer to the table
         else:
-            ranking += 'Показываются только дуэлянты у которых больше одной смерти и убийств.'
+            ranking += 'Показываются только дуэлянты у которых есть убийства и смерти.'
         _send_reply(update, ranking, parse_mode='Markdown')
 
     # Duels table create

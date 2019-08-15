@@ -4,7 +4,7 @@ Collection of constants for modules
 
 # Admin id
 # Add developer ID for passing the spam check
-DEVELOPER_ID = 255295801
+DEV = 255295801
 # ID of the log chat
 LOGCHATID = -398564859
 
