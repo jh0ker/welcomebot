@@ -18,14 +18,18 @@ HIGH_BASE_ACCURACY = 60
 KILLMULT = 0.19
 DEATHMULT = 0.14
 MISSMULT = 0.09
+# Always lose percent
+ALWAYSLOSS = 0.05
+
+# DO NOT TOUCH
+# -----------------------------------------------------------
 # Get the kill, death multiplier and their percentage to total
 KILLMULTPERC = round(KILLMULT / THRESHOLDCAP * 100, 2)
 DEATHMULTPERC = round(DEATHMULT / THRESHOLDCAP * 100, 2)
 MISSMULTPERC = round(MISSMULT / THRESHOLDCAP * 100, 2)
-# Always lose percent
-ALWAYSLOSS = 0.05
 # Get the HARDCAP to additional strength
 ADDITIONALHARDCAP = THRESHOLDCAP * (1 - ALWAYSLOSS) - LOW_BASE_ACCURACY
+# -----------------------------------------------------------
 
 # Antispam constants
 # Delays in seconds for the BOT
