@@ -20,6 +20,7 @@ DEATHMULT = -0.12
 MISSMULT = -0.05
 # Always lose percent
 ALWAYSLOSS = 0.05
+HARDRESETCHANCE = 0.001 # 0.1%
 
 # DO NOT TOUCH
 # -----------------------------------------------------------
