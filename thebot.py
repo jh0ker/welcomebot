@@ -550,13 +550,15 @@ def duel(update: Update, context: CallbackContext):
         # One dead
         if winners:
             p1, p2 = winners[0], losers[0]
-            # Remove cooldown from the winner
-            DBC.execute(f'''INSERT OR IGNORE INTO "cooldowns"
-            (user_id, chat_id, firstname) 
-            VALUES ({update.message.from_user.id}, "{update.message.chat_id}", 
-            "{update.message.from_user.first_name}")''')
-            DBC.execute(f'''UPDATE "cooldowns" SET lastcommandreply=NULL, lasttextreply=NULL
-            WHERE user_id={p1[1]}''')
+            # Remove cooldown from the winner if it was the initiator
+            if update.message.from_user.id == p1[1]:
+                DBC.execute(f'''INSERT OR IGNORE INTO "cooldowns"
+                (user_id, chat_id, firstname) 
+                VALUES ({update.message.from_user.id}, "{update.message.chat_id}", 
+                "{update.message.from_user.first_name}")''')
+                shortercd = datetime.datetime.now() - datetime.timedelta(minutes=8)
+                DBC.execute(f'''UPDATE "cooldowns" SET lastcommandreply="{shortercd}", 
+                lasttextreply="{shortercd}" WHERE user_id={p1[1]}''')
         # None dead
         else:
             p1, p2 = losers[0], losers[1]
@@ -581,7 +583,9 @@ def duel(update: Update, context: CallbackContext):
             return phrase.replace('loser1', losers[0][3]).replace('loser2', losers[1][3])
         if scenario == 'onedead':
             phrase = phrase.replace('winner', winners[0][3]).replace('loser', losers[0][3])
-            phrase += f'\nПобеда за {winners[0][3]}! Все твои кулдауны были ресетнуты!'
+            phrase += f'\nПобеда за {winners[0][3]}!'
+            if winners[0][1] == update.message.from_user.id
+                phrase += f' Все твои кулдауны были ресетнуты до 2-х минут!'
             return phrase
         if scenario == 'suicide':
             return phrase.replace('loser', init_tag)
