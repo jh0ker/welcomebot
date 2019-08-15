@@ -80,13 +80,31 @@ def create_duel_table(func):
             firstname TEXT DEFAULT NULL,
             kills NUMERIC DEFAULT 0,
             deaths NUMERIC DEFAULT 0,
+            misses NUMERIC DEFAULT 0,
+            patch NUMERIC DEFAULT 1.1,
             FOREIGN KEY(user_id) REFERENCES userdata(id),
             FOREIGN KEY(firstname) REFERENCES userdata(firstname))
             ''')
             db.commit()
+        else:
+            _patch_tables(tablename)
         func(update, *args, **kwargs)
 
     return executor
+
+
+def _patch_tables(tablename: str):
+    """Patch the tables"""
+    # Add patch 1.1
+    try:
+        dbc.execute(f'''ALTER TABLE {tablename}
+        ADD patch NUMERIC DEFAULT 1.1''')
+        dbc.execute(f'''ALTER TABLE {tablename}
+        ADD misses NUMERIC DEFAULT 0''')
+        db.commit()
+    # already exists
+    except sqlite3.OperationalError:
+        pass
 
 
 def command_antispam_passed(func):
@@ -476,6 +494,7 @@ def slap(update: Update, context: CallbackContext):
     _send_reply(update, reply, parse_mode='Markdown')
 
 
+@create_duel_table
 def duel(update: Update, context: CallbackContext):
     """Duel to solve any kind of argument"""
 
@@ -485,32 +504,38 @@ def duel(update: Update, context: CallbackContext):
         nonlocal tablename
         if dbc.execute(f'''SELECT name FROM "sqlite_master" 
                 WHERE type="table" AND name={tablename}''').fetchone() is not None:
-            userfound = dbc.execute(f'''SELECT kills, deaths from {tablename}
+            userfound = dbc.execute(f'''SELECT kills, deaths, misses from {tablename}
             WHERE user_id={userid}''').fetchone()
             if userfound:
                 HARDCAP = THRESHOLDCAP * 0.95
                 STRENGTH = random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY) \
                            + userfound[0] * KILLMULT \
-                           + userfound[1] * DEATHMULT
+                           + userfound[1] * DEATHMULT \
+                           + userfound[2] * MISSMULT
                 return min(STRENGTH, HARDCAP)
         # Return base if table not found or user not found
         return random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY)
 
     @run_async
-    @create_duel_table
-    def _score_the_results(update: Update, winners: list, losers: list, p1_kd: tuple, p2_kd: tuple):
+    def _score_the_results(winners: list, losers: list, p1_kdm: tuple, p2_kdm: tuple):
         """Score the results in the database"""
         # Update data
         nonlocal tablename
-        winner, loser = winners[0], losers[0]
+        # One dead
+        if winners:
+            winner, loser = winners[0], losers[0]
+        # None dead
+        else:
+            winner, loser = losers[0], losers[1]
         counter = 0
         for player in (winner, loser):
-            kd = p1_kd if   counter == 0 else p2_kd
+            kd = p1_kdm if counter == 0 else p2_kdm
             userid, firstname = player[1], player[0]
             dbc.execute(f'INSERT OR IGNORE INTO {tablename} (user_id, firstname) '
                         f'VALUES ("{userid}", "{firstname}")')
             dbc.execute(f'UPDATE {tablename} SET kills = kills + {kd[0]}, '
-                        f'deaths = deaths + {kd[1]} WHERE user_id={userid}')
+                        f'deaths = deaths + {kd[1]}, misses = misses + {kd[2]} '
+                        f'WHERE user_id={userid}')
             counter += 1
         db.commit()
 
@@ -592,9 +617,9 @@ def duel(update: Update, context: CallbackContext):
                         (target_name, target_id, _getuserstr(target_id), target_tag)
                         ]
                     # Get the winner and the loser. Check 1
-                    winthreshold = random.uniform(0, THRESHOLDCAP)
                     winners, losers = [], []
                     for player in participant_list:
+                        winthreshold = random.uniform(0, THRESHOLDCAP)
                         winners.append(player) if player[2] > winthreshold \
                             else losers.append(player)
                     # Get the winner and the loser. Check 2
@@ -604,7 +629,9 @@ def duel(update: Update, context: CallbackContext):
                     # Make the scenario tree
                     scenario = 'onedead' if winners else 'nonedead'
                     if scenario == 'onedead':
-                        _score_the_results(update, winners, losers, (1, 0), (0, 1))
+                        _score_the_results(winners, losers, (1, 0, 0), (0, 1, 0))
+                    else:
+                        _score_the_results(winners, losers, (0, 0, 1), (0, 0, 1))
                     # Get the result
                     duel_result = _usenames(scenario, winners, losers)
                     _conclude_the_duel(duel_result)
@@ -664,7 +691,11 @@ def myscore(update: Update, context: CallbackContext):
         ADDITIONALSTR = min(ADDITIONALHARDCAP, ADDITIONALSTR)
         # Calculate the winrate increase
         WRINCREASE = round(ADDITIONALSTR / THRESHOLDCAP * 100, 2)
-        reply = (f'Твой K/D равен {u_data[0]}/{u_data[1]}.\n'
+        try:
+            wr = u_data[0] / (u_data[0] + u_data[1]) * 100
+        except ZeroDivisionError:
+            wr = 100
+        reply = (f'Твой K/D равен {u_data[0]}/{u_data[1]} ({round(wr, 2)}%).\n'
                  f'Шанс победы из-за опыта повышен на {WRINCREASE}%. (максимум 45%)\n'
                  f'P.S. +{KILLMULTPERC}% за убийство, +{DEATHMULTPERC}% за смерть.')
         _send_reply(update, reply)
@@ -697,7 +728,7 @@ def duelranking(update: Update, context: CallbackContext):
     @command_antispam_passed
     def _handle_ranking(update):
         nonlocal tablename
-        ranking, headers = '', ''
+        ranking, headers = '***Убийства/Смерти/Непопадания\n***', '***Убийства/Смерти/Непопадания\n***'
         for query in (('Лучшие:\n', 'DESC'), ('Худшие:\n', 'ASC')):
             # Create headers to see if there was data
             headers += query[0]
@@ -705,15 +736,15 @@ def duelranking(update: Update, context: CallbackContext):
             ranking += query[0]
             counter = 1
             # Add to the table the five best and five worst
-            for q in dbc.execute(f'''SELECT winrate.firstname, doom.kills, doom.deaths, winrate.wr
+            for q in dbc.execute(f'''SELECT winrate.firstname, doom.kills, doom.deaths, doom.misses, winrate.wr
             FROM "{tablename}" AS doom JOIN
             (SELECT firstname, kills * 100.0/(kills+deaths) AS wr
                 FROM "{tablename}"
                     WHERE deaths!=0 AND kills!=0) AS winrate
             ON doom.firstname=winrate.firstname
             ORDER BY wr {query[1]} LIMIT 5'''):
-                ranking += f'№{counter} {q[0]}\t -\t {q[1]}/{q[2]}'
-                ranking += f' ({round(q[3], 2)}%)\n'
+                ranking += f'№{counter} {q[0]}\t -\t {q[1]}/{q[2]}/{q[3]}'
+                ranking += f' ({round(q[4], 2)}%)\n'
                 counter += 1
         # If got no data, inform the user
         if ranking == headers:

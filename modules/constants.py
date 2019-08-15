@@ -15,8 +15,9 @@ THRESHOLDCAP = 80
 LOW_BASE_ACCURACY = 40
 HIGH_BASE_ACCURACY = 60
 # Exp multiplier for kills and deaths
-KILLMULT = 0.16
-DEATHMULT = 0.06
+KILLMULT = 0.19
+DEATHMULT = 0.14
+MISSMULT = 0.09
 # Always lose percent
 ALWAYSLOSS = 0.05
 # Get the HARDCAP to additional strength
