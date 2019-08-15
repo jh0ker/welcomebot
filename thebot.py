@@ -584,7 +584,7 @@ def duel(update: Update, context: CallbackContext):
         if scenario == 'onedead':
             phrase = phrase.replace('winner', winners[0][3]).replace('loser', losers[0][3])
             phrase += f'\nПобеда за {winners[0][3]}!'
-            if winners[0][1] == update.message.from_user.id
+            if winners[0][1] == update.message.from_user.id:
                 phrase += f' Все твои кулдауны были ресетнуты до 2-х минут!'
             return phrase
         if scenario == 'suicide':
