@@ -67,7 +67,7 @@ def create_duel_table(func):
 
     def executor(update: Update, *args, **kwargs):
         tablename = f"\"duels{update.message.chat_id}\""
-        exists = dbc.execute(f'''SELECT name FROM "sqlite_master" 
+        exists = dbc.execute(f'''SELECT name FROM "sqlite_master"
                 WHERE type="table" AND name={tablename}''').fetchone()
         if exists is None:
             chat_title = BOT.get_chat(chat_id=update.message.chat_id).title
@@ -279,18 +279,6 @@ def allcommands(update: Update, context: CallbackContext):
             for commands in commandlists[1:]:
                 text += f'/{commands[0]} - {commands[2]};\n'
         _send_reply(update, text, parse_mode='HTML')
-
-
-@run_async
-@command_antispam_passed
-def rules(update: Update, context: CallbackContext):
-    """Reply to the user with the rules of the chat"""
-    reply_text = ("1. Не быть зумером, не сообщать зумерам о думском клубе;\n"
-                  "2. Всяк сюда входящий, с того фото своих ножек;\n"
-                  "3. Никаких гей-гифок;\n"
-                  "4. За спам - фото своих ног;\n"
-                  "5. Думерскую историю рассказать;\n")
-    _send_reply(update, reply_text)
 
 
 @run_async
@@ -741,7 +729,7 @@ def duelranking(update: Update, context: CallbackContext):
         # Get tablename
         tablename = f"duels{update.message.chat_id}"
         # Check if the chat table exists
-        if dbc.execute(f'''SELECT name FROM "sqlite_master" 
+        if dbc.execute(f'''SELECT name FROM "sqlite_master"
                 WHERE type="table" AND name="{tablename}"''').fetchone() is not None:
             _handle_ranking(update)
         else:
@@ -817,7 +805,7 @@ def duelstatus(update: Update, context: CallbackContext):
             # Get the accounting day
             now = f"\"{datetime.datetime.now().date()}\""
             # Create table entry if it didn't exist
-            dbc.execute(f'''INSERT OR IGNORE INTO "duellimits" 
+            dbc.execute(f'''INSERT OR IGNORE INTO "duellimits"
                         (chat_id, duelcount, accountingday) VALUES 
                         ({update.message.chat_id}, 1, {now})''')
             db.commit()
@@ -1013,7 +1001,7 @@ def _check_cooldown(update, whattocheck, cooldown):
                    datetime.timedelta(seconds=cooldown)
         if message_time > timediff:
             # If it did, update table, return True
-            dbc.execute(f'''UPDATE "cooldowns" SET 
+            dbc.execute(f'''UPDATE "cooldowns" SET
             {whattocheck}="{message_time}", errorgiven=0 
             WHERE user_id={user_id} AND chat_id={update.message.chat_id}''')
             db.commit()
@@ -1051,7 +1039,7 @@ def _getsqllist(update, query: str):
     table = ''
     # If there are muted targets, send reply, else say that there is nobody
     listnumber = 1
-    for entry in dbc.execute(f"""SELECT {insert['variables']} FROM {insert['table']} 
+    for entry in dbc.execute(f"""SELECT {insert['variables']} FROM {insert['table']}
                             {insert['constraint']}""").fetchall():
         table += f'{listnumber}. {entry[0]}\n'
         if query == 'mutelist':
@@ -1092,7 +1080,7 @@ def _create_tables():
     FOREIGN KEY(firstname) REFERENCES userdata(firstname)
     )''')
     # Muted
-    dbc.execute(f'''CREATE TABLE IF NOT EXISTS "muted" 
+    dbc.execute(f'''CREATE TABLE IF NOT EXISTS "muted"
     (user_id NUMERIC UNIQUE, 
     chat_id NUMERIC, 
     firstname TEXT DEFAULT NULL, 
@@ -1107,7 +1095,7 @@ def _create_tables():
     FOREIGN KEY(user_id) REFERENCES userdata(id),
     FOREIGN KEY(firstname) REFERENCES userdata(firstname))
     ''')
-    dbc.execute(f''' 
+    dbc.execute(f'''
     INSERT OR REPLACE INTO "exceptions" (user_id, firstname) 
     VALUES 
     (255295801, "doitforricardo"), 
@@ -1186,7 +1174,6 @@ USERCOMMANDS = [
     'Команды для рядовых пользователей',
     ("help", help, 'Меню помощи'),
     ('whatsnew', whatsnew, 'Новое в боте'),
-    ("rules", rules, 'Правила думерского чата'),
     ('adminmenu', adminmenu, 'Админское меню'),
     ("slap", slap, 'Кого-то унизить (надо ответить жертве, чтобы бот понял кого бить)'),
     ('duel', duel, 'Устроить дуэль (надо ответить тому, с кем будет дуэль)'),
