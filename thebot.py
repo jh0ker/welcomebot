@@ -734,13 +734,13 @@ def myscore(update: Update, context: CallbackContext):
         nonlocal u_data
         # Get the current additional strength
         wrincrease = u_data[0] * KILLMULTPERC + u_data[1] * DEATHMULTPERC + u_data[2] * MISSMULTPERC
-        wrincrease = max(min(round(wrincrease, 2), 45), 0)
+        wrincrease = min(round(wrincrease, 2), 45)
         try:
             wr = u_data[0] / (u_data[0] + u_data[1]) * 100
         except ZeroDivisionError:
             wr = 100
         reply = (f'Твой K/D/M равен {u_data[0]}/{u_data[1]}/{u_data[2]} ({round(wr, 2)}%)\n'
-                 f'Шанс победы из-за опыта повышен на {wrincrease}%. (максимум {ADDITIONALPERCENTCAP}%)\n'
+                 f'Шанс победы из-за опыта изменен на {wrincrease}%. (максимум {ADDITIONALPERCENTCAP}%)\n'
                  f'P.S. {KILLMULTPERC}% за убийство, {DEATHMULTPERC}% за смерть, {MISSMULTPERC}% за мисс.')
         _send_reply(update, reply)
 
