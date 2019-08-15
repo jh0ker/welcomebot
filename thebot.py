@@ -507,12 +507,11 @@ def duel(update: Update, context: CallbackContext):
             userfound = dbc.execute(f'''SELECT kills, deaths, misses from {tablename}
             WHERE user_id={userid}''').fetchone()
             if userfound:
-                HARDCAP = THRESHOLDCAP * 0.95
                 STRENGTH = random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY) \
                            + userfound[0] * KILLMULT \
                            + userfound[1] * DEATHMULT \
                            + userfound[2] * MISSMULT
-                return min(STRENGTH, HARDCAP)
+                return min(STRENGTH, ADDITIONALHARDCAP)
         # Return base if table not found or user not found
         return random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY)
 
@@ -682,9 +681,6 @@ def myscore(update: Update, context: CallbackContext):
     @command_antispam_passed
     def _handle_score(update):
         nonlocal u_data
-        # Get the kill, death multiplier and their percentage to total
-        KILLMULTPERC = round(KILLMULT / THRESHOLDCAP * 100, 2)
-        DEATHMULTPERC = round(DEATHMULT / THRESHOLDCAP * 100, 2)
         # Get the current additional strength
         ADDITIONALSTR = u_data[0] * KILLMULT + u_data[1] * DEATHMULT
         # 36 is maximum additional strength
@@ -697,7 +693,7 @@ def myscore(update: Update, context: CallbackContext):
             wr = 100
         reply = (f'Твой K/D равен {u_data[0]}/{u_data[1]} ({round(wr, 2)}%).\n'
                  f'Шанс победы из-за опыта повышен на {WRINCREASE}%. (максимум 45%)\n'
-                 f'P.S. +{KILLMULTPERC}% за убийство, +{DEATHMULTPERC}% за смерть.')
+                 f'P.S. +{KILLMULTPERC}% за убийство, +{DEATHMULTPERC}% за смерть, +{MISSMULTPERC}% за мисс,')
         _send_reply(update, reply)
 
     # Check if not private
