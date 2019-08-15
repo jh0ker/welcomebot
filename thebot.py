@@ -87,13 +87,13 @@ def create_duel_table(func):
             ''')
             db.commit()
         else:
-            _patch_tables(tablename)
+            _try_to_patch_table(tablename)
         func(update, *args, **kwargs)
 
     return executor
 
 
-def _patch_tables(tablename: str):
+def _try_to_patch_table(tablename: str):
     """Patch the tables"""
     # Add patch 1.1
     try:
@@ -120,6 +120,16 @@ def command_antispam_passed(func):
     return executor
 
 
+def text_antispam_passed(func):
+    """Checks if somebody is spamming reply_all words"""
+
+    def executor(update: Update, *args, **kwargs):
+        if _check_cooldown(update, 'lasttextreply', INDIVIDUAL_REPLY_DELAY):
+            func(update, *args, **kwargs)
+
+    return executor
+
+
 def rightscheck(func):
     """Checks if the user has enough right
     Enough rights are defined as creator or administrator or developer"""
@@ -137,6 +147,7 @@ def rightscheck(func):
 
 
 @run_async
+@command_antispam_passed
 def start(update: Update, context: CallbackContext):
     """Send out a start message"""
     _send_reply(update, 'Думер бот в чате. Для списка функций используйте /help.\n'
@@ -183,18 +194,15 @@ def welcomer(update: Update, context: CallbackContext):
 def farewell(update: Update, context: CallbackContext):
     """Goodbye message"""
     leftuser = update.message.left_chat_member
-    # A a BOT was removed
-    if update.message.left_chat_member.is_bot:
-        try:
-            _send_reply(
-                update, f"{leftuser.first_name}'а убили, красиво, уважаю.")
-        # When the bot itself was kicked
-        except telegram.error.Unauthorized:
-            pass
-    # A user was removed
-    else:
-        leftusertag = f"[{leftuser.first_name.strip('[]')}](tg://user?id={leftuser.id})"
-        _send_reply(update, f'Сегодня нас покинул {leftusertag}.', parse_mode='Markdown')
+    # Not this bot was removed
+    if leftuser.id != BOT.id:
+        # Other bot was removed
+        if leftuser.is_bot and leftuser.id != BOT.id:
+            _send_reply(update, f"{leftuser.first_name}'а убили, красиво, уважаю.")
+        # A user was removed
+        else:
+            leftusertag = f"[{leftuser.first_name.strip('[]')}](tg://user?id={leftuser.id})"
+            _send_reply(update, f'Сегодня нас покинул {leftusertag}.', parse_mode='Markdown')
 
 
 @run_async
@@ -230,13 +238,13 @@ def whatsnew(update: Update, context: CallbackContext):
     # Import the changelog
     try:
         with open('changelog.md', 'r', encoding='utf-8') as changelog:
-            CHANGES = changelog.read()
+            changes = changelog.read()
     except (EOFError, FileNotFoundError) as changelog_err:
         logging.error(changelog_err)
-        CHANGES = 'Не смог добраться до изменений. Что-то не так.'
+        changes = 'Не смог добраться до изменений. Что-то не так.'
     # Get the last 3 day changes
     latest_changes = ''
-    for change in CHANGES.split('\n\n')[:3]:
+    for change in changes.split('\n\n')[:3]:
         latest_changes += change + '\n\n'
     # Add Link to full changelog
     latest_changes += 'Вся история изменений: https://bit.ly/DoomerChangelog'
@@ -259,7 +267,8 @@ def getlogs(update: Update, context: CallbackContext):
         # Random message for autologs
         else:
             global LOGDATE
-            if datetime.date.today() > LOGDATE:
+            # Adjust for time zone
+            if datetime.date.today() - datetime.timedelta(hours=1) > LOGDATE:
                 LOGDATE = datetime.date.today()
                 sendlogs(noworyesterday='yesterday')
     # If edited, pass
@@ -279,7 +288,7 @@ def sendlogs(noworyesterday: str = 'now'):
     BOT.send_document(chat_id=LOGCHATID,
                       document=open('logs.log', 'rb'),
                       filename=f'{filename}.log')
-    # Clean the file
+    # Clean the file after sending
     with open('logs.log', 'w') as logfile:
         logfile.write(f'{datetime.date.today().isoformat()} - Start of the log file.\n')
         logfile.close()
@@ -301,8 +310,21 @@ def allcommands(update: Update, context: CallbackContext):
 def message_filter(update: Update, context: CallbackContext):
     """Replies to all messages
     Думер > Земляночка > """
-    # Get logs trigged by messages
+
+    @text_antispam_passed
+    def _giveanswer(update: Update, case: str):
+        """Give the answer"""
+        nonlocal doomer_word
+        if case == 'думер':
+            _send_reply(update, doomer_word)
+        else:
+            BOT.send_photo(chat_id=update.message.chat_id,
+                           photo=random.choice(HUTS),
+                           caption='Эх, жить бы подальше от общества как анприм и там думить..',
+                           reply_to_message_id=update.message.message_id)
+
     try:
+        # Get logs trigged by messages
         getlogs(update, context)
         # If user is in the muted list, delete his message unless he is in exceptions
         # to avoid possible self-mutes
@@ -311,15 +333,10 @@ def message_filter(update: Update, context: CallbackContext):
             _try_to_delete_message(update)
         # Handle the word doomer
         elif doomer_word:
-            if _text_antispam_passed(update):
-                _send_reply(update, doomer_word)
+            _giveanswer(update, 'думер')
         # Handle землянoчкy
         elif _anprim_word_handler(update):
-            if _text_antispam_passed(update):
-                BOT.send_photo(chat_id=update.message.chat_id,
-                               photo=random.choice(HUTS),
-                               caption='Эх, жить бы подальше от общества как анприм и там думить..',
-                               reply_to_message_id=update.message.message_id)
+            _giveanswer(update, 'землянка')
     # Skip the edits, don't log this error
     except AttributeError:
         pass
@@ -353,7 +370,7 @@ def _doomer_word_handler(update) -> str:
             else:
                 break
     # If the word is not found, return False
-    return reply_word if not None else False
+    return reply_word
 
 
 def _anprim_word_handler(update) -> bool:
@@ -511,7 +528,7 @@ def duel(update: Update, context: CallbackContext):
                            + userfound[0] * KILLMULT \
                            + userfound[1] * DEATHMULT \
                            + userfound[2] * MISSMULT
-                return min(STRENGTH, ADDITIONALHARDCAP)
+                return min(STRENGTH, STRENGTHCAP)
         # Return base if table not found or user not found
         return random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY)
 
@@ -523,6 +540,13 @@ def duel(update: Update, context: CallbackContext):
         # One dead
         if winners:
             p1, p2 = winners[0], losers[0]
+            # Remove cooldown from the winner
+            dbc.execute(f'''INSERT OR IGNORE INTO "cooldowns" 
+            (user_id, chat_id, firstname) 
+            VALUES ({update.message.from_user.id}, "{update.message.chat_id}", 
+            "{update.message.from_user.first_name}")''')
+            dbc.execute(f'''UPDATE "cooldowns" SET lastcommandreply=NULL, lasttextreply=NULL 
+            WHERE user_id={p1[1]}''')
         # None dead
         else:
             p1, p2 = losers[0], losers[1]
@@ -547,7 +571,7 @@ def duel(update: Update, context: CallbackContext):
             return phrase.replace('loser1', losers[0][3]).replace('loser2', losers[1][3])
         elif scenario == 'onedead':
             phrase = phrase.replace('winner', winners[0][3]).replace('loser', losers[0][3])
-            phrase += f'\nПобеда за {winners[0][3]}!'
+            phrase += f'\nПобеда за {winners[0][3]}! Все твои кулдауны были ресетнуты!'
             return phrase
         elif scenario == 'suicide':
             return phrase.replace('loser', init_tag)
@@ -681,30 +705,29 @@ def myscore(update: Update, context: CallbackContext):
     def _handle_score(update):
         nonlocal u_data
         # Get the current additional strength
-        ADDITIONALSTR = u_data[0] * KILLMULT + u_data[1] * DEATHMULT
-        # 36 is maximum additional strength
-        ADDITIONALSTR = min(ADDITIONALHARDCAP, ADDITIONALSTR)
-        # Calculate the winrate increase
-        WRINCREASE = round(ADDITIONALSTR / THRESHOLDCAP * 100, 2)
+        WRINCREASE = u_data[0] * KILLMULTPERC + u_data[1] * DEATHMULTPERC + u_data[2] * MISSMULTPERC
+        WRINCREASE = max(min(round(WRINCREASE, 2), 45), 0)
         try:
             wr = u_data[0] / (u_data[0] + u_data[1]) * 100
         except ZeroDivisionError:
             wr = 100
-        reply = (f'Твой K/D равен {u_data[0]}/{u_data[1]} ({round(wr, 2)}%)\n'
-                 f'Шанс победы из-за опыта повышен на {WRINCREASE}%. (максимум 45%)\n'
-                 f'P.S. +{KILLMULTPERC}% за убийство, +{DEATHMULTPERC}% за смерть, +{MISSMULTPERC}% за мисс.')
+        reply = (f'Твой K/D/M равен {u_data[0]}/{u_data[1]}/{u_data[2]} ({round(wr, 2)}%)\n'
+                 f'Шанс победы из-за опыта повышен на {WRINCREASE}%. (максимум {ADDITIONALPERCENTCAP}%)\n'
+                 f'P.S. {KILLMULTPERC}% за убийство, {DEATHMULTPERC}% за смерть, {MISSMULTPERC}% за мисс.')
         _send_reply(update, reply)
 
     # Check if not private
     if update.message.chat.type != 'private':
         # If private, assume that there was no userdata
-        tablename = f"duels{update.message.chat_id}"
+        tablename = f"\"duels{update.message.chat_id}\""
         # Check if the chat table exists
-        if dbc.execute(f'''SELECT name FROM "sqlite_master" 
-        WHERE type="table" AND name="{tablename}"''').fetchone() is not None:
+        if dbc.execute(f'''SELECT name FROM "sqlite_master"
+        WHERE type="table" AND name={tablename}''').fetchone() is not None:
+            # Patch table if the table is no good
+            _try_to_patch_table(tablename)
             # If exists, get user data
-            u_data = dbc.execute(f'''SELECT kills, deaths FROM "{tablename}" WHERE
-                user_id={update.message.from_user.id}''').fetchone()
+            u_data = dbc.execute(f'''SELECT kills, deaths, misses FROM {tablename}
+            WHERE user_id={update.message.from_user.id}''').fetchone()
             # If there is user data, get it
             if u_data is not None:
                 _handle_score(update)
@@ -732,9 +755,9 @@ def duelranking(update: Update, context: CallbackContext):
             counter = 1
             # Add to the table the five best and five worst
             for q in dbc.execute(f'''SELECT winrate.firstname, doom.kills, doom.deaths, doom.misses, winrate.wr
-            FROM "{tablename}" AS doom JOIN
+            FROM {tablename} AS doom JOIN
             (SELECT firstname, kills * 100.0/(kills+deaths) AS wr
-                FROM "{tablename}"
+                FROM {tablename}
                     WHERE deaths!=0 AND kills!=0) AS winrate
             ON doom.firstname=winrate.firstname
             ORDER BY wr {query[1]} LIMIT 5'''):
@@ -752,10 +775,12 @@ def duelranking(update: Update, context: CallbackContext):
     # Duels table create
     if update.message.chat.type != 'private':
         # Get tablename
-        tablename = f"duels{update.message.chat_id}"
+        tablename = f"\"duels{update.message.chat_id}\""
         # Check if the chat table exists
         if dbc.execute(f'''SELECT name FROM "sqlite_master"
-                WHERE type="table" AND name="{tablename}"''').fetchone() is not None:
+                WHERE type="table" AND name={tablename}''').fetchone() is not None:
+            # Patch table if it is no good
+            _try_to_patch_table(tablename)
             _handle_ranking(update)
         else:
             _send_reply(update, 'Для этого чата нет данных.')
@@ -807,6 +832,7 @@ def duelstatus(update: Update, context: CallbackContext):
         If no argument, get the current status"""
         nonlocal arg, update
         status = None
+        reply = 'Чё?'
         if arg in ['on', 'off']:
             status = 1 if arg == 'on' else 0
             dbc.execute(f'''UPDATE "duellimits" 
@@ -1077,11 +1103,6 @@ def _getsqllist(update, query: str):
         _send_reply(update, table)
     else:
         _send_reply(update, 'Список пуст.')
-
-
-def _text_antispam_passed(update):
-    """Checks if somebody is spamming reply_all words"""
-    return _check_cooldown(update, 'lasttextreply', INDIVIDUAL_REPLY_DELAY)
 
 
 def _create_tables():

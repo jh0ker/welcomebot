@@ -14,10 +14,10 @@ THRESHOLDCAP = 80
 # Low and high accuracy that the user can get without exp
 LOW_BASE_ACCURACY = 40
 HIGH_BASE_ACCURACY = 60
-# Exp multiplier for kills and deaths
-KILLMULT = 0.19
-DEATHMULT = 0.14
-MISSMULT = 0.09
+# Exp multiplier for kills, deaths and misses
+KILLMULT = 0.25
+DEATHMULT = -0.12
+MISSMULT = -0.05
 # Always lose percent
 ALWAYSLOSS = 0.05
 
@@ -28,7 +28,9 @@ KILLMULTPERC = round(KILLMULT / THRESHOLDCAP * 100, 2)
 DEATHMULTPERC = round(DEATHMULT / THRESHOLDCAP * 100, 2)
 MISSMULTPERC = round(MISSMULT / THRESHOLDCAP * 100, 2)
 # Get the HARDCAP to additional strength
-ADDITIONALHARDCAP = THRESHOLDCAP * (1 - ALWAYSLOSS) - LOW_BASE_ACCURACY
+STRENGTHCAP = THRESHOLDCAP * (1 - ALWAYSLOSS)
+ADDITIONALSTRCAP = STRENGTHCAP - LOW_BASE_ACCURACY
+ADDITIONALPERCENTCAP = round(ADDITIONALSTRCAP / THRESHOLDCAP * 100, 2)
 # -----------------------------------------------------------
 
 # Antispam constants
