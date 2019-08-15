@@ -522,12 +522,12 @@ def duel(update: Update, context: CallbackContext):
         nonlocal tablename
         # One dead
         if winners:
-            winner, loser = winners[0], losers[0]
+            p1, p2 = winners[0], losers[0]
         # None dead
         else:
-            winner, loser = losers[0], losers[1]
+            p1, p2 = losers[0], losers[1]
         counter = 0
-        for player in (winner, loser):
+        for player in (p1, p2):
             kd = p1_kdm if counter == 0 else p2_kdm
             userid, firstname = player[1], player[0]
             dbc.execute(f'INSERT OR IGNORE INTO {tablename} (user_id, firstname) '
@@ -618,8 +618,7 @@ def duel(update: Update, context: CallbackContext):
                     # Get the winner and the loser. Check 1
                     winners, losers = [], []
                     for player in participant_list:
-                        winthreshold = random.uniform(0, THRESHOLDCAP)
-                        winners.append(player) if player[2] > winthreshold \
+                        winners.append(player) if player[2] > random.uniform(0, THRESHOLDCAP) \
                             else losers.append(player)
                     # Get the winner and the loser. Check 2
                     if len(winners) == 2:
@@ -691,9 +690,9 @@ def myscore(update: Update, context: CallbackContext):
             wr = u_data[0] / (u_data[0] + u_data[1]) * 100
         except ZeroDivisionError:
             wr = 100
-        reply = (f'Твой K/D равен {u_data[0]}/{u_data[1]} ({round(wr, 2)}%).\n'
+        reply = (f'Твой K/D равен {u_data[0]}/{u_data[1]} ({round(wr, 2)}%)\n'
                  f'Шанс победы из-за опыта повышен на {WRINCREASE}%. (максимум 45%)\n'
-                 f'P.S. +{KILLMULTPERC}% за убийство, +{DEATHMULTPERC}% за смерть, +{MISSMULTPERC}% за мисс,')
+                 f'P.S. +{KILLMULTPERC}% за убийство, +{DEATHMULTPERC}% за смерть, +{MISSMULTPERC}% за мисс.')
         _send_reply(update, reply)
 
     # Check if not private
