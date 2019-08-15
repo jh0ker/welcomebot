@@ -80,7 +80,6 @@ def create_duel_table(func):
             firstname TEXT DEFAULT NULL,
             kills NUMERIC DEFAULT 0,
             deaths NUMERIC DEFAULT 0,
-            winpercent NUMERIC DEFAULT 0,
             FOREIGN KEY(user_id) REFERENCES userdata(id),
             FOREIGN KEY(firstname) REFERENCES userdata(firstname))
             ''')
