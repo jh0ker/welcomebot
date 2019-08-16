@@ -38,9 +38,10 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.info('-----------------------------------------------')
 LOGGER.info('Initializing the bot...')
 
+
 # Import the database with muted, exceptions and duel data
-LOGGER.info("Connecting to the database 'doomer.DB'...")
-DB = sqlite3.connect('doomer.DB', check_same_thread=False)
+LOGGER.info(f"Connecting to the database '{DATABASENAME}'...")
+DB = sqlite3.connect(DATABASENAME, check_same_thread=False)
 DBC = DB.cursor()
 
 # Bot initialization
@@ -218,6 +219,24 @@ def getlogs(update: Update, context: CallbackContext):
     except AttributeError:
         pass
 
+
+@run_async
+def getdatabase(update: Update, context: CallbackContext):
+    """Get the database as a document"""
+    # Check if edited message
+    try:
+        # My call
+        if update.message.from_user.id == DEV:
+            try:
+                # Send the file
+                BOT.send_document(chat_id=update.message.chat_id,
+                                  document=open(DATABASENAME, 'rb'))
+            except (EOFError, FileNotFoundError) as database_err:
+                LOGGER.error(database_err)
+                _send_reply(update, 'Не смог добраться до датабазы. Что-то не так.')
+    # If edited, pass
+    except AttributeError:
+        pass
 
 @run_async
 def allcommands(update: Update, context: CallbackContext):
@@ -1206,7 +1225,8 @@ UNUSUALCOMMANDS = [
     'Нечастые команды',
     ('allcommands', allcommands, 'Все команды бота'),
     ('start', start, 'Начальное сообщение бота'),
-    ('logs', getlogs, 'Получить логи бота (только для разработчика)')
+    ('getlogs', getlogs, 'Получить логи бота (только для разработчика'),
+    ('getdatabase', getdatabase, 'Получить датабазу')
     ]
 
 

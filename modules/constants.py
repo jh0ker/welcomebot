@@ -23,6 +23,7 @@ HARDRESETCHANCE = 0.001 # 0.1%
 # DO NOT TOUCH
 # -----------------------------------------------------------
 # Get the kill, death multiplier and their percentage to total
+DATABASENAME = 'doomer.DB'
 KILLMULTPERC = round(KILLMULT / THRESHOLDCAP * 100, 2)
 DEATHMULTPERC = round(DEATHMULT / THRESHOLDCAP * 100, 2)
 MISSMULTPERC = round(MISSMULT / THRESHOLDCAP * 100, 2)

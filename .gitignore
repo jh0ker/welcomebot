@@ -108,4 +108,4 @@ venv.bak/
 
 # VSC
 .vscode/
-!/doomer.DB
+doomer.DB
