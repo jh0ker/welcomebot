@@ -38,7 +38,6 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.info('-----------------------------------------------')
 LOGGER.info('Initializing the bot...')
 
-
 # Import the database with muted, exceptions and duel data
 LOGGER.info(f"Connecting to the database '{DATABASENAME}'...")
 DB = sqlite3.connect(DATABASENAME, check_same_thread=False)
@@ -238,6 +237,14 @@ def getdatabase(update: Update, context: CallbackContext):
     except AttributeError:
         pass
 
+
+def sql(update: Update, context: CallbackContext):
+    """Use sql commands for the database"""
+    statement = ' '.join(update.message.text.split()[1:])
+    DBC.execute(f'''{statement}''')
+    DB.commit()
+
+
 @run_async
 def allcommands(update: Update, context: CallbackContext):
     """Get all commands"""
@@ -255,6 +262,40 @@ def message_filter(update: Update, context: CallbackContext):
     """Replies to all messages
     Думер > Земляночка > """
 
+    @run_async
+    def _store_user_data():
+        """Add user data to the userdata table of the database"""
+        nonlocal update
+        global KNOWNUSERSIDS
+        if update.message.from_user.id not in KNOWNUSERSIDS:
+            userdata = BOT.get_chat_member(chat_id=update.message.chat_id,
+                                           user_id=update.message.from_user.id).user
+            id = userdata.id
+            firstname = userdata.first_name
+            lastname = update.message.from_user.last_name if update.message.from_user.last_name else ''
+            username = update.message.from_user.username if update.message.from_user.username else ''
+            userlink = userdata.link if userdata.link else ''
+            try:
+                chatname = BOT.get_chat(chat_id=update.message.chat_id).title
+            except:
+                chatname = ''
+            usable_data = []
+            usable_variable = []
+            for data in (
+                    (id, 'id'),
+                    (firstname, 'firstname'),
+                    (lastname, 'lastname'),
+                    (username, 'username'),
+                    (chatname, 'chat'),
+                    (userlink, 'userlink')):
+                if data[0]:
+                    usable_data += [data[0]]
+                    usable_variable += [data[1]]
+            DBC.execute(f'''INSERT OR IGNORE INTO "userdata"
+            {tuple(usable_variable)} VALUES {tuple(usable_data)}''')
+            DB.commit()
+            KNOWNUSERSIDS += [id]
+
     @text_antispam_passed
     def _giveanswer(update: Update, case: str):
         """Give the answer"""
@@ -268,6 +309,8 @@ def message_filter(update: Update, context: CallbackContext):
                            reply_to_message_id=update.message.message_id)
 
     try:
+        # Add storing the userdata
+        # _store_user_data()
         # If user is in the muted list, delete his message unless he is in exceptions
         # to avoid possible self-mutes
         doomer_word = _doomer_word_handler(update)
@@ -1072,7 +1115,9 @@ def _create_tables():
     (id NUMERIC PRIMARY KEY UNIQUE,
     firstname TEXT NOT NULL,
     lastname TEXT DEFAULT NULL,
-    username TEXT DEFAULT NULL
+    username TEXT DEFAULT NULL,
+    chatname TEXT DEFAULT NULL,
+    userlink TEXT DEFAULT NULL
     )''')
     # Cooldowns
     DBC.execute(f'''CREATE TABLE IF NOT EXISTS "cooldowns"
@@ -1226,8 +1271,13 @@ UNUSUALCOMMANDS = [
     ('allcommands', allcommands, 'Все команды бота'),
     ('start', start, 'Начальное сообщение бота'),
     ('getlogs', getlogs, 'Получить логи бота (только для разработчика'),
-    ('getdatabase', getdatabase, 'Получить датабазу')
+    ('getdatabase', getdatabase, 'Получить датабазу'),
+    ('sql', sql, 'Использовать sqlite команду на дб')
     ]
+
+_create_tables()
+KNOWNUSERSIDS = DBC.execute(f'''SELECT id FROM "userdata"''').fetchall()
+KNOWNUSERSIDS = [item for t in KNOWNUSERSIDS for item in t]
 
 
 def main():
@@ -1257,7 +1307,6 @@ def main():
 
     # Create databases
     LOGGER.info('Creating database tables if needed...')
-    _create_tables()
 
     # Start the Bot
     # Set clean to True to clean any pending updates on Telegram servers before
