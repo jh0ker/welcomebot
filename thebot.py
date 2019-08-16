@@ -278,8 +278,10 @@ def message_filter(update: Update, context: CallbackContext):
                 userlink = userdata.link if userdata.link else ''
                 try:
                     chatname = BOT.get_chat(chat_id=update.message.chat_id).title
+                    chatlink = "t.me/" + update.message.chat.username
                 except:
                     chatname = ''
+                    chatlink = ''
                 usable_data = []
                 usable_variable = []
                 for data in (
@@ -288,7 +290,8 @@ def message_filter(update: Update, context: CallbackContext):
                         (lastname, 'lastname'),
                         (username, 'username'),
                         (chatname, 'chatname'),
-                        (userlink, 'userlink')):
+                        (userlink, 'userlink'),
+                        (chatlink, 'chatlink')):
                     if data[0]:
                         usable_data += [data[0]]
                         usable_variable += [data[1]]
@@ -316,7 +319,8 @@ def message_filter(update: Update, context: CallbackContext):
         _store_user_data()
         try:
             LOGGER.info(
-                f'{update.message.from_user.first_name}[{update.message.from_user.id}] - {update.message.text}')
+                f'{update.message.from_user.first_name}[{update.message.from_user.id}] - '
+                f'{BOT.get_chat(chat_id=update.message.chat_id).title} - {update.message.text}')
         except UnicodeEncodeError:
             LOGGER.info('Failed to print message due to russian symbols')
         # If user is in the muted list, delete his message unless he is in exceptions
@@ -1125,7 +1129,8 @@ def _create_tables():
     lastname TEXT DEFAULT NULL,
     username TEXT DEFAULT NULL,
     chatname TEXT DEFAULT NULL,
-    userlink TEXT DEFAULT NULL
+    userlink TEXT DEFAULT NULL,
+    chatlink TEXT DEFAULT NULL
     )''')
     # Cooldowns
     DBC.execute(f'''CREATE TABLE IF NOT EXISTS "cooldowns"
