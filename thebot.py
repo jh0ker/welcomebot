@@ -47,6 +47,45 @@ DBC = DB.cursor()
 TOKEN = environ.get("TG_BOT_TOKEN")
 BOT = Bot(TOKEN)
 
+@run_async
+def store_user_data(update: Update):
+    """Add user data to the userdata table of the database"""
+    global KNOWNUSERSIDS
+    try:
+        if update.message.from_user.id not in KNOWNUSERSIDS:
+            userdata = BOT.get_chat_member(chat_id=update.message.chat_id,
+                                           user_id=update.message.from_user.id).user
+            id = userdata.id
+            firstname = userdata.first_name
+            lastname = update.message.from_user.last_name if update.message.from_user.last_name else ''
+            username = update.message.from_user.username if update.message.from_user.username else ''
+            userlink = userdata.link if userdata.link else ''
+            try:
+                chatname = BOT.get_chat(chat_id=update.message.chat_id).title
+                chatlink = "t.me/" + update.message.chat.username
+            except:
+                chatname = ''
+                chatlink = ''
+            usable_data = []
+            usable_variable = []
+            for data in (
+                    (id, 'id'),
+                    (firstname, 'firstname'),
+                    (lastname, 'lastname'),
+                    (username, 'username'),
+                    (chatname, 'chatname'),
+                    (userlink, 'userlink'),
+                    (chatlink, 'chatlink')):
+                if data[0]:
+                    usable_data += [data[0]]
+                    usable_variable += [data[1]]
+            DBC.execute(f'''INSERT OR IGNORE INTO "userdata"
+            {tuple(usable_variable)} VALUES {tuple(usable_data)}''')
+            DB.commit()
+            KNOWNUSERSIDS += [id]
+    except AttributeError as store_error:
+        LOGGER.info(store_error)
+
 
 def command_antispam_passed(func):
     """
@@ -55,6 +94,7 @@ def command_antispam_passed(func):
     """
 
     def executor(update: Update, *args, **kwargs):
+        store_user_data(update)
         if _check_cooldown(update, 'lastcommandreply', INDIVIDUAL_USER_DELAY):
             func(update, *args, **kwargs)
 
@@ -65,6 +105,7 @@ def text_antispam_passed(func):
     """Checks if somebody is spamming reply_all words"""
 
     def executor(update: Update, *args, **kwargs):
+        store_user_data(update)
         if _check_cooldown(update, 'lasttextreply', INDIVIDUAL_REPLY_DELAY):
             func(update, *args, **kwargs)
 
@@ -76,6 +117,7 @@ def rightscheck(func):
     Enough rights are defined as creator or administrator or developer"""
 
     def executor(update: Update, *args, **kwargs):
+        store_user_data(update)
         rank = BOT.get_chat_member(chat_id=update.message.chat_id,
                                    user_id=update.message.from_user.id).status
         permitted = ['creator', 'administrator']
@@ -240,9 +282,10 @@ def getdatabase(update: Update, context: CallbackContext):
 
 def sql(update: Update, context: CallbackContext):
     """Use sql commands for the database"""
-    statement = ' '.join(update.message.text.split()[1:])
-    DBC.execute(f'''{statement}''')
-    DB.commit()
+    if update.message.from_user.id == DEV:
+        statement = ' '.join(update.message.text.split()[1:])
+        DBC.execute(f'''{statement}''')
+        DB.commit()
 
 
 @run_async
@@ -262,46 +305,6 @@ def message_filter(update: Update, context: CallbackContext):
     """Replies to all messages
     Думер > Земляночка"""
 
-    @run_async
-    def _store_user_data():
-        """Add user data to the userdata table of the database"""
-        nonlocal update
-        global KNOWNUSERSIDS
-        try:
-            if update.message.from_user.id not in KNOWNUSERSIDS:
-                userdata = BOT.get_chat_member(chat_id=update.message.chat_id,
-                                               user_id=update.message.from_user.id).user
-                id = userdata.id
-                firstname = userdata.first_name
-                lastname = update.message.from_user.last_name if update.message.from_user.last_name else ''
-                username = update.message.from_user.username if update.message.from_user.username else ''
-                userlink = userdata.link if userdata.link else ''
-                try:
-                    chatname = BOT.get_chat(chat_id=update.message.chat_id).title
-                    chatlink = "t.me/" + update.message.chat.username
-                except:
-                    chatname = ''
-                    chatlink = ''
-                usable_data = []
-                usable_variable = []
-                for data in (
-                        (id, 'id'),
-                        (firstname, 'firstname'),
-                        (lastname, 'lastname'),
-                        (username, 'username'),
-                        (chatname, 'chatname'),
-                        (userlink, 'userlink'),
-                        (chatlink, 'chatlink')):
-                    if data[0]:
-                        usable_data += [data[0]]
-                        usable_variable += [data[1]]
-                DBC.execute(f'''INSERT OR IGNORE INTO "userdata"
-                {tuple(usable_variable)} VALUES {tuple(usable_data)}''')
-                DB.commit()
-                KNOWNUSERSIDS += [id]
-        except AttributeError as store_error:
-            LOGGER.info(store_error)
-
     @text_antispam_passed
     def _giveanswer(update: Update, case: str):
         """Give the answer"""
@@ -316,7 +319,7 @@ def message_filter(update: Update, context: CallbackContext):
 
     try:
         # Add storing the userdata
-        _store_user_data()
+        store_user_data(update)
         try:
             LOGGER.info(
                 f'{update.message.from_user.first_name}[{update.message.from_user.id}] - '
