@@ -3,10 +3,8 @@ Collection of constants for modules
 """
 
 # Admin id
-# Add developer ID for passing the spam check
+# Add developer ID for passing the spam check and other commands
 DEV = 255295801
-# ID of the log chat
-LOGCHATID = -398564859
 
 # Duel constants
 # Maximum STR the bot can roll
@@ -39,6 +37,9 @@ ADDITIONALPERCENTCAP = round(ADDITIONALSTRCAP / THRESHOLDCAP * 100, 2)
 INDIVIDUAL_USER_DELAY = 10 * 60  # Ten minutes
 INDIVIDUAL_REPLY_DELAY = 5 * 60  # Five minutes
 ERROR_DELAY = 5 * 60  # One minute
+# Duel cooldowns
+CDREDUCTION = round(0.8 *  INDIVIDUAL_USER_DELAY) # 80%
+SHORTCD = round(INDIVIDUAL_USER_DELAY - CDREDUCTION)
 
 # Request timeout time in seconds
 REQUEST_TIMEOUT = 3
