@@ -212,7 +212,7 @@ def getlogs(update: Update, context: CallbackContext):
             finally:
                 # Clean the file after sending/create a new one if failed to get it
                 with open('logs.log', 'w') as logfile:
-                    logfile.write(f'{datetime.date.today().isoformat()} - Start of the log file.\n')
+                    logfile.write(f'{datetime.datetime.now().isoformat()} - Start of the log file.\n')
                     logfile.close()
     # If edited, pass
     except AttributeError:
