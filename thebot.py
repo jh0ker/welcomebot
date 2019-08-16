@@ -286,7 +286,7 @@ def message_filter(update: Update, context: CallbackContext):
                     (firstname, 'firstname'),
                     (lastname, 'lastname'),
                     (username, 'username'),
-                    (chatname, 'chat'),
+                    (chatname, 'chatname'),
                     (userlink, 'userlink')):
                 if data[0]:
                     usable_data += [data[0]]
