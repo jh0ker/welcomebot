@@ -296,8 +296,8 @@ def message_filter(update: Update, context: CallbackContext):
                 {tuple(usable_variable)} VALUES {tuple(usable_data)}''')
                 DB.commit()
                 KNOWNUSERSIDS += [id]
-        except AttributeError:
-            pass
+        except AttributeError as store_error:
+            LOGGER.info(store_error)
 
     @text_antispam_passed
     def _giveanswer(update: Update, case: str):
@@ -314,6 +314,11 @@ def message_filter(update: Update, context: CallbackContext):
     try:
         # Add storing the userdata
         _store_user_data()
+        try:
+            LOGGER.info(
+                f'{update.message.from_user.first_name}[{update.message.from_user.id}] - {update.message.text}')
+        except UnicodeEncodeError:
+            LOGGER.info('Failed to print message due to russian symbols')
         # If user is in the muted list, delete his message unless he is in exceptions
         # to avoid possible self-mutes
         doomer_word = _doomer_word_handler(update)
