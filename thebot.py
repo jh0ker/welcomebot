@@ -310,7 +310,7 @@ def message_filter(update: Update, context: CallbackContext):
 
     try:
         # Add storing the userdata
-        # _store_user_data()
+        _store_user_data()
         # If user is in the muted list, delete his message unless he is in exceptions
         # to avoid possible self-mutes
         doomer_word = _doomer_word_handler(update)
