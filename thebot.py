@@ -260,41 +260,44 @@ def allcommands(update: Update, context: CallbackContext):
 @run_async
 def message_filter(update: Update, context: CallbackContext):
     """Replies to all messages
-    Думер > Земляночка > """
+    Думер > Земляночка"""
 
     @run_async
     def _store_user_data():
         """Add user data to the userdata table of the database"""
         nonlocal update
         global KNOWNUSERSIDS
-        if update.message.from_user.id not in KNOWNUSERSIDS:
-            userdata = BOT.get_chat_member(chat_id=update.message.chat_id,
-                                           user_id=update.message.from_user.id).user
-            id = userdata.id
-            firstname = userdata.first_name
-            lastname = update.message.from_user.last_name if update.message.from_user.last_name else ''
-            username = update.message.from_user.username if update.message.from_user.username else ''
-            userlink = userdata.link if userdata.link else ''
-            try:
-                chatname = BOT.get_chat(chat_id=update.message.chat_id).title
-            except:
-                chatname = ''
-            usable_data = []
-            usable_variable = []
-            for data in (
-                    (id, 'id'),
-                    (firstname, 'firstname'),
-                    (lastname, 'lastname'),
-                    (username, 'username'),
-                    (chatname, 'chatname'),
-                    (userlink, 'userlink')):
-                if data[0]:
-                    usable_data += [data[0]]
-                    usable_variable += [data[1]]
-            DBC.execute(f'''INSERT OR IGNORE INTO "userdata"
-            {tuple(usable_variable)} VALUES {tuple(usable_data)}''')
-            DB.commit()
-            KNOWNUSERSIDS += [id]
+        try:
+            if update.message.from_user.id not in KNOWNUSERSIDS:
+                userdata = BOT.get_chat_member(chat_id=update.message.chat_id,
+                                               user_id=update.message.from_user.id).user
+                id = userdata.id
+                firstname = userdata.first_name
+                lastname = update.message.from_user.last_name if update.message.from_user.last_name else ''
+                username = update.message.from_user.username if update.message.from_user.username else ''
+                userlink = userdata.link if userdata.link else ''
+                try:
+                    chatname = BOT.get_chat(chat_id=update.message.chat_id).title
+                except:
+                    chatname = ''
+                usable_data = []
+                usable_variable = []
+                for data in (
+                        (id, 'id'),
+                        (firstname, 'firstname'),
+                        (lastname, 'lastname'),
+                        (username, 'username'),
+                        (chatname, 'chatname'),
+                        (userlink, 'userlink')):
+                    if data[0]:
+                        usable_data += [data[0]]
+                        usable_variable += [data[1]]
+                DBC.execute(f'''INSERT OR IGNORE INTO "userdata"
+                {tuple(usable_variable)} VALUES {tuple(usable_data)}''')
+                DB.commit()
+                KNOWNUSERSIDS += [id]
+        except AttributeError:
+            pass
 
     @text_antispam_passed
     def _giveanswer(update: Update, case: str):
