@@ -21,6 +21,7 @@ from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
 from telegram.ext.dispatcher import run_async
+from telegram.utils.request import Request
 
 # Import constants
 from modules.constants import *
@@ -45,7 +46,7 @@ DBC = DB.cursor()
 
 # Bot initialization
 TOKEN = environ.get("TG_BOT_TOKEN")
-BOT = Bot(TOKEN)
+BOT = Bot(token=TOKEN, request=Request(con_pool_size=20))
 
 @run_async
 def store_user_data(update: Update):
@@ -1299,7 +1300,7 @@ KNOWNUSERSIDS = [item for t in KNOWNUSERSIDS for item in t]
 def main():
     """Start the BOT."""
     # Create the Updater and pass it your BOT's token.
-    updater = Updater(token=TOKEN, use_context=True, workers=12)
+    updater = Updater(bot=BOT, use_context=True, workers=16)
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
