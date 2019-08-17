@@ -338,7 +338,7 @@ def _doomer_word_handler(update) -> str:
     doomer_word_start = None
     # Check if any of the variations are in the text, if there are break
     for variation in variations_with_latin_letters:
-        position = update.message.text.lower().find(variation)
+        position = update.effective_message.text.lower().find(variation)
         if position != -1:
             found_word = variation
             doomer_word_start = position
@@ -349,7 +349,7 @@ def _doomer_word_handler(update) -> str:
         # Find the word in the message, get the word and all adjacent symbol
         # noinspection PyUnboundLocalVariable
         word_with_symbols = \
-            update.message.text.lower()[doomer_word_start:].replace(
+            update.effective_message.text.lower()[doomer_word_start:].replace(
                 found_word, 'хуюмер').split()[0]
         # Get only the word, until any number or non alpha symbol is encountered
         for i in word_with_symbols:
@@ -369,7 +369,7 @@ def _anprim_word_handler(update) -> bool:
                   'зeмлянoчку бы', 'зeмлянoчкy бы']
     # If the word is found, return true
     for variation in variations:
-        if variation in update.message.text.lower():
+        if variation in update.effective_message.text.lower():
             return True
     # If the word is not found, return false
     return False
