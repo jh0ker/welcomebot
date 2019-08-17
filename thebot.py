@@ -61,11 +61,15 @@ def store_user_data(update: Update):
             lastname = update.message.from_user.last_name if update.message.from_user.last_name else ''
             username = update.message.from_user.username if update.message.from_user.username else ''
             userlink = userdata.link if userdata.link else ''
+            # Try to get the chat name
             try:
                 chatname = BOT.get_chat(chat_id=update.message.chat_id).title
-                chatlink = "t.me/" + update.message.chat.username
             except:
                 chatname = ''
+            # Try to get the chat link
+            try:
+                chatlink = "t.me/" + update.message.chat.username
+            except:
                 chatlink = ''
             usable_data = []
             usable_variable = []
