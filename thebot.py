@@ -70,7 +70,7 @@ def store_user_data(update: Update):
             try:
                 chatlink = "t.me/" + update.message.chat.username
             except:
-                chatlink = ''
+                chatlink = 'private'
             usable_data = []
             usable_variable = []
             for data in (
