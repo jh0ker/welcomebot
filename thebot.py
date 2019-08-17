@@ -53,21 +53,21 @@ def store_user_data(update: Update):
     """Add user data to the userdata table of the database"""
     global KNOWNUSERSIDS
     if update.effective_message.from_user.id not in KNOWNUSERSIDS:
-        userdata = BOT.get_chat_member(chat_id=update.message.chat_id,
-                                       user_id=update.message.from_user.id).user
+        userdata = BOT.get_chat_member(chat_id=update.effective_message.chat_id,
+                                       user_id=update.effective_message.from_user.id).user
         id = userdata.id
         firstname = userdata.first_name
-        lastname = update.message.from_user.last_name if update.message.from_user.last_name else ''
-        username = update.message.from_user.username if update.message.from_user.username else ''
+        lastname = update.effective_message.from_user.last_name if update.effective_message.from_user.last_name else ''
+        username = update.effective_message.from_user.username if update.effective_message.from_user.username else ''
         userlink = userdata.link if userdata.link else ''
         # Try to get the chat name
         try:
-            chatname = BOT.get_chat(chat_id=update.message.chat_id).title
+            chatname = BOT.get_chat(chat_id=update.effective_message.chat_id).title
         except:
             chatname = ''
         # Try to get the chat link
         try:
-            chatlink = "t.me/" + update.message.chat.username
+            chatlink = "t.me/" + update.effective_message.chat.username
         except:
             chatlink = 'private'
         usable_data = []
@@ -1224,13 +1224,13 @@ def _muted(update):
     """Check if the user is muted"""
     # Check for exceptions
     if DBC.execute(f'''SELECT user_id, chat_id from "exceptions"
-    WHERE user_id={update.message.from_user.id}
-    AND chat_id={update.message.chat_id}''').fetchone() is not None:
+    WHERE user_id={update.effective_message.from_user.id}
+    AND chat_id={update.effective_message.chat_id}''').fetchone() is not None:
         return False
     # Check the muted table
     if DBC.execute(f'''SELECT user_id FROM muted
-    WHERE user_id="{update.message.from_user.id}" AND 
-    chat_id="{update.message.chat_id}"''').fetchone() is not None:
+    WHERE user_id="{update.effective_message.from_user.id}" AND 
+    chat_id="{update.effective_message.chat_id}"''').fetchone() is not None:
         return True
     # If nothing found, return false
     return False
