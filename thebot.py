@@ -337,12 +337,13 @@ def _doomer_word_handler(update) -> str:
         ]
     doomer_word_start = None
     # Check if any of the variations are in the text, if there are break
-    for variation in variations_with_latin_letters:
-        position = update.effective_message.text.lower().find(variation)
-        if position != -1:
-            found_word = variation
-            doomer_word_start = position
-            break
+    if update.effective_message.text is not None:
+        for variation in variations_with_latin_letters:
+            position = update.effective_message.text.lower().find(variation)
+            if position != -1:
+                found_word = variation
+                doomer_word_start = position
+                break
     reply_word = ''
     # If any of the variations have been found, give a reply
     if doomer_word_start is not None:
@@ -368,9 +369,10 @@ def _anprim_word_handler(update) -> bool:
                   'землянoчкy бы', 'зeмляночкy бы',
                   'зeмлянoчку бы', 'зeмлянoчкy бы']
     # If the word is found, return true
-    for variation in variations:
-        if variation in update.effective_message.text.lower():
-            return True
+    if update.effective_message.text is not None:
+        for variation in variations:
+            if variation in update.effective_message.text.lower():
+                return True
     # If the word is not found, return false
     return False
 
