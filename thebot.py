@@ -52,44 +52,41 @@ BOT = Bot(token=TOKEN, request=Request(con_pool_size=20))
 def store_user_data(update: Update):
     """Add user data to the userdata table of the database"""
     global KNOWNUSERSIDS
-    try:
-        if update.message.from_user.id not in KNOWNUSERSIDS:
-            userdata = BOT.get_chat_member(chat_id=update.message.chat_id,
-                                           user_id=update.message.from_user.id).user
-            id = userdata.id
-            firstname = userdata.first_name
-            lastname = update.message.from_user.last_name if update.message.from_user.last_name else ''
-            username = update.message.from_user.username if update.message.from_user.username else ''
-            userlink = userdata.link if userdata.link else ''
-            # Try to get the chat name
-            try:
-                chatname = BOT.get_chat(chat_id=update.message.chat_id).title
-            except:
-                chatname = ''
-            # Try to get the chat link
-            try:
-                chatlink = "t.me/" + update.message.chat.username
-            except:
-                chatlink = 'private'
-            usable_data = []
-            usable_variable = []
-            for data in (
-                    (id, 'id'),
-                    (firstname, 'firstname'),
-                    (lastname, 'lastname'),
-                    (username, 'username'),
-                    (chatname, 'chatname'),
-                    (userlink, 'userlink'),
-                    (chatlink, 'chatlink')):
-                if data[0]:
-                    usable_data += [data[0]]
-                    usable_variable += [data[1]]
-            DBC.execute(f'''INSERT OR IGNORE INTO "userdata"
-            {tuple(usable_variable)} VALUES {tuple(usable_data)}''')
-            DB.commit()
-            KNOWNUSERSIDS += [id]
-    except AttributeError as store_error:
-        LOGGER.info(store_error)
+    if update.effective_message.from_user.id not in KNOWNUSERSIDS:
+        userdata = BOT.get_chat_member(chat_id=update.message.chat_id,
+                                       user_id=update.message.from_user.id).user
+        id = userdata.id
+        firstname = userdata.first_name
+        lastname = update.message.from_user.last_name if update.message.from_user.last_name else ''
+        username = update.message.from_user.username if update.message.from_user.username else ''
+        userlink = userdata.link if userdata.link else ''
+        # Try to get the chat name
+        try:
+            chatname = BOT.get_chat(chat_id=update.message.chat_id).title
+        except:
+            chatname = ''
+        # Try to get the chat link
+        try:
+            chatlink = "t.me/" + update.message.chat.username
+        except:
+            chatlink = 'private'
+        usable_data = []
+        usable_variable = []
+        for data in (
+                (id, 'id'),
+                (firstname, 'firstname'),
+                (lastname, 'lastname'),
+                (username, 'username'),
+                (chatname, 'chatname'),
+                (userlink, 'userlink'),
+                (chatlink, 'chatlink')):
+            if data[0]:
+                usable_data += [data[0]]
+                usable_variable += [data[1]]
+        DBC.execute(f'''INSERT OR IGNORE INTO "userdata"
+        {tuple(usable_variable)} VALUES {tuple(usable_data)}''')
+        DB.commit()
+        KNOWNUSERSIDS += [id]
 
 
 def command_antispam_passed(func):
@@ -242,47 +239,37 @@ def whatsnew(update: Update, context: CallbackContext):
 @run_async
 def getlogs(update: Update, context: CallbackContext):
     """Get the bot logs"""
-    # Check if edited message
-    try:
-        # My call
-        if update.message.from_user.id == DEV:
-            try:
-                # Get the filename
-                filename = datetime.date.today().isoformat()
-                # Send the file
-                BOT.send_document(chat_id=update.message.chat_id,
-                                  document=open('logs.log', 'rb'),
-                                  filename=f'{filename}.log')
-            except (EOFError, FileNotFoundError) as changelog_err:
-                LOGGER.error(changelog_err)
-                _send_reply(update, 'Не смог добраться до логов. Что-то не так.')
-            finally:
-                # Clean the file after sending/create a new one if failed to get it
-                with open('logs.log', 'w') as logfile:
-                    logfile.write(f'{datetime.datetime.now().isoformat()} - Start of the log file.\n')
-                    logfile.close()
-    # If edited, pass
-    except AttributeError:
-        pass
+    # My call
+    if update.effective_message.from_user.id == DEV:
+        try:
+            # Get the filename
+            filename = datetime.date.today().isoformat()
+            # Send the file
+            BOT.send_document(chat_id=update.message.chat_id,
+                              document=open('logs.log', 'rb'),
+                              filename=f'{filename}.log')
+        except (EOFError, FileNotFoundError) as changelog_err:
+            LOGGER.error(changelog_err)
+            _send_reply(update, 'Не смог добраться до логов. Что-то не так.')
+        finally:
+            # Clean the file after sending/create a new one if failed to get it
+            with open('logs.log', 'w') as logfile:
+                logfile.write(f'{datetime.datetime.now().isoformat()} - Start of the log file.\n')
+                logfile.close()
 
 
 @run_async
 def getdatabase(update: Update, context: CallbackContext):
     """Get the database as a document"""
-    # Check if edited message
-    try:
-        # My call
-        if update.message.from_user.id == DEV:
-            try:
-                # Send the file
-                BOT.send_document(chat_id=update.message.chat_id,
-                                  document=open(DATABASENAME, 'rb'))
-            except (EOFError, FileNotFoundError) as database_err:
-                LOGGER.error(database_err)
-                _send_reply(update, 'Не смог добраться до датабазы. Что-то не так.')
-    # If edited, pass
-    except AttributeError:
-        pass
+    # My call
+    if update.effective_message.from_user.id == DEV:
+        try:
+            # Send the file
+            BOT.send_document(chat_id=update.message.chat_id,
+                              document=open(DATABASENAME, 'rb'))
+        except (EOFError, FileNotFoundError) as database_err:
+            LOGGER.error(database_err)
+            _send_reply(update, 'Не смог добраться до датабазы. Что-то не так.')
 
 
 def sql(update: Update, context: CallbackContext):
@@ -322,29 +309,25 @@ def message_filter(update: Update, context: CallbackContext):
                            caption='Эх, жить бы подальше от общества как анприм и там думить..',
                            reply_to_message_id=update.message.message_id)
 
+    # Add storing the userdata
+    store_user_data(update)
     try:
-        # Add storing the userdata
-        store_user_data(update)
-        try:
-            LOGGER.info(
-                f'{update.message.from_user.first_name}[{update.message.from_user.id}] - '
-                f'{BOT.get_chat(chat_id=update.message.chat_id).title} - {update.message.text}')
-        except UnicodeEncodeError:
-            LOGGER.info('Failed to print message due to russian symbols')
-        # If user is in the muted list, delete his message unless he is in exceptions
-        # to avoid possible self-mutes
-        doomer_word = _doomer_word_handler(update)
-        if _muted(update):
-            _try_to_delete_message(update)
-        # Handle the word doomer
-        elif doomer_word:
-            _giveanswer(update, 'думер')
-        # Handle землянoчкy
-        elif _anprim_word_handler(update):
-            _giveanswer(update, 'землянка')
-    # Skip the edits, don't log this error
-    except AttributeError:
-        pass
+        LOGGER.info(
+            f'{update.effective_message.from_user.first_name}[{update.effective_message.from_user.id}] - '
+            f'{BOT.get_chat(chat_id=update.effective_message.chat_id).title} - {update.effective_message.text}')
+    except UnicodeEncodeError:
+        LOGGER.info('Failed to print message due to russian symbols')
+    # If user is in the muted list, delete his message unless he is in exceptions
+    # to avoid possible self-mutes
+    doomer_word = _doomer_word_handler(update)
+    if _muted(update):
+        _try_to_delete_message(update)
+    # Handle the word doomer
+    elif doomer_word:
+        _giveanswer(update, 'думер')
+    # Handle землянoчкy
+    elif _anprim_word_handler(update):
+        _giveanswer(update, 'землянка')
 
 
 def _doomer_word_handler(update) -> str:
