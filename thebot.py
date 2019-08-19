@@ -576,10 +576,11 @@ def duel(update: Update, context: CallbackContext):
             # If there is no maximum, allow for duels
             if chatdata[1] is None:
                 return True
-            # If no duels have been counted, increment by 1
-            if chatdata[3] is None:
+            # If no duels have been counted, or old day, increment by 1
+            if chatdata[3] is None or \
+                    datetime.date.fromisoformat(now) > datetime.date.fromisoformat(chatdata[3]):
                 DBC.execute(f'''UPDATE "duellimits" SET
-                accountingday="{now}", duelcount = duelcount + 1
+                accountingday="{now}", duelcount=1
                 WHERE chat_id="{chatid}"''')
                 DB.commit()
                 return True
@@ -1252,7 +1253,7 @@ USERCOMMANDS = [
     ("slap", slap, 'Кого-то унизить (надо ответить жертве, чтобы бот понял кого бить)'),
     ('duel', duel, 'Устроить дуэль (надо ответить тому, с кем будет дуэль)'),
     ('myscore', myscore, 'Мой счёт в дуэлях'),
-    ('duelranking', duelranking, 'Ранкинг дуэлей чата (показывает только тех, у кого больше 2-х убийств и смертей)'),
+    ('duelranking', duelranking, 'Ранкинг дуэлей чата (показывает только тех, у кого больше есть убийства и смерти)'),
     ("flip", flip, 'Бросить монетку (Орёл/Решка)'),
     ("dadjoke", dadjoke, 'Случайная шутка бати'),
     ("myiq", myiq, 'Мой IQ (1 - 200)'),
@@ -1268,7 +1269,7 @@ ONLYADMINCOMMANDS = [
     ('immune', immune, 'Добавить пользователю иммунитет на задержку команд (ответить ему)'),
     ('unimmune', unimmune, 'Снять иммунитет (ответить или имя)'),
     ('immunelist', immunelist, 'Лист людей с иммунитетом'),
-    ('mute', mute, 'Замутить человека в этом чате (надо ему ответить командой)'),
+    ('mute', mute, 'Замутить человека в этом чате (надо ему ответить командой, у бота должны быть права на удаление сообщений)'),
     ('unmute', unmute, 'Cнять мут в этом чате (ответить или имя)'),
     ('mutelist', mutelist, 'Показать всех в муте в этом чате'),
     ]
