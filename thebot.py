@@ -1251,8 +1251,8 @@ USERCOMMANDS = [
     ("dadjoke", dadjoke, 'Случайная шутка бати'),
     ("dog", animal, 'Случайное фото собачки'),
     ("cat", animal, 'Случайное фото котика'),
-    ("loli", loli, 'Лоли фото (SFW/NSFW)'),
-    ('lolimode', lolimode, 'Настройка лоли на SFW или NSFW'),
+    #("loli", loli, 'Лоли фото (SFW/NSFW)'),
+    #('lolimode', lolimode, 'Настройка лоли на SFW или NSFW'),
     ('pidor', pidor, 'Пидор дня (новый пидор каждый день по немецкому времени)'),
     ('pidorstats', pidorstats, 'Сколько раз вы были пидором дня')
     ]
