@@ -13,7 +13,7 @@ THRESHOLDCAP = 80
 LOW_BASE_ACCURACY = 35
 HIGH_BASE_ACCURACY = 50
 # Exp multiplier for kills, deaths and misses
-KILLMULT = 0.28
+KILLMULT = 0.33
 DEATHMULT = -0.12
 MISSMULT = -0.05
 # Always lose percent
@@ -23,7 +23,7 @@ HARDRESETCHANCE = 0.001 # 0.1%
 # DO NOT TOUCH
 # -----------------------------------------------------------
 # Get the kill, death multiplier and their percentage to total
-DATABASENAME = 'doomer.DB'
+DATABASENAME = 'thedoomerbot.db'
 KILLMULTPERC = round(KILLMULT / THRESHOLDCAP * 100, 2)
 DEATHMULTPERC = round(DEATHMULT / THRESHOLDCAP * 100, 2)
 MISSMULTPERC = round(MISSMULT / THRESHOLDCAP * 100, 2)

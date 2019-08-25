@@ -109,3 +109,4 @@ venv.bak/
 # VSC
 .vscode/
 doomer.DB
+thedoomerbot.db

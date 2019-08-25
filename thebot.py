@@ -1,6 +1,6 @@
 """
 Authors (telegrams) - @doitforgachi, @dovaogedot
-Version: 1.0 beta
+Version: 1.1 beta
 """
 
 import datetime
@@ -12,6 +12,9 @@ from time import sleep
 
 import requests
 import telegram
+from bs4 import BeautifulSoup
+from telegram import InlineKeyboardButton
+from telegram import InlineKeyboardMarkup
 from telegram import Bot
 from telegram import TelegramError
 from telegram import Update
@@ -20,6 +23,7 @@ from telegram.ext import CommandHandler
 from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
+from telegram.ext import CallbackQueryHandler
 from telegram.ext.dispatcher import run_async
 from telegram.utils.request import Request
 
@@ -39,7 +43,7 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.info('-----------------------------------------------')
 LOGGER.info('Initializing the bot...')
 
-# Import the database with muted, exceptions and duel data
+# Connect to the database and create a cursor
 LOGGER.info(f"Connecting to the database '{DATABASENAME}'...")
 DB = sqlite3.connect(DATABASENAME, check_same_thread=False)
 DBC = DB.cursor()
@@ -47,46 +51,6 @@ DBC = DB.cursor()
 # Bot initialization
 TOKEN = environ.get("TG_BOT_TOKEN")
 BOT = Bot(token=TOKEN, request=Request(con_pool_size=20))
-
-@run_async
-def store_user_data(update: Update):
-    """Add user data to the userdata table of the database"""
-    global KNOWNUSERSIDS
-    if update.effective_message.from_user.id not in KNOWNUSERSIDS:
-        userdata = BOT.get_chat_member(chat_id=update.effective_message.chat_id,
-                                       user_id=update.effective_message.from_user.id).user
-        id = userdata.id
-        firstname = userdata.first_name
-        lastname = update.effective_message.from_user.last_name if update.effective_message.from_user.last_name else ''
-        username = update.effective_message.from_user.username if update.effective_message.from_user.username else ''
-        userlink = userdata.link if userdata.link else ''
-        # Try to get the chat name
-        try:
-            chatname = BOT.get_chat(chat_id=update.effective_message.chat_id).title
-        except:
-            chatname = ''
-        # Try to get the chat link
-        try:
-            chatlink = "t.me/" + update.effective_message.chat.username
-        except:
-            chatlink = 'private'
-        usable_data = []
-        usable_variable = []
-        for data in (
-                (id, 'id'),
-                (firstname, 'firstname'),
-                (lastname, 'lastname'),
-                (username, 'username'),
-                (chatname, 'chatname'),
-                (userlink, 'userlink'),
-                (chatlink, 'chatlink')):
-            if data[0]:
-                usable_data += [data[0]]
-                usable_variable += [data[1]]
-        DBC.execute(f'''INSERT OR IGNORE INTO "userdata"
-        {tuple(usable_variable)} VALUES {tuple(usable_data)}''')
-        DB.commit()
-        KNOWNUSERSIDS += [id]
 
 
 def command_antispam_passed(func):
@@ -96,7 +60,15 @@ def command_antispam_passed(func):
     """
 
     def executor(update: Update, *args, **kwargs):
+        # Create chat data
+        DBC.execute(f'''
+        INSERT OR IGNORE INTO "chattable" (chat_id, chat_name) 
+        VALUES ("{update.effective_chat.id}", 
+        "{BOT.get_chat(chat_id=update.effective_chat.id).title}")''')
+        DB.commit()
+        # Store user data
         store_user_data(update)
+        # Check for cooldown
         if _check_cooldown(update, 'lastcommandreply', INDIVIDUAL_USER_DELAY):
             func(update, *args, **kwargs)
 
@@ -107,7 +79,6 @@ def text_antispam_passed(func):
     """Checks if somebody is spamming reply_all words"""
 
     def executor(update: Update, *args, **kwargs):
-        store_user_data(update)
         if _check_cooldown(update, 'lasttextreply', INDIVIDUAL_REPLY_DELAY):
             func(update, *args, **kwargs)
 
@@ -119,11 +90,19 @@ def rightscheck(func):
     Enough rights are defined as creator or administrator or developer"""
 
     def executor(update: Update, *args, **kwargs):
+        # Create chat data
+        DBC.execute(f'''
+        INSERT OR IGNORE INTO "chattable" (chat_id, chat_name) 
+        VALUES ("{update.effective_chat.id}", 
+        "{BOT.get_chat(chat_id=update.effective_chat.id).title}")''')
+        DB.commit()
+        # Store user data
         store_user_data(update)
+        # Check user rank
         rank = BOT.get_chat_member(chat_id=update.effective_message.chat_id,
-                                   user_id=update.effective_message.from_user.id).status
+                                   user_id=update.effective_user.id).status
         permitted = ['creator', 'administrator']
-        if rank in permitted or update.effective_message.from_user.id == DEV:
+        if rank in permitted or update.effective_user.id == DEV:
             func(update, *args, **kwargs)
         else:
             informthepleb(update)
@@ -239,12 +218,12 @@ def whatsnew(update: Update, context: CallbackContext):
 def getlogs(update: Update, context: CallbackContext):
     """Get the bot logs"""
     # My call
-    if update.effective_message.from_user.id == DEV:
+    if update.effective_user.id == DEV:
         try:
             # Get the filename
             filename = datetime.date.today().isoformat()
             # Send the file
-            BOT.send_document(chat_id=update.effective_message.chat_id,
+            BOT.send_document(chat_id=update.effective_chat.id,
                               document=open('logs.log', 'rb'),
                               filename=f'{filename}.log')
         except (EOFError, FileNotFoundError) as changelog_err:
@@ -261,10 +240,10 @@ def getlogs(update: Update, context: CallbackContext):
 def getdatabase(update: Update, context: CallbackContext):
     """Get the database as a document"""
     # My call
-    if update.effective_message.from_user.id == DEV:
+    if update.effective_user.id == DEV:
         try:
             # Send the file
-            BOT.send_document(chat_id=update.effective_message.chat_id,
+            BOT.send_document(chat_id=update.effective_chat.id,
                               document=open(DATABASENAME, 'rb'))
         except (EOFError, FileNotFoundError) as database_err:
             LOGGER.error(database_err)
@@ -273,7 +252,7 @@ def getdatabase(update: Update, context: CallbackContext):
 
 def sql(update: Update, context: CallbackContext):
     """Use sql commands for the database"""
-    if update.effective_message.from_user.id == DEV:
+    if update.effective_user.id == DEV:
         statement = ' '.join(update.effective_message.text.split()[1:])
         DBC.execute(f'''{statement}''')
         DB.commit()
@@ -282,7 +261,7 @@ def sql(update: Update, context: CallbackContext):
 @run_async
 def allcommands(update: Update, context: CallbackContext):
     """Get all commands"""
-    if update.effective_message.from_user.id == DEV:
+    if update.effective_user.id == DEV:
         text = ''
         for commandlists in (USERCOMMANDS, ONLYADMINCOMMANDS, UNUSUALCOMMANDS):
             text += f'<b>{commandlists[0]}:</b>\n'
@@ -303,26 +282,16 @@ def message_filter(update: Update, context: CallbackContext):
         if case == 'думер':
             _send_reply(update, doomer_word)
         else:
-            BOT.send_photo(chat_id=update.effective_message.chat_id,
+            BOT.send_photo(chat_id=update.effective_chat.id,
                            photo=random.choice(HUTS),
                            caption='Эх, жить бы подальше от общества как анприм и там думить..',
                            reply_to_message_id=update.effective_message.message_id)
 
-    # Add storing the userdata
+    # Store user data
     store_user_data(update)
-    try:
-        LOGGER.info(
-            f'{update.effective_message.from_user.first_name}[{update.effective_message.from_user.id}] - '
-            f'{BOT.get_chat(chat_id=update.effective_message.chat_id).title} - {update.effective_message.text}')
-    except UnicodeEncodeError:
-        LOGGER.info('Failed to print message due to russian symbols')
-    # If user is in the muted list, delete his message unless he is in exceptions
-    # to avoid possible self-mutes
     doomer_word = _doomer_word_handler(update)
-    if _muted(update):
-        _try_to_delete_message(update)
     # Handle the word doomer
-    elif doomer_word:
+    if doomer_word:
         _giveanswer(update, 'думер')
     # Handle землянoчкy
     elif _anprim_word_handler(update):
@@ -384,34 +353,49 @@ def flip(update: Update, context: CallbackContext):
 
 
 @run_async
-@command_antispam_passed
-def myiq(update: Update, context: CallbackContext):
-    """Return IQ level (1 - 200)"""
-    iq_level = random.randint(1, 200)
-    reply_text = f"Твой уровень IQ {iq_level}. "
-    if iq_level < 85:
-        reply_text += "Грустно за тебя, братишка. (1 - 200)"
-    elif 85 <= iq_level <= 115:
-        reply_text += "Ты норми, братишка. (1 - 200)"
-    elif 115 < iq_level <= 125:
-        reply_text += "Ты умный, братишка! (1 - 200)"
-    else:
-        reply_text += "Ты гений, братишка! (1 - 200)"
-    _send_reply(update, reply_text)
-
-
-@run_async
-@command_antispam_passed
-def muhdick(update: Update, context: CallbackContext):
-    """Return dick size in cm (1 - 25)"""
-    muh_dick = random.randint(1, 25)
-    reply_text = f"Длина твоей палочки {muh_dick} см! "
-    if 1 <= muh_dick <= 11:
-        reply_text += "\U0001F92D "
-    elif 21 <= muh_dick <= 25:
-        reply_text += "\U0001F631 "
-    reply_text += "(1 - 25)"
-    _send_reply(update, reply_text)
+def store_user_data(update: Update):
+    """Add user data to the userdata table of the database"""
+    global KNOWNUSERS
+    # Create chat entry
+    if update.effective_chat.id not in KNOWNUSERS:
+        KNOWNUSERS[update.effective_chat.id] = []
+    if update.effective_user.id not in KNOWNUSERS[update.effective_chat.id]:
+        # Get all user data
+        userdata = BOT.get_chat_member(chat_id=update.effective_chat.id,
+                                       user_id=update.effective_user.id).user
+        user_id = userdata.id
+        chat_id = update.effective_chat.id
+        firstname = userdata.first_name
+        lastname = update.effective_user.last_name if update.effective_user.last_name else ''
+        username = update.effective_user.username if update.effective_user.username else ''
+        # Try to get the chat name
+        try:
+            chatname = BOT.get_chat(chat_id=update.effective_message.chat_id).title
+        except:
+            chatname = ''
+        # Try to get the chat link
+        try:
+            chatlink = "t.me/" + update.effective_message.chat.username
+        except:
+            chatlink = 'private'
+        usable_data = []
+        usable_variable = []
+        # Prepare data for SQL
+        for data in (
+                (user_id, 'user_id'),
+                (chat_id, 'chat_id'),
+                (firstname, 'firstname'),
+                (lastname, 'lastname'),
+                (username, 'username'),
+                (chatname, 'chatname'),
+                (chatlink, 'chatlink')):
+            if data[0]:
+                usable_data += [data[0]]
+                usable_variable += [data[1]]
+        DBC.execute(f'''INSERT OR IGNORE INTO "userdata"
+        {tuple(usable_variable)} VALUES {tuple(usable_data)}''')
+        DB.commit()
+        KNOWNUSERS[update.effective_chat.id] += [user_id]
 
 
 @run_async
@@ -423,18 +407,19 @@ def animal(update: Update, context: CallbackContext):
     def _handle_format_and_reply(update):
         """Handle the format of the file and reply accordingly"""
         nonlocal response
+        # Send uploading state
         file_link = list(response.values())[0]
         file_extension = file_link.split('.')[-1]
         if 'mp4' in file_extension:
-            BOT.send_video(chat_id=update.effective_message.chat_id,
+            BOT.send_video(chat_id=update.effective_chat.id,
                            video=file_link,
                            reply_to_message_id=update.effective_message.message_id)
         elif 'gif' in file_extension:
-            BOT.send_animation(chat_id=update.effective_message.chat_id,
+            BOT.send_animation(chat_id=update.effective_chat.id,
                                animation=file_link,
                                reply_to_message_id=update.effective_message.message_id)
         else:
-            BOT.send_photo(chat_id=update.effective_message.chat_id,
+            BOT.send_photo(chat_id=update.effective_chat.id,
                            photo=file_link,
                            reply_to_message_id=update.effective_message.message_id)
 
@@ -445,6 +430,8 @@ def animal(update: Update, context: CallbackContext):
     else:
         link = 'https://random.dog/woof.json'
     try:
+        BOT.send_chat_action(chat_id=update.effective_chat.id,
+                             action='upload_photo')
         response = requests.get(link, timeout=REQUEST_TIMEOUT).json()
         _handle_format_and_reply(update)
     except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout) as err:
@@ -507,7 +494,7 @@ def duel(update: Update, context: CallbackContext):
         """Get strength if the user to assist in duels"""
         # Check if table exists
         userfound = DBC.execute(f'''SELECT kills, deaths, misses from "duels"
-        WHERE user_id={userid} and chat_id={update.effective_message.chat_id}''').fetchone()
+        WHERE user_id={userid} and chat_id={update.effective_chat.id}''').fetchone()
         if userfound:
             strength = random.uniform(LOW_BASE_ACCURACY, HIGH_BASE_ACCURACY) \
                        + userfound[0] * KILLMULT \
@@ -525,11 +512,11 @@ def duel(update: Update, context: CallbackContext):
         if winners:
             p1, p2 = winners[0], losers[0]
             # Remove cooldown from the winner if it was the initiator
-            if update.effective_message.from_user.id == p1[1]:
+            if update.effective_user.id == p1[1]:
                 # Reduce winner cooldown
                 shortercd = datetime.datetime.now() - datetime.timedelta(seconds=CDREDUCTION)
                 DBC.execute(f'''UPDATE "cooldowns" SET lastcommandreply="{shortercd}",
-                lasttextreply="{shortercd}" WHERE user_id={p1[1]} AND chat_id={update.effective_message.chat_id}''')
+                lasttextreply="{shortercd}" WHERE user_id={p1[1]} AND chat_id={update.effective_chat.id}''')
         # None dead
         else:
             p1, p2 = losers[0], losers[1]
@@ -538,10 +525,10 @@ def duel(update: Update, context: CallbackContext):
             kd = p1_kdm if counter == 0 else p2_kdm
             userid, firstname = player[1], player[0]
             DBC.execute(f'INSERT OR IGNORE INTO "duels" (user_id, chat_id, firstname) '
-                        f'VALUES ("{userid}", "{update.effective_message.chat_id}", "{firstname}")')
+                        f'VALUES ("{userid}", "{update.effective_chat.id}", "{firstname}")')
             DBC.execute(f'UPDATE "duels" SET kills = kills + {kd[0]}, '
                         f'deaths = deaths + {kd[1]}, misses = misses + {kd[2]} '
-                        f'WHERE user_id="{userid}" AND chat_id="{update.effective_message.chat_id}"')
+                        f'WHERE user_id="{userid}" AND chat_id="{update.effective_chat.id}"')
             counter += 1
         DB.commit()
 
@@ -555,7 +542,7 @@ def duel(update: Update, context: CallbackContext):
         if scenario == 'onedead':
             phrase = phrase.replace('winner', winners[0][3]).replace('loser', losers[0][3])
             phrase += f'\nПобеда за {winners[0][3]}!'
-            if winners[0][1] == update.effective_message.from_user.id:
+            if winners[0][1] == update.effective_user.id:
                 phrase += f'\nВсе твои кулдауны были ресетнуты до {SHORTCD // 60}-х минут!'
             return phrase
         if scenario == 'suicide':
@@ -564,9 +551,9 @@ def duel(update: Update, context: CallbackContext):
     def _check_duel_status() -> bool:
         """Check if the duels are allowed/more possible"""
         nonlocal update
-        chatid = f"{update.effective_message.chat_id}"
+        chatid = f"{update.effective_chat.id}"
         chatdata = DBC.execute(f'''SELECT duelstatusonoff, duelmaximum,
-        duelcount, accountingday FROM "duellimits" WHERE chat_id="{chatid}"''').fetchone()
+        duelcount, accountingday FROM "chattable" WHERE chat_id="{chatid}"''').fetchone()
         now = f"{datetime.datetime.now().date()}"
         if chatdata is not None:
             # If duels are turned off, disallow duels
@@ -578,7 +565,7 @@ def duel(update: Update, context: CallbackContext):
             # If no duels have been counted, or old day, increment by 1
             if chatdata[3] is None or \
                     datetime.date.fromisoformat(now) > datetime.date.fromisoformat(chatdata[3]):
-                DBC.execute(f'''UPDATE "duellimits" SET
+                DBC.execute(f'''UPDATE "chattable" SET
                 accountingday="{now}", duelcount=1
                 WHERE chat_id="{chatid}"''')
                 DB.commit()
@@ -588,20 +575,20 @@ def duel(update: Update, context: CallbackContext):
                 # Reset every day
                 if datetime.datetime.now().date() > \
                         datetime.date.fromisoformat(chatdata[3]):
-                    DBC.execute(f'''UPDATE "duellimits" SET
+                    DBC.execute(f'''UPDATE "chattable" SET
                     duelcount = 1, accountingday="{now}" 
                     WHERE chat_id="{chatid}"''')
                     DB.commit()
                     return True
                 return False
             # Increment if none of the conditions were met
-            DBC.execute(f'''UPDATE "duellimits" SET
+            DBC.execute(f'''UPDATE "chattable" SET
             duelcount = duelcount + 1
             WHERE chat_id="{chatid}"''')
             DB.commit()
             return True
         # If there is no chat data, create it
-        DBC.execute(f'''INSERT OR IGNORE INTO "duellimits"
+        DBC.execute(f'''INSERT OR IGNORE INTO "chattable"
         (chat_id, duelcount, accountingday) VALUES 
         ("{chatid}", 1, "{now}")''')
         DB.commit()
@@ -664,14 +651,14 @@ def duel(update: Update, context: CallbackContext):
         """Send all the messages for the duel."""
         nonlocal update
         # Send the initial message
-        botmsg = BOT.send_message(chat_id=update.effective_message.chat_id,
+        botmsg = BOT.send_message(chat_id=update.effective_chat.id,
                                   text='Дуэлисты расходятся...')
         # Get the sound of the duel
         sound = '***BANG BANG***' if random.random() * 100 < 90 else '***ПИФ-ПАФ***'
         # Make the message loop
         for phrase in ('Готовятся к выстрелу...', sound, result):
             sleep(0.8)
-            botmsg = BOT.edit_message_text(chat_id=update.effective_message.chat_id,
+            botmsg = BOT.edit_message_text(chat_id=update.effective_chat.id,
                                            text=phrase,
                                            message_id=botmsg.message_id,
                                            parse_mode='Markdown')
@@ -683,9 +670,9 @@ def duel(update: Update, context: CallbackContext):
         nonlocal update
         if random.uniform(0, 1) < HARDRESETCHANCE:
             DBC.execute(f'''DELETE FROM "duels" WHERE
-            user_id={participant[1]} AND chat_id={update.effective_message.chat_id}''')
+            user_id={participant[1]} AND chat_id={update.effective_chat.id}''')
             DB.commit()
-            BOT.send_message(chat_id=update.effective_message.chat_id,
+            BOT.send_message(chat_id=update.effective_chat.id,
                              text=f'Упс, я случайно ресетнул все статы {participant[3]}.\n'
                                   f'Кому-то сегодня не везёт.',
                              parse_mode='Markdown')
@@ -723,7 +710,7 @@ def myscore(update: Update, context: CallbackContext):
     if update.effective_message.chat.type != 'private':
         # Get userdata
         u_data = DBC.execute(f'''SELECT kills, deaths, misses FROM "duels"
-        WHERE user_id={update.effective_message.from_user.id} AND chat_id={update.effective_message.chat_id}''').fetchone()
+        WHERE user_id={update.effective_user.id} AND chat_id={update.effective_chat.id}''').fetchone()
         # Check if the data for the user exists
         if u_data is not None:
             # If there is user data, get the score
@@ -754,8 +741,8 @@ def duelranking(update: Update, context: CallbackContext):
             FROM "duels" AS doom JOIN
             (SELECT firstname, kills * 100.0/(kills+deaths) AS wr
                 FROM "duels"
-                    WHERE deaths!=0 AND kills!=0 AND chat_id="{update.effective_message.chat_id}") AS winrate
-            ON doom.firstname=winrate.firstname WHERE chat_id="{update.effective_message.chat_id}"
+                    WHERE deaths!=0 AND kills!=0 AND chat_id="{update.effective_chat.id}") AS winrate
+            ON doom.firstname=winrate.firstname WHERE chat_id="{update.effective_chat.id}"
             ORDER BY wr {query[1]} LIMIT 5'''):
                 ranking += f'№{counter} {Q[0]}\t -\t {Q[1]}/{Q[2]}/{Q[3]}'
                 ranking += f' ({round(Q[4], 2)}%)\n'
@@ -771,7 +758,7 @@ def duelranking(update: Update, context: CallbackContext):
     if update.effective_message.chat.type != 'private':
         # Check if the chat table exists
         if DBC.execute(f'''SELECT user_id FROM "duels"
-        WHERE chat_id={update.effective_message.chat_id}''').fetchone() is not None:
+        WHERE chat_id={update.effective_chat.id}''').fetchone() is not None:
             _handle_ranking(update)
         else:
             _send_reply(update, 'Для этого чата нет данных.')
@@ -790,26 +777,26 @@ def duelstatus(update: Update, context: CallbackContext):
         nonlocal arg, update
         # Remove limits
         if arg == 'none':
-            DBC.execute(f'''UPDATE "duellimits"
-            set duelmaximum=NULL WHERE chat_id="{update.effective_message.chat_id}"''')
+            DBC.execute(f'''UPDATE "chattable"
+            set duelmaximum=NULL WHERE chat_id="{update.effective_chat.id}"''')
             reply = 'Был убран лимит дуэлей.'
         # Get current status if no argument was given
         elif arg is None:
-            status = DBC.execute(f'''SELECT duelmaximum from "duellimits"
-            WHERE chat_id="{update.effective_message.chat_id}"''').fetchone()[0]
+            status = DBC.execute(f'''SELECT duelmaximum from "chattable"
+            WHERE chat_id="{update.effective_chat.id}"''').fetchone()[0]
             # If nothing, means no limit
             if status is None:
                 reply = 'Лимита на дуэли нет.'
             else:
-                duelsused = DBC.execute(f'''SELECT duelcount from "duellimits"
-                WHERE chat_id="{update.effective_message.chat_id}"''').fetchone()[0]
+                duelsused = DBC.execute(f'''SELECT duelcount from "chattable"
+                WHERE chat_id="{update.effective_chat.id}"''').fetchone()[0]
                 reply = f'Лимит дуэлей составляет {status}. Уже использовано {duelsused}.'
         # Set maximum
         else:
             try:
                 arg = int(arg)
-                DBC.execute(f'''UPDATE "duellimits"
-                set duelmaximum={arg} WHERE chat_id="{update.effective_message.chat_id}"''')
+                DBC.execute(f'''UPDATE "chattable"
+                set duelmaximum={arg} WHERE chat_id="{update.effective_chat.id}"''')
                 reply = f'Максимальное количество дуэлей за день стало {arg}.'
             except ValueError:
                 reply = f'\"{arg}\" не подходит. Дайте число. /adminmenu для справки.'
@@ -826,12 +813,12 @@ def duelstatus(update: Update, context: CallbackContext):
         reply = 'Чё?'
         if arg in ['on', 'off']:
             status = 1 if arg == 'on' else 0
-            DBC.execute(f'''UPDATE "duellimits"
-            set duelstatusonoff={status} WHERE chat_id={update.effective_message.chat_id}''')
+            DBC.execute(f'''UPDATE "chattable"
+            set duelstatusonoff={status} WHERE chat_id={update.effective_chat.id}''')
             DB.commit()
         elif arg is None:
-            status = DBC.execute(f'''SELECT duelstatusonoff from "duellimits"
-            WHERE chat_id={update.effective_message.chat_id}''').fetchone()[0]
+            status = DBC.execute(f'''SELECT duelstatusonoff from "chattable"
+            WHERE chat_id={update.effective_chat.id}''').fetchone()[0]
         else:
             reply = 'Всмысле? Ты обосрался. /adminmenu для справки.'
         if status == 1:
@@ -847,9 +834,9 @@ def duelstatus(update: Update, context: CallbackContext):
             # Get the accounting day
             now = f"\"{datetime.datetime.now().date()}\""
             # Create table entry if it didn't exist
-            DBC.execute(f'''INSERT OR IGNORE INTO "duellimits"
+            DBC.execute(f'''INSERT OR IGNORE INTO "chattable"
                         (chat_id, duelcount, accountingday) VALUES 
-                        ({update.effective_message.chat_id}, 1, {now})''')
+                        ({update.effective_chat.id}, 1, {now})''')
             DB.commit()
             # Get the argument
             try:
@@ -869,75 +856,130 @@ def duelstatus(update: Update, context: CallbackContext):
 
 @run_async
 @command_antispam_passed
+def pidor(update: Update, context: CallbackContext):
+    """Get the pidor of the day from all users stored for the chat"""
+    # Check last pidor day
+    lastpidor = DBC.execute(f'''SELECT lastpidorid, lastpidorday, lastpidorname FROM "chattable"
+    WHERE chat_id="{update.effective_chat.id}"''').fetchone()
+    if lastpidor[0] is None or datetime.date.fromisoformat(lastpidor[1]) < datetime.date.today():
+        # Exclude users that are not in the chat, but don't delete them to leave their data/stats
+        while True:
+            allchatusers = DBC.execute(f'''SELECT user_id, firstname FROM "userdata"
+            WHERE chat_id="{update.effective_chat.id}"''').fetchall()
+            todaypidor = random.choice(allchatusers)
+            try:
+                BOT.get_chat_member(chat_id=update.effective_chat.id,
+                                    user_id=todaypidor[0])
+                break
+            except telegram.error.BadRequest:
+                continue
+        DBC.execute(f'''UPDATE "chattable" 
+        SET lastpidorday="{datetime.date.today().isoformat()}", lastpidorid="{todaypidor[0]}",
+        lastpidorname="{todaypidor[1]}"
+        WHERE chat_id="{update.effective_chat.id}"''')
+        DBC.execute(f'''UPDATE "userdata" 
+        SET timespidor=timespidor+1
+        WHERE chat_id="{update.effective_chat.id}" AND user_id="{update.effective_user.id}"''')
+        DB.commit()
+        todaypidor = f"[{todaypidor[1].strip('[]')}](tg://user?id={todaypidor[0]})"
+    else:
+        todaypidor = lastpidor[2]
+    _send_reply(update, f'Пидором дня является {todaypidor}!', parse_mode='Markdown')
+
+
+@run_async
+@command_antispam_passed
+def pidorstats(update: Update, context: CallbackContext):
+    """Give the user the number of times he has been pidor of the day"""
+    timespidor = DBC.execute(f'''SELECT timespidor FROM userdata WHERE
+    chat_id="{update.effective_chat.id}" AND user_id="{update.effective_user.id}"''').fetchone()[0]
+    _send_reply(update, f'Вы были пидором дня {timespidor} раз!')
+
+
+@run_async
+@command_antispam_passed
+def loli(update: Update, context: CallbackContext):
+    """Send photo of loli"""
+    # Get the photo type Safe/Explicit
+    lolitype = DBC.execute(f'''SELECT loliNSFW from "chattable" WHERE
+    chat_id="{update.effective_chat.id}"''').fetchone()[0]
+    safeorexplicit = 'Safe' if lolitype == 0 else 'Explicit'
+    # Send action of uploading the photo
+    BOT.send_chat_action(chat_id=update.effective_chat.id,
+                         action='upload_photo')
+    # Get the photo
+    notFound = True
+    while notFound:
+        url = f'https://danbooru.donmai.us/posts/random?tags=flat_chest+Rating%3A{safeorexplicit}'
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'lxml')
+        source = str(response.url).split('?')[0]
+        for a in soup.find_all('a', href=True):
+            if 'donmai.us' in a['href']:
+                link = a['href']
+                notFound = False
+                break
+    # Create a source button
+    keyboard = [[InlineKeyboardButton('Первоисточник', url=source)]]
+    source_button = InlineKeyboardMarkup(keyboard)
+    # Send the result
+    BOT.send_photo(chat_id=update.effective_chat.id,
+                   photo=link,
+                   reply_markup=source_button,
+                   reply_to_message_id=update.effective_message.message_id)
+
+
+@run_async
+@command_antispam_passed
+def lolimode(update: Update, context: CallbackContext):
+    """Set SFW/NSFW for Loli content"""
+    # Get current settings
+    lolitype = DBC.execute(f'''SELECT loliNSFW from "chattable" WHERE
+    chat_id="{update.effective_chat.id}"''').fetchone()[0]
+    currentstate = 'На данный момент контент '
+    currentstate += '***БЕЗ НЮДСОВ (SFW)***.' if lolitype == 0 else '***C НЮДСАМИ (NSFW)***.'
+    info = '\nЭту настройку может менять только администратор или создатель чата.' \
+           '\nЗапросы от других пользователей пропускаются.'
+    # Create settings buttons
+    keyboard = [[InlineKeyboardButton('Без нюдсов (SFW)', callback_data='legal'),
+                InlineKeyboardButton('С нюдсами (NSFW)', callback_data='illegal')]]
+    loli_settings = InlineKeyboardMarkup(keyboard)
+    # Send options
+    BOT.send_message(chat_id=update.effective_chat.id,
+                     text=currentstate+info,
+                     reply_markup=loli_settings,
+                     reply_to_message_id=update.effective_message.message_id,
+                     parse_mode='Markdown')
+
+
+def callbackhandler(update: Update, context: CallbackContext):
+    """Handle callbacks for admins"""
+    rank = BOT.get_chat_member(chat_id=update.effective_chat.id,
+                               user_id=update.effective_user.id).status
+    permitted = ['creator', 'administrator']
+    if rank not in permitted and update.effective_chat.type != 'private':
+        return
+    if update.callback_query.data in ['legal', 'illegal']:
+        lolitype = 0 if update.callback_query.data == 'legal' else 1
+        DBC.execute(f'''UPDATE "chattable" SET loliNSFW="{lolitype}"
+        WHERE chat_id="{update.effective_chat.id}"''')
+        DB.commit()
+        currentstate = 'Теперь контент '
+        currentstate += '***БЕЗ НЮДСОВ (SFW)***.' if lolitype == 0 else '***C НЮДСАМИ (NSFW)***.'
+        BOT.delete_message(chat_id=update.effective_chat.id,
+                           message_id=update.effective_message.message_id)
+        BOT.send_message(chat_id=update.effective_chat.id,
+                         text=currentstate,
+                         reply_to_message_id=update.effective_message.reply_to_message.message_id,
+                         disable_notification=True,
+                         parse_mode='Markdown')
+
+
+@run_async
+@command_antispam_passed
 def informthepleb(update):
     """If was not called by admin/creator/dev, inform the user that he is a pleb"""
     _send_reply(update, 'Пошёл нахуй, ты не админ.')
-
-
-@run_async
-@rightscheck
-def mute(update: Update, context: CallbackContext):
-    """Autodelete messages of a user (only usable by the developer)"""
-    # Only works for the dev/admin/creator
-    try:
-        # Shorten code
-        targetdata = update.effective_message.reply_to_message.from_user
-        # Mute and record into database
-        DBC.execute(f'''INSERT OR IGNORE INTO "muted" (user_id, chat_id, firstname)
-        VALUES ("{targetdata.id}", "{update.effective_message.chat_id}", "{targetdata.first_name}")''')
-        # Get mute reason if there is any
-        if len(update.effective_message.text.split()) > 1:
-            mutereason = ' '.join(update.effective_message.text.split()[1:])
-            DBC.execute(f'''UPDATE "muted" SET reason="{mutereason}"
-            WHERE user_id="{targetdata.id}" AND chat_id="{update.effective_message.chat_id}"''')
-        # Get username if exists
-        if targetdata.username:
-            DBC.execute(f'''UPDATE "muted" SET username="{targetdata.username}"
-            WHERE user_id="{targetdata.id}" and chat_id="{update.effective_message.chat_id}"''')
-        DB.commit()
-        # Send photo and explanation to the silenced person
-        BOT.send_message(chat_id=update.effective_message.chat_id,
-                         text='Теперь ты под салом и не можешь писать в чат.',
-                         reply_to_message_id=update.effective_message.reply_to_message.message_id)
-    except KeyError:
-        _send_reply(update, 'Пожалуйста, выберите цель.')
-
-
-@run_async
-@rightscheck
-def unmute(update: Update, context: CallbackContext):
-    """Stop autodeletion of messages of a user (only usable by the admin/dev/creator)"""
-    # Get chat id, create the replied flag to not make large trees
-    to_unmute_name = 'NULL'
-    to_unmute_id = 'NULL'
-    # If there is a reply, get the id of the reply target
-    if update.effective_message.reply_to_message is not None:
-        to_unmute_id = _get(update, 'target_id')
-    # If no reply target, take the argument if it exists
-    else:
-        try:
-            to_unmute_name = ' '.join(update.effective_message.text.split()[1:])
-        except IndexError:
-            # Finish if no target given at all
-            _send_reply(update, 'Вы не указали цель.')
-            return
-    # Check if the entry exists
-    target = DBC.execute(f'''SELECT user_id, firstname FROM "muted"
-    WHERE chat_id="{update.effective_message.chat_id}" AND 
-    (user_id="{to_unmute_id}" OR firstname="{to_unmute_name}")''').fetchone()
-    if target is not None:
-        # Get the target name
-        target_name = target[1].strip('[]')
-        # Create a markdown tagged name
-        target_tagged = f'[{target_name}](tg://user?id={to_unmute_id})'
-        # Delete the user from the muted database and commit
-        DBC.execute(f'''DELETE FROM "muted" WHERE chat_id="{update.effective_message.chat_id}" AND
-        (user_id="{to_unmute_id}" OR firstname="{to_unmute_name}")''')
-        # Send the reply of successful unmute
-        _send_reply(update, f'Успешно снял мут с \"{target_tagged}\".', parse_mode='Markdown')
-        DB.commit()
-    elif target is None:
-        _send_reply(update, 'Такого в списке нет.')
 
 
 @run_async
@@ -949,12 +991,12 @@ def immune(update: Update, context: CallbackContext):
         # Insert the target entry
         DBC.execute(f'''INSERT OR IGNORE INTO "exceptions"
         (user_id, chat_id, firstname) VALUES 
-        ("{targetdata.id}", "{update.effective_message.chat_id}", "{targetdata.first_name}")''')
+        ("{targetdata.id}", "{update.effective_chat.id}", "{targetdata.first_name}")''')
         # If the user has a username
         if targetdata.username:
             DBC.execute(f'''UPDATE "exceptions"
             SET username="{targetdata.username}" WHERE 
-            chat_id="{update.effective_message.chat_id}" AND user_id="{targetdata.id}"''')
+            chat_id="{update.effective_chat.id}" AND user_id="{targetdata.id}"''')
         DB.commit()
         _send_reply(update, f'Готово. \"{targetdata.first_name}\" теперь под иммунитетом!')
     else:
@@ -969,14 +1011,14 @@ def unimmune(update: Update, context: CallbackContext):
         targetdata = update.effective_message.reply_to_message.from_user
         DBC.execute(f'''DELETE FROM "exceptions"
         WHERE user_id="{targetdata.id}"
-        AND chat_id="{update.effective_message.chat_id}"''')
+        AND chat_id="{update.effective_chat.id}"''')
         _send_reply(update, f'Сделано. \"{targetdata.first_name}\" больше не под имуном')
         DB.commit()
     else:
         if len(update.effective_message.text.split()) > 1:
             unimmune_target = ' '.join(update.effective_message.text.split()[1:])
             DBC.execute(f'''DELETE FROM "exceptions"
-            WHERE chat_id="{update.effective_message.chat_id}" AND 
+            WHERE chat_id="{update.effective_chat.id}" AND 
             (username="{unimmune_target}" OR firstname="{unimmune_target}")''')
             DB.commit()
         else:
@@ -992,17 +1034,10 @@ def immunelist(update: Update, context: CallbackContext):
 
 @run_async
 @rightscheck
-def mutelist(update: Update, context: CallbackContext):
-    """Get the mute list"""
-    return _getsqllist(update, 'mutelist')
-
-
-@run_async
-@rightscheck
 def leave(update: Update, context: CallbackContext):
     """Make the bot leave the group, usable only by the admin/dev/creator."""
     try:
-        BOT.leave_chat(chat_id=update.effective_message.chat_id)
+        BOT.leave_chat(chat_id=update.effective_chat.id)
     except telegram.error.BadRequest as leaveerror:
         LOGGER.info(leaveerror)
         _send_reply(update, 'Я не могу уйти отсюда. Сам уйди.')
@@ -1017,14 +1052,14 @@ def _check_cooldown(update, whattocheck, cooldown):
         nonlocal update
         # Check if the error was given
         if DBC.execute(f'''SELECT errorgiven from "cooldowns" WHERE
-        chat_id="{update.effective_message.chat_id}" AND 
-        user_id="{update.effective_message.from_user.id}"''').fetchone()[0] == 0:
+        chat_id="{update.effective_chat.id}" AND 
+        user_id="{update.effective_user.id}"''').fetchone()[0] == 0:
             # If it wasn't, give the time remaining and update the flag.
             time_remaining = str((timediff - message_time)).split('.')[0][3:]
             _send_reply(update, f'До команды осталось {time_remaining} (ММ:СС). '
                                 f'Пока можешь идти нахуй, я буду пытаться удалять твои команды.')
             DBC.execute(f'''UPDATE "cooldowns" SET errorgiven = 1
-            WHERE chat_id="{update.effective_message.chat_id}" AND user_id="{update.effective_message.from_user.id}"''')
+            WHERE chat_id="{update.effective_chat.id}" AND user_id="{update.effective_user.id}"''')
             DB.commit()
         # If it was, try to delete the message
         else:
@@ -1033,23 +1068,19 @@ def _check_cooldown(update, whattocheck, cooldown):
     if update.effective_message.chat.type == 'private':
         return True
     # Add exceptions for some users
-    user_id = update.effective_message.from_user.id
+    user_id = update.effective_user.id
     if DBC.execute(f'''SELECT * FROM exceptions WHERE user_id="{user_id}"''').fetchall() is not None:
         for chatexcused in \
                 DBC.execute(f'''SELECT chat_id FROM exceptions WHERE user_id="{user_id}"''').fetchall():
             # 1 is global
-            if chatexcused[0] == update.effective_message.chat_id or chatexcused[0] == 1:
+            if chatexcused[0] == update.effective_chat.id or chatexcused[0] == 1:
                 return True
-    if whattocheck == 'lastcommandreply':
-        if _muted(update):
-            _try_to_delete_message(update)
-            return False
     # Create table if doesn't exist
     # Shorten code
     message_time = datetime.datetime.now()
     # Find last instance
     lastinstance = DBC.execute(f'''SELECT {whattocheck} from "cooldowns"
-    WHERE user_id="{user_id}" AND chat_id="{update.effective_message.chat_id}"''').fetchone()
+    WHERE user_id="{user_id}" AND chat_id="{update.effective_chat.id}"''').fetchone()
     if isinstance(lastinstance, tuple):
         lastinstance = lastinstance[0]
     # If there was a last one
@@ -1061,7 +1092,7 @@ def _check_cooldown(update, whattocheck, cooldown):
             # If it did, update table, return True
             DBC.execute(f'''UPDATE "cooldowns" SET
             {whattocheck}="{message_time}", errorgiven=0 
-            WHERE user_id="{user_id}" AND chat_id="{update.effective_message.chat_id}"''')
+            WHERE user_id="{user_id}" AND chat_id="{update.effective_chat.id}"''')
             DB.commit()
             return True
         if whattocheck == 'lastcommandreply':
@@ -1071,41 +1102,31 @@ def _check_cooldown(update, whattocheck, cooldown):
     # If there was none, create entry and return True
     DBC.execute(f'''INSERT OR IGNORE INTO "cooldowns"
     (user_id, chat_id, firstname, {whattocheck}) 
-    VALUES ("{user_id}", "{update.effective_message.chat_id}", 
+    VALUES ("{user_id}", "{update.effective_chat.id}", 
     "{update.effective_message.from_user.first_name}", "{message_time}")''')
     DBC.execute(f'''UPDATE "cooldowns" SET {whattocheck}="{message_time}"
-    WHERE user_id="{user_id}" AND chat_id={update.effective_message.chat_id}''')
+    WHERE user_id="{user_id}" AND chat_id={update.effective_chat.id}''')
     DB.commit()
     return True
 
 
 @run_async
 def _getsqllist(update, query: str):
-    """Get the list of muted and immuned ids"""
+    """Get the list of immuned ids"""
     insert = {}
-    if query == 'mutelist':
-        insert['variables'] = "\"firstname\", \"reason\""
-        insert['table'] = "\"muted\""
-        insert['constraint'] = f"WHERE chat_id={update.effective_message.chat_id}"
-    else:  # 'immunelist'
-        insert['variables'] = "\"firstname\""
-        insert['table'] = "\"exceptions\""
-        if update.effective_message.from_user.id != DEV:
-            insert['constraint'] = f"WHERE chat_id={update.effective_message.chat_id}"
-        else:
-            insert['constraint'] = ''
+    insert['variables'] = "\"firstname\""
+    insert['table'] = "\"exceptions\""
+    if update.effective_user.id != DEV:
+        insert['constraint'] = f"WHERE chat_id={update.effective_chat.id}"
+    else:
+        insert['constraint'] = f"WHERE chat_id={update.effective_chat.id} AND " \
+                               f"chat_id=1"
     # Somewhat of a table
     table = ''
-    # If there are muted targets, send reply, else say that there is nobody
     listnumber = 1
     for entry in DBC.execute(f"""SELECT {insert['variables']} FROM {insert['table']}
                             {insert['constraint']}""").fetchall():
         table += f'{listnumber}. {entry[0]}\n'
-        if query == 'mutelist':
-            if entry[1]:
-                table += f'Причина: {entry[1].capitalize()}\n'
-            else:
-                table += 'Причина не указана.\n'
         listnumber += 1
     if table:
         _send_reply(update, table)
@@ -1114,16 +1135,19 @@ def _getsqllist(update, query: str):
 
 
 def _create_tables():
-    """Create a muted databases"""
+    """Create a database"""
     # Userdata
     DBC.execute(f'''CREATE TABLE IF NOT EXISTS "userdata"
-    (id NUMERIC PRIMARY KEY UNIQUE,
+    (user_id NUMERIC,
+    chat_id NUMERIC,
     firstname TEXT NOT NULL,
     lastname TEXT DEFAULT NULL,
     username TEXT DEFAULT NULL,
     chatname TEXT DEFAULT NULL,
     userlink TEXT DEFAULT NULL,
-    chatlink TEXT DEFAULT NULL
+    chatlink TEXT DEFAULT NULL,
+    timespidor NUMERIC DEFAULT 0,
+    PRIMARY KEY (user_id, chat_id)
     )''')
     # Cooldowns
     DBC.execute(f'''CREATE TABLE IF NOT EXISTS "cooldowns"
@@ -1133,20 +1157,7 @@ def _create_tables():
     lastcommandreply TEXT DEFAULT NULL,
     errorgiven NUMERIC DEFAULT 0,
     lasttextreply TEXT DEFAULT NULL,
-    PRIMARY KEY (user_id, chat_id),
-    FOREIGN KEY(user_id) REFERENCES userdata(id),
-    FOREIGN KEY(firstname) REFERENCES userdata(firstname)
-    )''')
-    # Muted
-    DBC.execute(f'''CREATE TABLE IF NOT EXISTS "muted"
-    (user_id NUMERIC,
-    chat_id NUMERIC,
-    firstname TEXT,
-    username TEXT DEFAULT NULL,
-    reason TEXT DEFAULT NULL,
-    PRIMARY KEY (user_id, chat_id),
-    FOREIGN KEY(user_id) REFERENCES userdata(id),
-    FOREIGN KEY(firstname) REFERENCES userdata(firstname)
+    PRIMARY KEY (user_id, chat_id)
     )''')
     # Exceptions
     DBC.execute(f'''CREATE TABLE IF NOT EXISTS "exceptions"
@@ -1154,18 +1165,14 @@ def _create_tables():
     chat_id NUMERIC,
     firstname TEXT,
     username TEXT DEFAULT NULL,
-    PRIMARY KEY (user_id, chat_id),
-    FOREIGN KEY(user_id) REFERENCES userdata(id),
-    FOREIGN KEY(firstname) REFERENCES userdata(firstname),
-    FOREIGN KEY(username) REFERENCES userdata(username))
-    ''')
+    PRIMARY KEY (user_id, chat_id)
+    )''')
     # use 1 for global
     DBC.execute(f'''
     INSERT OR IGNORE INTO "exceptions" (user_id, chat_id, firstname) 
     VALUES 
     (255295801, 1, "doitforricardo"),
-    (205762941, 1, "dovaogedot"),
-    (185500059, 1, "mel_a_real_programmer")''')
+    (205762941, 1, "dovaogedot")''')
     # Create a duel table
     DBC.execute(f'''CREATE TABLE IF NOT EXISTS "duels"
     (user_id NUMERIC,
@@ -1176,16 +1183,19 @@ def _create_tables():
     misses NUMERIC DEFAULT 0,
     duelsdone NUMERIC DEFAULT 0,
     accountingday TEXT DEFAULT NULL,
-    PRIMARY KEY (user_id, chat_id),
-    FOREIGN KEY(user_id) REFERENCES userdata(id),
-    FOREIGN KEY(firstname) REFERENCES userdata(firstname))''')
+    PRIMARY KEY (user_id, chat_id))''')
     # Table that tracks limitations of number of duels per day
-    DBC.execute(f'''CREATE TABLE IF NOT EXISTS "duellimits"
+    DBC.execute(f'''CREATE TABLE IF NOT EXISTS "chattable"
      (chat_id NUMERIC PRIMARY KEY,
+     chat_name TEXT DEFAULT NULL,
      duelstatusonoff NUMERIC DEFAULT 1,
      duelmaximum NUMERIC DEFAULT NULL,
      duelcount NUMERIC DEFAULT 0,
-     accountingday TEXT DEFAULT NULL
+     accountingday TEXT DEFAULT NULL,
+     loliNSFW NUMERIC DEFAULT 0,
+     lastpidorid NUMERIC DEFAULT NULL,
+     lastpidorname TEXT DEFAULT NULL,
+     lastpidorday TEXT DEFAULT NULL
      )''')
     # Commit the database
     DB.commit()
@@ -1195,7 +1205,7 @@ def _create_tables():
 def _try_to_delete_message(update):
     """Try to delete user message using admin rights. If no rights, pass."""
     try:
-        BOT.delete_message(chat_id=update.effective_message.chat_id,
+        BOT.delete_message(chat_id=update.effective_chat.id,
                            message_id=update.effective_message.message_id)
     except TelegramError:
         pass
@@ -1203,7 +1213,7 @@ def _try_to_delete_message(update):
 
 def _send_reply(update, text: str, parse_mode: str = None):
     """Shorten replies"""
-    return BOT.send_message(chat_id=update.effective_message.chat_id,
+    return BOT.send_message(chat_id=update.effective_chat.id,
                             text=text,
                             reply_to_message_id=update.effective_message.message_id,
                             parse_mode=parse_mode)
@@ -1212,30 +1222,14 @@ def _send_reply(update, text: str, parse_mode: str = None):
 def _get(update: Update, what_is_needed: str):
     """Get something from update"""
     update_data = {
-        'chat_id': update.effective_message.chat_id,
-        'init_name': update.effective_message.from_user.first_name.strip('[]'),
-        'init_id': update.effective_message.from_user.id,
+        'chat_id': update.effective_chat.id,
+        'init_name': update.effective_user.first_name.strip('[]'),
+        'init_id': update.effective_user.id,
         }
     target = update.effective_message.reply_to_message
     update_data['target_id'] = target.from_user.id if target is not None else ''
     update_data['target_name'] = target.from_user.first_name.strip('[]') if target is not None else ''
     return update_data[what_is_needed]
-
-
-def _muted(update):
-    """Check if the user is muted"""
-    # Check for exceptions
-    if DBC.execute(f'''SELECT user_id, chat_id from "exceptions"
-    WHERE user_id={update.effective_message.from_user.id}
-    AND chat_id={update.effective_message.chat_id}''').fetchone() is not None:
-        return False
-    # Check the muted table
-    if DBC.execute(f'''SELECT user_id FROM muted
-    WHERE user_id="{update.effective_message.from_user.id}" AND 
-    chat_id="{update.effective_message.chat_id}"''').fetchone() is not None:
-        return True
-    # If nothing found, return false
-    return False
 
 
 def error_callback(update: Update, context: CallbackContext):
@@ -1255,10 +1249,12 @@ USERCOMMANDS = [
     ('duelranking', duelranking, 'Ранкинг дуэлей чата (показывает только тех, у кого есть убийства и смерти)'),
     ("flip", flip, 'Бросить монетку (Орёл/Решка)'),
     ("dadjoke", dadjoke, 'Случайная шутка бати'),
-    ("myiq", myiq, 'Мой IQ (1 - 200)'),
-    ("muhdick", muhdick, 'Длина моего шланга (1 - 25)'),
     ("dog", animal, 'Случайное фото собачки'),
     ("cat", animal, 'Случайное фото котика'),
+    ("loli", loli, 'Лоли фото (SFW/NSFW)'),
+    ('lolimode', lolimode, 'Настройка лоли на SFW или NSFW'),
+    ('pidor', pidor, 'Пидор дня (новый пидор каждый день по немецкому времени)'),
+    ('pidorstats', pidorstats, 'Сколько раз вы были пидором дня')
     ]
 ONLYADMINCOMMANDS = [
     'Команды для администраторов групп',
@@ -1267,10 +1263,7 @@ ONLYADMINCOMMANDS = [
     ('duelstatus', duelstatus, 'Включить/Выключить дуэли (on/off)'),
     ('immune', immune, 'Добавить пользователю иммунитет на задержку команд (ответить ему)'),
     ('unimmune', unimmune, 'Снять иммунитет (ответить или имя)'),
-    ('immunelist', immunelist, 'Лист людей с иммунитетом'),
-    ('mute', mute, 'Замутить человека в этом чате (надо ему ответить командой, у бота должны быть права на удаление сообщений)'),
-    ('unmute', unmute, 'Cнять мут в этом чате (ответить или имя)'),
-    ('mutelist', mutelist, 'Показать всех в муте в этом чате'),
+    ('immunelist', immunelist, 'Лист людей с иммунитетом')
     ]
 UNUSUALCOMMANDS = [
     'Нечастые команды',
@@ -1281,9 +1274,15 @@ UNUSUALCOMMANDS = [
     ('sql', sql, 'Использовать sqlite команду на дб')
     ]
 
+# Create databases
+LOGGER.info('Creating database tables if needed...')
 _create_tables()
-KNOWNUSERSIDS = DBC.execute(f'''SELECT id FROM "userdata"''').fetchall()
-KNOWNUSERSIDS = [item for t in KNOWNUSERSIDS for item in t]
+KNOWNUSERS = {}
+KNOWNUSERSDB = DBC.execute(f'''SELECT user_id, chat_id FROM "userdata"''').fetchall()
+for entry in KNOWNUSERSDB:
+    if entry[1] not in KNOWNUSERS:
+        KNOWNUSERS[entry[1]] = []
+    KNOWNUSERS[entry[1]] += [entry[0]]
 
 
 def main():
@@ -1308,11 +1307,11 @@ def main():
     dispatcher.add_handler(MessageHandler(
         Filters.all, message_filter))
 
+    # add callbatchqueryhandler for menus
+    dispatcher.add_handler(CallbackQueryHandler(callbackhandler))
+
     # log all errors
     dispatcher.add_error_handler(error_callback)
-
-    # Create databases
-    LOGGER.info('Creating database tables if needed...')
 
     # Start the Bot
     # Set clean to True to clean any pending updates on Telegram servers before
