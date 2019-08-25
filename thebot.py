@@ -12,7 +12,7 @@ from time import sleep
 
 import requests
 import telegram
-from bs4 import BeautifulSoup
+#from bs4 import BeautifulSoup
 from telegram import InlineKeyboardButton
 from telegram import InlineKeyboardMarkup
 from telegram import Bot
