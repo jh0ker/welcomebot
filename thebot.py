@@ -281,6 +281,9 @@ def message_filter(update: Update, context: CallbackContext):
                            caption='Эх, жить бы подальше от общества как анприм и там думить..',
                            reply_to_message_id=update.effective_message.message_id)
 
+    # Log messages
+    LOGGER.info(f'{update.effective_user.first_name}[{update.effective_user.id}] - '
+                f'{update.effective_chat.title} - {update.effective_message.text}')
     # Store chat data
     store_chat_data(update)
     # Store user data
