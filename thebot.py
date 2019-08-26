@@ -61,11 +61,7 @@ def command_antispam_passed(func):
 
     def executor(update: Update, *args, **kwargs):
         # Create chat data
-        DBC.execute(f'''
-        INSERT OR IGNORE INTO "chattable" (chat_id, chat_name) 
-        VALUES ("{update.effective_chat.id}", 
-        "{BOT.get_chat(chat_id=update.effective_chat.id).title}")''')
-        DB.commit()
+        store_chat_data(update)
         # Store user data
         store_user_data(update)
         # Check for cooldown
@@ -90,12 +86,8 @@ def rightscheck(func):
     Enough rights are defined as creator or administrator or developer"""
 
     def executor(update: Update, *args, **kwargs):
-        # Create chat data
-        DBC.execute(f'''
-        INSERT OR IGNORE INTO "chattable" (chat_id, chat_name) 
-        VALUES ("{update.effective_chat.id}", 
-        "{BOT.get_chat(chat_id=update.effective_chat.id).title}")''')
-        DB.commit()
+        # Store chat data
+        store_chat_data(update)
         # Store user data
         store_user_data(update)
         # Check user rank
@@ -289,6 +281,8 @@ def message_filter(update: Update, context: CallbackContext):
                            caption='Эх, жить бы подальше от общества как анприм и там думить..',
                            reply_to_message_id=update.effective_message.message_id)
 
+    # Store chat data
+    store_chat_data(update)
     # Store user data
     store_user_data(update)
     doomer_word = _doomer_word_handler(update)
@@ -352,6 +346,20 @@ def _anprim_word_handler(update) -> bool:
 def flip(update: Update, context: CallbackContext):
     """Flip a Coin"""
     _send_reply(update, random.choice(['Орёл!', 'Решка!']))
+
+
+@run_async
+def store_chat_data(update):
+    """Store chat data"""
+    global KNOWNCHATS
+    if update.effective_chat.id not in KNOWNCHATS:
+        # Create chat data
+        DBC.execute(f'''
+        INSERT OR IGNORE INTO "chattable" (chat_id, chat_name) 
+        VALUES ("{update.effective_chat.id}", 
+        "{BOT.get_chat(chat_id=update.effective_chat.id).title}")''')
+        DB.commit()
+        KNOWNCHATS += [update.effective_chat.id]
 
 
 @run_async
@@ -1308,12 +1316,17 @@ UNUSUALCOMMANDS = [
 # Create databases
 LOGGER.info('Creating database tables if needed...')
 _create_tables()
+# Get knownusers
 KNOWNUSERS = {}
 KNOWNUSERSDB = DBC.execute(f'''SELECT user_id, chat_id FROM "userdata"''').fetchall()
 for entry in KNOWNUSERSDB:
     if entry[1] not in KNOWNUSERS:
         KNOWNUSERS[entry[1]] = []
     KNOWNUSERS[entry[1]] += [entry[0]]
+# Get known chats
+KNOWNCHATS = []
+KNOWNCHATSDB = DBC.execute(f'''SELECT chat_id from "chattable"''').fetchall()
+KNOWNCHATS += [entry[0] for entry in KNOWNCHATSDB]
 
 
 def main():
