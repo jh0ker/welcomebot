@@ -198,6 +198,8 @@ def adminmenu(update: Update, context: CallbackContext):
 @command_antispam_passed
 def whatsnew(update: Update, context: CallbackContext):
     """Reply with all new goodies"""
+    # Choose for how many days to get the changelog
+    LASTDAYSCHANGES = 2
     # Import the changelog
     try:
         with open('changelog.md', 'r', encoding='utf-8') as changelog:
@@ -205,9 +207,9 @@ def whatsnew(update: Update, context: CallbackContext):
     except (EOFError, FileNotFoundError) as changelog_err:
         LOGGER.error(changelog_err)
         changes = 'Не смог добраться до изменений. Что-то не так.'
-    # Get the last 3 day changes
+    # Get the last 2 day changes
     latest_changes = ''
-    for change in changes.split('\n\n')[:3]:
+    for change in changes.split('\n\n')[:LASTDAYSCHANGES]:
         latest_changes += change + '\n\n'
     # Add Link to full changelog
     latest_changes += 'Вся история изменений: https://bit.ly/DoomerChangelog'
@@ -889,11 +891,39 @@ def pidor(update: Update, context: CallbackContext):
 
 @run_async
 @command_antispam_passed
-def pidorstats(update: Update, context: CallbackContext):
+def pidorme(update: Update, context: CallbackContext):
     """Give the user the number of times he has been pidor of the day"""
     timespidor = DBC.execute(f'''SELECT timespidor FROM userdata WHERE
-    chat_id="{update.effective_chat.id}" AND user_id="{update.effective_user.id}"''').fetchone()[0]
-    _send_reply(update, f'Вы были пидором дня {timespidor} раз!')
+    chat_id="{update.effective_chat.id}" AND user_id="{update.effective_user.id}"''').fetchone()
+    if timespidor is not None:
+        _send_reply(update, f'Вы были пидором дня *{timespidor[0]} раз(а)*!', parse_mode='Markdown')
+    else:
+        _send_reply(update, 'Вы ещё не разу не были пидором дня!')
+
+
+@run_async
+@command_antispam_passed
+def pidorstats(update: Update, context: CallbackContext):
+    """Get the chat stats of how many times people have been pidors of the day"""
+    chatstats = DBC.execute(f'''SELECT firstname, timespidor FROM "userdata"
+    WHERE chat_id={update.effective_chat.id} ORDER BY timespidor DESC''').fetchall()
+    table = ''
+    counter = 1
+    # Get top 10
+    for entry in chatstats:
+        table += f'{counter}. {entry[0]} - *{entry[1]} раз(а)*\n'
+        counter += 1
+        if counter == 10:
+            break
+    # Get the number of players
+    numberofplayers = len(chatstats)
+    if numberofplayers != 0:
+        table += f'\nВсего участников - *{numberofplayers}*'
+    if table == '':
+        reply = 'Пидоров дня ещё не было!'
+    else:
+        reply = table
+    _send_reply(update, reply, parse_mode='Markdown')
 
 
 @run_async
@@ -1240,21 +1270,22 @@ def error_callback(update: Update, context: CallbackContext):
 # Bot commands
 USERCOMMANDS = [
     'Команды для рядовых пользователей',
-    ("help", help, 'Меню помощи'),
-    ('whatsnew', whatsnew, 'Новое в боте'),
-    ('adminmenu', adminmenu, 'Админское меню'),
     ("slap", slap, 'Кого-то унизить (надо ответить жертве, чтобы бот понял кого бить)'),
     ('duel', duel, 'Устроить дуэль (надо ответить тому, с кем будет дуэль)'),
     ('myscore', myscore, 'Мой счёт в дуэлях'),
     ('duelranking', duelranking, 'Ранкинг дуэлей чата (показывает только тех, у кого есть убийства и смерти)'),
+    ('pidor', pidor, 'Пидор дня (новый пидор каждый день по немецкому времени)'),
+    ('pidorme', pidorme, 'Сколько раз вы были пидором дня'),
+    ('pidorstats', pidorstats, 'Статы чата по пидорам дня'),
+    # ("loli", loli, 'Лоли фото (SFW/NSFW)'),
+    # ('lolimode', lolimode, 'Настройка лоли на SFW или NSFW'),
     ("flip", flip, 'Бросить монетку (Орёл/Решка)'),
     ("dadjoke", dadjoke, 'Случайная шутка бати'),
     ("dog", animal, 'Случайное фото собачки'),
     ("cat", animal, 'Случайное фото котика'),
-    #("loli", loli, 'Лоли фото (SFW/NSFW)'),
-    #('lolimode', lolimode, 'Настройка лоли на SFW или NSFW'),
-    ('pidor', pidor, 'Пидор дня (новый пидор каждый день по немецкому времени)'),
-    ('pidorstats', pidorstats, 'Сколько раз вы были пидором дня')
+    ("help", help, 'Меню помощи'),
+    ('whatsnew', whatsnew, 'Новое в боте'),
+    ('adminmenu', adminmenu, 'Админское меню'),
     ]
 ONLYADMINCOMMANDS = [
     'Команды для администраторов групп',

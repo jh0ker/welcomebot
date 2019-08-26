@@ -1,8 +1,8 @@
 ***25.08.2019***
 -   Убраны /myiq, /muhdick, /mute, /unmute, /mutelist.
 -   Добавлено /loli c сурсом на фото.
--   Добавлена /setlolimode для смены SFW и NSFW.
--   Добавлено /pidor и /pidorstats.
+-   Добавлена /lolimode для смены SFW и NSFW.
+-   Добавлено /pidor, /pidorme, /pidorstats.
 -   Опять исправлена датабаза, переснос...Простите за дуэли...
 -   Смена версии на 1.1 beta.
 
