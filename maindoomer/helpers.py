@@ -5,15 +5,12 @@ E.g. decorators, checking cooldowns, etc.
 
 import datetime
 
-from telegram import TelegramError
-from telegram import Update
-from telegram.ext import CallbackContext
-from telegram.ext import run_async
+from telegram import TelegramError, Update
+from telegram.ext import CallbackContext, run_async
 
 from constants import DEV
-from maindoomer.initdata import BOT
+from maindoomer.initdata import BOT, LOGGER
 from maindoomer.sqlcommands import run_query
-
 
 # Get known chats
 KNOWNCHATS = []
@@ -126,7 +123,8 @@ def store_user_data(update: Update):
         username = update.effective_user.username if update.effective_user.username else ''
         # Try to get the chat name
         try:
-            chatname = BOT.get_chat(chat_id=update.effective_message.chat_id).title
+            chatname = BOT.get_chat(
+                chat_id=update.effective_message.chat_id).title
         except:
             chatname = ''
         # Try to get the chat link
@@ -153,6 +151,7 @@ def store_user_data(update: Update):
         ({'?, ' * (len(usable_data) - 1) + '?'})''', tuple(usable_data))
         KNOWNUSERS[update.effective_chat.id] += [user_id]
 
+
 @run_async
 def store_data(update: Update):
     """Store chat and user data"""
@@ -171,7 +170,8 @@ def _check_cooldown(update: Update, whattocheck, cooldown):
         if run_query('SELECT errorgiven from cooldowns WHERE chat_id=(?) and user_id=(?)',
                      (update.effective_chat.id, update.effective_user.id))[0][0] == 0:
             # If it wasn't, give the time remaining and update the flag.
-            time_remaining = str((barriertime - message_time)).split('.')[0][3:]
+            time_remaining = str(
+                (barriertime - message_time)).split('.')[0][3:]
             BOT.send_message(chat_id=update.effective_chat.id,
                              reply_to_message_id=update.effective_message.message_id,
                              text=f'До команды осталось {time_remaining} (ММ:СС). '
@@ -206,7 +206,7 @@ def _check_cooldown(update: Update, whattocheck, cooldown):
         lasttime = lastinstance[0][0]
         # Check if the cooldown has passed
         barriertime = datetime.datetime.fromisoformat(lasttime) + \
-                        datetime.timedelta(seconds=cooldown)
+            datetime.timedelta(seconds=cooldown)
         if message_time > barriertime:
             # If it did, update table, return True
             run_query(f'UPDATE cooldowns SET {whattocheck}=(?), errorgiven=0 '
@@ -255,3 +255,9 @@ def callbackhandler(update: Update, context: CallbackContext):
                          reply_to_message_id=update.effective_message.reply_to_message.message_id,
                          disable_notification=True,
                          parse_mode='Markdown')
+
+
+@run_async
+def error_callback(update, context):
+    """Log Errors caused by Updates."""
+    LOGGER.warning('Error "%s" caused by update "%s"', context.error, update)

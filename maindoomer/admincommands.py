@@ -6,10 +6,8 @@ from telegram import Update
 from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
 
-from maindoomer.helpers import check_if_group_chat
-from maindoomer.helpers import rights_check
-from maindoomer.initdata import BOT
-from maindoomer.initdata import LOGGER
+from maindoomer.helpers import check_if_group_chat, rights_check
+from maindoomer.initdata import BOT, LOGGER
 from maindoomer.sqlcommands import run_query
 
 
@@ -160,7 +158,8 @@ def unimmune(update: Update, context: CallbackContext):
                          reply_to_message_id=update.effective_message.reply_to_message.message_id)
     else:
         if len(update.effective_message.text.split()) > 1:
-            unimmune_target = ' '.join(update.effective_message.text.split()[1:])
+            unimmune_target = ' '.join(
+                update.effective_message.text.split()[1:])
             run_query('DELETE FROM exceptions WHERE chat_id=(?) AND '
                       '(username=(?) OR firstname=(?))',
                       (update.effective_chat.id, unimmune_target, unimmune_target))

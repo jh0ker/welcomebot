@@ -3,12 +3,10 @@ Module dedicated to commands that are not the main purpose of the bot but usable
 by users
 """
 from telegram import Update
-from telegram.ext import CallbackContext
-from telegram.ext import run_async
+from telegram.ext import CallbackContext, run_async
 
 from maindoomer.helpers import command_antispam_passed
-from maindoomer.initdata import BOT
-from maindoomer.initdata import LOGGER
+from maindoomer.initdata import BOT, LOGGER
 
 
 @run_async

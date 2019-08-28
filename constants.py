@@ -18,7 +18,7 @@ DEATHMULT = -0.12
 MISSMULT = -0.05
 # Always lose percent
 ALWAYSLOSS = 0.05
-HARDRESETCHANCE = 0.001 # 0.1%
+HARDRESETCHANCE = 0.001  # 0.1%
 
 # DO NOT TOUCH
 # -----------------------------------------------------------
@@ -43,7 +43,7 @@ DUELDICT = {
     'DEATHMULTPERC': DEATHMULTPERC,
     'MISSMULTPERC': MISSMULTPERC,
     'ADDITIONALPERCENTCAP': ADDITIONALPERCENTCAP
-    }
+}
 # -----------------------------------------------------------
 
 # Antispam constants
@@ -52,7 +52,7 @@ INDIVIDUAL_USER_DELAY = 10 * 60  # Ten minutes
 INDIVIDUAL_REPLY_DELAY = 5 * 60  # Five minutes
 ERROR_DELAY = 5 * 60  # One minute
 # Duel cooldowns
-CDREDUCTION = round(0.8 *  INDIVIDUAL_USER_DELAY) # 80%
+CDREDUCTION = round(0.8 * INDIVIDUAL_USER_DELAY)  # 80%
 SHORTCD = round(INDIVIDUAL_USER_DELAY - CDREDUCTION)
 
 # Request timeout time in seconds

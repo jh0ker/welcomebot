@@ -108,5 +108,6 @@ venv.bak/
 
 # VSC
 .vscode/
-doomer.DB
+
+# Database
 thedoomerbot.db

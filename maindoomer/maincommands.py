@@ -6,10 +6,8 @@ from telegram import Update
 from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
 
-from maindoomer.helpers import check_if_group_chat
-from maindoomer.helpers import command_antispam_passed
-from maindoomer.initdata import BOT
-from maindoomer.initdata import LOGGER
+from maindoomer.helpers import check_if_group_chat, command_antispam_passed
+from maindoomer.initdata import BOT, LOGGER
 from maindoomer.sqlcommands import run_query
 
 

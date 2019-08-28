@@ -1,12 +1,13 @@
+from telegram import Update
+from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
 
 from maindoomer.helpers import store_data
-from maindoomer.initdata import BOT
-from maindoomer.initdata import LOGGER
+from maindoomer.initdata import BOT, LOGGER
 
 
 @run_async
-def welcomer(update, context):
+def welcomer(update: Update, context: CallbackContext):
     """
     Empty messages could be status messages, so we check them if there is a new
     group member.
@@ -47,7 +48,7 @@ def welcomer(update, context):
 
 
 @run_async
-def farewell(update, context):
+def farewell(update: Update, context: CallbackContext):
     """Goodbye message"""
     leftuser = update.effective_message.left_chat_member
     # Not this bot was removed
@@ -61,11 +62,12 @@ def farewell(update, context):
             reply = f'Сегодня нас покинул {leftusertag}.'
         BOT.send_message(chat_id=update.effective_chat.id,
                          reply_to_message_id=update.effective_message.message_id,
-                         text=reply)
+                         text=reply,
+                         parse_mode='Markdown')
 
 
 @run_async
-def message_filter(update, context):
+def message_filter(update: Update, context: CallbackContext):
     """Adds messages to logs, stores chat and user data"""
     # Log messages
     LOGGER.info(f'{update.effective_user.first_name}[{update.effective_user.id}] - '
