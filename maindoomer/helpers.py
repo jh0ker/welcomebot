@@ -169,7 +169,7 @@ def _check_cooldown(update: Update, whattocheck, cooldown):
         nonlocal update
         # Check if the error was given
         if run_query('SELECT errorgiven from cooldowns WHERE chat_id=(?) and user_id=(?)',
-                     (update.effective_chat.id, update.effective_user.id))[0] == 0:
+                     (update.effective_chat.id, update.effective_user.id))[0][0] == 0:
             # If it wasn't, give the time remaining and update the flag.
             time_remaining = str((barriertime - message_time)).split('.')[0][3:]
             BOT.send_message(chat_id=update.effective_chat.id,
