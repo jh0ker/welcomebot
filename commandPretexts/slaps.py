@@ -45,7 +45,9 @@ SLAPS = {
         'init предложил target дружбу',
         'init угостил target конфеткой',
         'init угостил target пирожком с говном',
-        'init чихнул в target гриппом'
+        'init чихнул в target гриппом',
+        'init увел тяночку у target',
+        'init увел target у его тяночки',
         ],
     'failure': [
         'init хрюкнул',
