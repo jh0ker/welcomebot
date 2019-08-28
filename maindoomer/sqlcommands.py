@@ -1,3 +1,7 @@
+"""
+Storer of the sql table creation and the query running function
+"""
+
 import sqlite3
 
 
@@ -9,9 +13,9 @@ def run_query(query: str, *params: tuple):
     db_con = sqlite3.connect(DATABASENAME, check_same_thread=False)
     # Use context manager to autocommit
     with db_con:
-        c = db_con.cursor()
+        cursor = db_con.cursor()
         # Get all the data before closing the connection
-        data = c.execute(query, *params).fetchall()
+        data = cursor.execute(query, *params).fetchall()
     db_con.close()
     # Return all data that was fetched
     return data
@@ -25,9 +29,9 @@ def create_tables():
     db_con = sqlite3.connect(DATABASENAME, check_same_thread=False)
     # Use context manager to autocommit
     with db_con:
-        c = db_con.cursor()
+        cursor = db_con.cursor()
         # Create all tables
-        c.executescript('''
+        cursor.executescript('''
         CREATE TABLE IF NOT EXISTS "userdata"
             (user_id NUMERIC,
             chat_id NUMERIC,

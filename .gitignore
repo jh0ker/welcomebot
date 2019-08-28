@@ -108,6 +108,8 @@ venv.bak/
 
 # VSC
 .vscode/
+/.vscode/
 
 # Database
 thedoomerbot.db
+

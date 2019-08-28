@@ -1,3 +1,7 @@
+"""
+Module dedicated to the main commands of the bot.
+This is all it has to offer in terms of functionality to regular users.
+"""
 import datetime
 import random
 
@@ -52,7 +56,6 @@ def dadjoke(update: Update, context: CallbackContext):
 def slap(update: Update, context: CallbackContext):
     """Slap with random item"""
     from commandPretexts.slaps import SLAPS
-    from random import shuffle, choice
     # Check if there was a target
     if update.effective_message.reply_to_message is None:
         reply = ('Кого унижать то будем?\n'
@@ -64,14 +67,14 @@ def slap(update: Update, context: CallbackContext):
         if not success_and_fail:
             success_and_fail += ['failure'] * len(SLAPS['failure']) + \
                                 ['success'] * len(SLAPS['success'])
-            shuffle(success_and_fail)
+            random.shuffle(success_and_fail)
         # Get user tags as it is used in both cases
         init_tag = f"[{update.effective_user.first_name}](tg://user?id={update.effective_user.id})"
         tdata = update.effective_message.reply_to_message.from_user
         target_tag = f"[{tdata.first_name}](tg://user?id={tdata.id})"
         # Different depending on the scenario
         scenario = success_and_fail.pop()
-        action = choice(SLAPS[scenario])
+        action = random.choice(SLAPS[scenario])
         # Replace premade text with user tags.
         reply = action.replace('init', init_tag).replace('target', target_tag)
     BOT.send_message(chat_id=update.effective_chat.id,
@@ -197,7 +200,6 @@ def animal(update: Update, context: CallbackContext):
 def pidor(update: Update, context: CallbackContext):
     """Get the pidor of the day from all users stored for the chat"""
     # Check last pidor day
-    from random import choice
     # Use index to select first, no exception as chat data is created by antispam handler
     lastpidor = run_query('SELECT lastpidorid, lastpidorday, lastpidorname FROM chattable '
                           'WHERE chat_id=(?)', (update.effective_chat.id,))[0]
@@ -206,7 +208,7 @@ def pidor(update: Update, context: CallbackContext):
         while True:
             allchatusers = run_query('SELECT user_id, firstname FROM userdata '
                                      'WHERE chat_id=(?)', (update.effective_chat.id,))
-            todaypidor = choice(allchatusers)
+            todaypidor = random.choice(allchatusers)
             from telegram.error import BadRequest
             try:
                 BOT.get_chat_member(chat_id=update.effective_chat.id,
@@ -280,20 +282,19 @@ def duel(update: Update, context: CallbackContext):
 
     def _getuserstr(userid: int) -> float:
         """Get strength if the user to assist in duels"""
-        from random import uniform
         from constants import DUELDICT as DD
         # Check if table exists
         userfound = run_query('SELECT kills, deaths, misses FROM duels WHERE '
                               'user_id=(?) AND chat_id=(?)', (userid, update.effective_chat.id))
         if userfound:
             userdata = userfound[0]
-            strength = uniform(DD['LOW_BASE_ACCURACY'], DD['HIGH_BASE_ACCURACY']) \
+            strength = random.uniform(DD['LOW_BASE_ACCURACY'], DD['HIGH_BASE_ACCURACY']) \
                        + userdata[0] * DD['KILLMULT'] \
                        + userdata[1] * DD['DEATHMULT'] \
                        + userdata[2] * DD['MISSMULT']
             return min(strength, DD['STRENGTHCAP'])
         # Return base if table not found or user not found
-        return uniform(DD['LOW_BASE_ACCURACY'], DD['HIGH_BASE_ACCURACY'])
+        return random.uniform(DD['LOW_BASE_ACCURACY'], DD['HIGH_BASE_ACCURACY'])
 
     @run_async
     def _score_the_results(winners: list, losers: list, p1_kdm: tuple, p2_kdm: tuple):
@@ -382,6 +383,7 @@ def duel(update: Update, context: CallbackContext):
     @run_async
     @command_antispam_passed
     def trytoduel(update: Update):
+        """The main duel function"""
         if update.effective_message.reply_to_message is None:
             reply = ('С кем дуэль проводить будем?\n'
                      'Чтобы подуэлиться, надо чтобы вы ответили вашему оппоненту.')

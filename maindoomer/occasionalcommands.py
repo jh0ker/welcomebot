@@ -47,7 +47,7 @@ def whatsnew(update: Update, context: CallbackContext):
 
 @run_async
 @command_antispam_passed
-def help(update, context):
+def bothelp(update, context):
     """Help message"""
     from thebot import USERCOMMANDS
     from constants import INDIVIDUAL_USER_DELAY

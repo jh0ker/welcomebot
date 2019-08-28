@@ -1,3 +1,6 @@
+"""
+Module dedicated to message handlers.
+"""
 from telegram import Update
 from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async

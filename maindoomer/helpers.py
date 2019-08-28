@@ -12,6 +12,7 @@ from constants import DEV
 from maindoomer.initdata import BOT, LOGGER
 from maindoomer.sqlcommands import run_query
 
+
 # Get known chats
 KNOWNCHATS = []
 KNOWNCHATSDB = run_query('SELECT chat_id from chattable')
@@ -32,6 +33,7 @@ def command_antispam_passed(func):
     """
 
     def executor(update: Update, *args, **kwargs):
+        """The wrapped function"""
         # Store chat and user data
         store_data(update)
         # Check for cooldown
@@ -46,6 +48,7 @@ def text_antispam_passed(func):
     """Checks if somebody is spamming reply_all words"""
 
     def executor(update: Update, *args, **kwargs):
+        """The wrapped function"""
         from constants import INDIVIDUAL_REPLY_DELAY
         if _check_cooldown(update, 'lasttextreply', INDIVIDUAL_REPLY_DELAY):
             func(update, *args, **kwargs)
@@ -57,6 +60,7 @@ def check_if_group_chat(func):
     """Check if the chat is a group chat"""
 
     def executor(update: Update, *args, **kwargs):
+        """The wrapped function"""
         if update.effective_message.chat.type == 'private':
             BOT.send_message(chat_id=update.effective_chat.id,
                              reply_to_message_id=update.effective_message.message_id,
@@ -72,6 +76,7 @@ def rights_check(func):
     Enough rights are defined as creator or administrator or developer"""
 
     def executor(update: Update, *args, **kwargs):
+        """The wrapped function"""
         # Store chat and user data
         store_data(update)
         # Check user rank
@@ -90,6 +95,7 @@ def check_if_dev(func):
     """Checks if user is the developer"""
 
     def executor(update: Update, *args, **kwargs):
+        """The wrapped function"""
         if update.effective_user.id == DEV:
             func(update, *args, **kwargs)
 
@@ -206,7 +212,7 @@ def _check_cooldown(update: Update, whattocheck, cooldown):
         lasttime = lastinstance[0][0]
         # Check if the cooldown has passed
         barriertime = datetime.datetime.fromisoformat(lasttime) + \
-            datetime.timedelta(seconds=cooldown)
+                      datetime.timedelta(seconds=cooldown)
         if message_time > barriertime:
             # If it did, update table, return True
             run_query(f'UPDATE cooldowns SET {whattocheck}=(?), errorgiven=0 '
@@ -265,6 +271,7 @@ def error_callback(update: Update, context: CallbackContext):
 
 @run_async
 def ping(context: CallbackContext):
+    """Ping a chat to show that the bot is working and is online"""
     from constants import PING_CHANNEL
     BOT.send_message(chat_id=PING_CHANNEL,
                      text='ping...',

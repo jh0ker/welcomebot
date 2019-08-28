@@ -10,6 +10,7 @@ from maindoomer import (admincommands, devcommands, maincommands,
 from maindoomer.helpers import callbackhandler, error_callback, ping
 from maindoomer.initdata import BOT, LOGGER
 
+
 # Bot commands
 USERCOMMANDS = [
     'Команды для рядовых пользователей',
@@ -29,10 +30,10 @@ USERCOMMANDS = [
     ("dadjoke", maincommands.dadjoke, 'Случайная шутка бати'),
     ("dog", maincommands.animal, 'Случайное фото собачки'),
     ("cat", maincommands.animal, 'Случайное фото котика'),
-    ("help", occasionalcommands.help, 'Меню помощи'),
+    ("help", occasionalcommands.bothelp, 'Меню помощи'),
     ('whatsnew', occasionalcommands.whatsnew, 'Новое в боте'),
     ('adminmenu', admincommands.adminmenu, 'Админское меню'),
-]
+    ]
 ONLYADMINCOMMANDS = [
     'Команды для администраторов групп',
     ('leave', admincommands.leave, 'Сказать боту уйти'),
@@ -43,7 +44,7 @@ ONLYADMINCOMMANDS = [
      'Добавить пользователю иммунитет на задержку команд (ответить ему)'),
     ('unimmune', admincommands.unimmune, 'Снять иммунитет (ответить или имя)'),
     ('immunelist', admincommands.immunelist, 'Лист людей с иммунитетом')
-]
+    ]
 UNUSUALCOMMANDS = [
     'Нечастые команды',
     ('allcommands', devcommands.allcommands, 'Все команды бота'),
@@ -52,7 +53,7 @@ UNUSUALCOMMANDS = [
      'Получить логи бота (только для разработчика)'),
     ('getdatabase', devcommands.getdatabase, 'Получить датабазу'),
     ('sql', devcommands.sql, 'Использовать sqlite команду на дб')
-]
+    ]
 
 
 def main():

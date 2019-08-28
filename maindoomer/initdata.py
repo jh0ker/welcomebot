@@ -9,6 +9,7 @@ from telegram.utils.request import Request
 
 from maindoomer.sqlcommands import create_tables
 
+
 # Setup logging
 logging.basicConfig(filename='logs.log',
                     format='%(asctime)s - %(filename)s - %(levelname)s - %(message)s',
