@@ -7,7 +7,7 @@ from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
 
 from maindoomer import (admincommands, devcommands, maincommands,
                         occasionalcommands, textfiltering)
-from maindoomer.helpers import callbackhandler, error_callback
+from maindoomer.helpers import callbackhandler, error_callback, ping
 from maindoomer.initdata import BOT, LOGGER
 
 # Bot commands
@@ -78,6 +78,9 @@ def main():
     dispatcher.add_handler(CallbackQueryHandler(callbackhandler))
     # Log some errors
     dispatcher.add_error_handler(error_callback)
+    # Add a job queue
+    job_queue = updater.job_queue
+    job_queue.run_repeating(callback=ping, interval=10 * 60, first=0, name='ping')
     # Start polling
     updater.start_polling(clean=True)
     LOGGER.info('Polling started.')

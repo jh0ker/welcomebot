@@ -5,6 +5,8 @@ Collection of constants for modules
 # Admin id
 # Add developer ID for passing the spam check and other commands
 DEV = 255295801
+# Add a ping channel
+PING_CHANNEL = -353404420
 
 # Duel constants
 # Maximum STR the bot can roll

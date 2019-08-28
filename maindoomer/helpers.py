@@ -258,6 +258,14 @@ def callbackhandler(update: Update, context: CallbackContext):
 
 
 @run_async
-def error_callback(update, context):
+def error_callback(update: Update, context: CallbackContext):
     """Log Errors caused by Updates."""
     LOGGER.warning('Error "%s" caused by update "%s"', context.error, update)
+
+
+@run_async
+def ping(context: CallbackContext):
+    from constants import PING_CHANNEL
+    BOT.send_message(chat_id=PING_CHANNEL,
+                     text='ping...',
+                     disable_notification=True)
