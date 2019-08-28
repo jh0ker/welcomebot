@@ -126,6 +126,7 @@ def duelstatus(update: Update, context: CallbackContext):
 
 @run_async
 @rights_check
+@check_if_group_chat
 def immune(update: Update, context: CallbackContext):
     """Add user to exceptions"""
     if update.effective_message.reply_to_message is not None:
@@ -147,6 +148,7 @@ def immune(update: Update, context: CallbackContext):
 
 @run_async
 @rights_check
+@check_if_group_chat
 def unimmune(update: Update, context: CallbackContext):
     """Remove user from exceptions"""
     if update.effective_message.reply_to_message:
@@ -170,6 +172,7 @@ def unimmune(update: Update, context: CallbackContext):
 
 @run_async
 @rights_check
+@check_if_group_chat
 def immunelist(update: Update, context: CallbackContext):
     """Get the exceptions list"""
     chatdata = run_query(f"SELECT firstname FROM exceptions WHERE chat_id=(?)",

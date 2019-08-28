@@ -153,7 +153,7 @@ def store_user_data(update: Update):
         ({'?, ' * (len(usable_data) - 1) + '?'})''', tuple(usable_data))
         KNOWNUSERS[update.effective_chat.id] += [user_id]
 
-
+@run_async
 def store_data(update: Update):
     """Store chat and user data"""
     store_user_data(update)
