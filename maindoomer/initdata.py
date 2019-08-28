@@ -2,6 +2,7 @@
 Module dedicated to bot initiation variables that are usable in other modules
 """
 import logging
+from os import environ
 
 from telegram import Bot
 from telegram.utils.request import Request
@@ -18,7 +19,7 @@ LOGGER = logging.getLogger(__name__)
 # Bot initialization
 LOGGER.info('-----------------------------------------------')
 LOGGER.info('Initializing the bot...')
-TOKEN = "824227677:AAG_KhaNi5KEPcBt6LCLW-cpgXSTUo1eiXE"
+TOKEN = environ.get("TG_BOT_TOKEN")
 BOT = Bot(token=TOKEN, request=Request(con_pool_size=20))
 
 # Create tables in the database if they don't exist
