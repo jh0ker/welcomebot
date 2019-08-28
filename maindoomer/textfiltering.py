@@ -26,8 +26,15 @@ def welcomer(update: Update, context: CallbackContext):
             reply_text = "Думер бот в чате. Для списка функций используйте /help."
         # Another user joined the chat
         else:
-            reply_text = (f"Приветствуем вас в Думерском Чате, {tagged_user}!\n"
-                          f"По традициям группы, с вас фото своих ног.\n")
+            if update.effective_chat.id in [-1001226124289, -1001445688548]:
+                reply_text = (f"Приветствуем вас в Думерском Чате, {tagged_user}!\n"
+                              f"По традициям группы, с вас фото своих ног.\n")
+            else:
+                try:
+                    chattitle = BOT.get_chat(chat_id=update.effective_message.chat_id).title
+                    reply_text = f'Приветствуем вас в {chattitle}, {tagged_user}!\n'
+                except:
+                    reply_text = 'Приветствуем вас в нашем чате, tagged_user}!\n'
         botmsg = BOT.send_message(chat_id=update.effective_chat.id,
                                   reply_to_message_id=update.effective_message.message_id,
                                   text=reply_text,
