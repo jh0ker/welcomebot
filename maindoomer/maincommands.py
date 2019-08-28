@@ -216,10 +216,11 @@ def pidor(update: Update, context: CallbackContext):
                 break
             except BadRequest:
                 continue
-        run_query('''UPDATE chattable SET lastpidorday=(?), lastpidorid=(?)
-        WHERE chat_id=(?)''', (datetime.date.today().isoformat(), todaypidor[0], todaypidor[1]))
+        run_query('''UPDATE chattable SET lastpidorday=(?), lastpidorid=(?), lastpidorname=(?)
+        WHERE chat_id=(?)''', (datetime.date.today().isoformat(), todaypidor[0],
+                               todaypidor[1], update.effective_chat.id))
         run_query('''UPDATE userdata SET timespidor=timespidor+1
-        WHERE chat_id=(?) AND user_id=(?)''', (update.effective_chat.id, update.effective_user.id))
+        WHERE chat_id=(?) AND user_id=(?)''', (update.effective_chat.id, todaypidor[0]))
         todaypidor = f"[{todaypidor[1].strip('[]')}](tg://user?id={todaypidor[0]})"
     else:
         todaypidor = lastpidor[2]
