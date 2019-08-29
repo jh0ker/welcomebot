@@ -123,6 +123,12 @@ def loli(update: Update, context: CallbackContext):
         BOT.send_message(chat_id=update.effective_chat.id,
                          reply_to_message_id=update.effective_message.message_id,
                          text='Думер умер на пути к серверу. Попробуйте ещё раз.')
+        # Reset cooldown if sent failed
+        from constants import INDIVIDUAL_USER_DELAY
+        run_query('UPDATE cooldowns SET lastcommandreply=(?) WHERE '
+                  'chat_id=(?) AND user_id=(?)',
+                  (datetime.datetime.now() - datetime.timedelta(minutes=INDIVIDUAL_USER_DELAY),
+                  update.effective_chat.id, update.effective_user.id))
 
 
 @run_async
