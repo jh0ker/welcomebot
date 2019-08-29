@@ -10,6 +10,12 @@ from telegram.utils.request import Request
 from maindoomer.sqlcommands import create_tables
 
 
+# Add information
+__author__ = "Vlad Chitic (feorache@protonmail.com)"
+__version__ = "1.0 stable"
+__copyright__ = "Copyright (c) 2019-2019 Vlad Chitic"
+__license__ = "MIT"
+
 # Setup logging
 logging.basicConfig(filename='logs.log',
                     format='%(asctime)s - %(filename)s - %(levelname)s - %(message)s',

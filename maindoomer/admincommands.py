@@ -7,7 +7,7 @@ from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
 
 from maindoomer.helpers import check_if_group_chat, rights_check
-from maindoomer.initdata import BOT, LOGGER
+from maindoomer.__init__ import BOT, LOGGER
 from maindoomer.sqlcommands import run_query
 
 

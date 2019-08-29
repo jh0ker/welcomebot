@@ -6,7 +6,7 @@ from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
 
 from maindoomer.helpers import store_data
-from maindoomer.initdata import BOT, LOGGER
+from maindoomer.__init__ import BOT, LOGGER
 
 
 @run_async

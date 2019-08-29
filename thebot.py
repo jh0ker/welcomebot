@@ -1,6 +1,5 @@
 """
-Authors (telegrams) - @doitforgachi, @dovaogedot
-Version: 1.1 beta
+Telegram bot with various commands. Listed below.
 """
 from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
                           MessageHandler, Updater)
@@ -8,7 +7,7 @@ from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
 from maindoomer import (admincommands, devcommands, maincommands,
                         occasionalcommands, textfiltering)
 from maindoomer.helpers import callbackhandler, error_callback, ping
-from maindoomer.initdata import BOT, LOGGER
+from maindoomer.__init__ import BOT, LOGGER
 
 
 # Bot commands
@@ -77,9 +76,9 @@ def main():
         Filters.all, textfiltering.message_filter))
     # Add callback handler
     dispatcher.add_handler(CallbackQueryHandler(callbackhandler))
-    # Log some errors
+    # Log errors
     dispatcher.add_error_handler(error_callback)
-    # Add a job queue
+    # Add job queue
     job_queue = updater.job_queue
     job_queue.run_repeating(callback=ping, interval=10 * 60, first=0, name='ping')
     # Start polling

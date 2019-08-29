@@ -11,7 +11,7 @@ from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
 
 from maindoomer.helpers import check_if_group_chat, command_antispam_passed
-from maindoomer.initdata import BOT, LOGGER
+from maindoomer.__init__ import BOT, LOGGER
 from maindoomer.sqlcommands import run_query
 
 
@@ -327,7 +327,7 @@ def duel(update: Update, context: CallbackContext):
         """Insert names into the strings"""
         nonlocal update, DUELS
         init_tag = f"[{update.effective_user.first_name}](tg://user?id={update.effective_user.id})"
-        phrase = random.choice(DUELS['1v1'][scenario])
+        phrase = random.choice(DUELS[scenario])
         if scenario == 'nonedead':
             return phrase.replace('loser1', losers[0][3]).replace('loser2', losers[1][3])
         if scenario == 'onedead':

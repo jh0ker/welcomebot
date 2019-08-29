@@ -9,7 +9,7 @@ from telegram import TelegramError, Update
 from telegram.ext import CallbackContext, run_async
 
 from constants import DEV
-from maindoomer.initdata import BOT, LOGGER
+from maindoomer.__init__ import BOT, LOGGER
 from maindoomer.sqlcommands import run_query
 
 
