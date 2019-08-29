@@ -100,7 +100,7 @@ def loli(update: Update, context: CallbackContext):
     # Get the photo
     not_found = True
     while not_found:
-        url = f'https://danbooru.donmai.us/posts/random?tags=flat_chest+Rating%3A{safeorexplicit}'
+        url = f'https://danbooru.donmai.us/posts/random?tags=small_breasts+Rating%3A{safeorexplicit}'
         response = requests.get(url)
         soup = BeautifulSoup(response.text, 'lxml')
         source = str(response.url).split('?')[0]
