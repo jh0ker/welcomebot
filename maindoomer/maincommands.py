@@ -87,37 +87,45 @@ def slap(update: Update, context: CallbackContext):
 @command_antispam_passed
 def loli(update: Update, context: CallbackContext):
     """Send photo of loli"""
-    from bs4 import BeautifulSoup
+    import xml.etree.ElementTree as ET
     from telegram import InlineKeyboardButton
     from telegram import InlineKeyboardMarkup
     # Get the photo type Safe/Explicit
     lolitype = run_query(
         '''SELECT loliNSFW from "chattable" WHERE chat_id=(?)''', (update.effective_chat.id,))[0][0]
-    safeorexplicit = 'Safe' if lolitype == 0 else 'Explicit'
+    tags = 'child+highres+1girl+Rating%3ASafe' if lolitype == 0 else 'loli+highres+sex'
     # Send action of uploading the photo
     BOT.send_chat_action(chat_id=update.effective_chat.id,
                          action='upload_photo')
-    # Get the photo
-    not_found = True
-    while not_found:
-        url = f'https://danbooru.donmai.us/posts/random?tags=small_breasts+Rating%3A{safeorexplicit}'
-        response = requests.get(url)
-        soup = BeautifulSoup(response.text, 'lxml')
-        source = str(response.url).split('?')[0]
-        for a in soup.find_all('a', href=True):
-            if 'donmai.us' in a['href']:
-                link = a['href']
-                not_found = False
-                break
+    # Get the photo ----------------------------------------------
+    # Get the url start and get the count of the posts for the tag
+    from constants import LOLI_BASE_URL
+    post_count = ET.fromstring(requests.get(LOLI_BASE_URL+tags).content).get('count')
+    # Get the random offset
+    offset = random.randint(0, int(post_count))
+    # Get the random image in json
+    url = LOLI_BASE_URL + tags + f'&json=1&pid={offset}'
+    response = requests.get(url).json()[0]
+    # Get the image link
+    image_link = response['file_url']
+    # ------------------------------------------------------------
+    # Get the source info
+    source = response.get('source')
     # Create a source button
-    keyboard = [[InlineKeyboardButton('Первоисточник', url=source)]]
-    source_button = InlineKeyboardMarkup(keyboard)
+    if source:
+        keyboard = [[InlineKeyboardButton(text='Первоисточник', url=source)]]
+        source_button = InlineKeyboardMarkup(keyboard)
+        caption = None
+    else:
+        caption = 'Первоисточник не найден'
+        source_button = None
     # Send the result
     from telegram.error import BadRequest
     try:
         BOT.send_photo(chat_id=update.effective_chat.id,
-                       photo=link,
+                       photo=image_link,
                        reply_markup=source_button,
+                       caption=caption,
                        reply_to_message_id=update.effective_message.message_id)
     except BadRequest:
         BOT.send_message(chat_id=update.effective_chat.id,
