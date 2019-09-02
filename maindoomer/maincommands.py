@@ -267,7 +267,7 @@ def pidorme(update: Update, context: CallbackContext):
 def pidorstats(update: Update, context: CallbackContext):
     """Get the chat stats of how many times people have been pidors of the day"""
     chatstats = run_query('SELECT firstname, timespidor FROM userdata '
-                          'WHERE chat_id=(?) ORDER BY timespidor DESC', (update.effective_chat.id,))
+                          'WHERE chat_id=(?) ORDER BY timespidor DESC, firstname', (update.effective_chat.id,))
     table = ''
     counter = 1
     # Get top 10
