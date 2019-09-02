@@ -13,10 +13,13 @@ from maindoomer.__init__ import BOT, LOGGER
 @command_antispam_passed
 def start(update: Update, context: CallbackContext):
     """Send out a start message"""
+    text = 'Думер бот в чате. Для списка функций используйте /help.\n'
+    # Add explanation for groups for best experience
+    text += 'Для наилучшего экспириенса, дайте боту права на удаление сообщений.' \
+        if update.effective_chat.type != 'private' else ''
     BOT.send_message(chat_id=update.effective_chat.id,
                      reply_to_message_id=update.effective_message.message_id,
-                     text='Думер бот в чате. Для списка функций используйте /help.\n'
-                          'Для наилучшего экспириенса, дайте боту права на удаление сообщений.')
+                     text=text)
 
 
 @run_async
