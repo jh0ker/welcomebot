@@ -273,9 +273,9 @@ def pidorstats(update: Update, context: CallbackContext):
     # Get top 10
     for entry in chatstats:
         table += f'{counter}. {entry[0]} - *{entry[1]} раз(а)*\n'
-        counter += 1
         if counter == 10:
             break
+        counter += 1
     # Get the number of players
     numberofplayers = len(chatstats)
     if numberofplayers != 0:
