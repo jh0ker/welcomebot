@@ -218,17 +218,19 @@ def pidor(update: Update, context: CallbackContext):
     lastpidor = run_query('SELECT lastpidorid, lastpidorday, lastpidorname FROM chattable '
                           'WHERE chat_id=(?)', (update.effective_chat.id,))[0]
     if lastpidor[0] is None or datetime.date.fromisoformat(lastpidor[1]) < datetime.date.today():
-        # Exclude users that are not in the chat, but don't delete them to leave their data/stats
+        # Exclude users that are not in the chat, and delete their data if they are gone
         while True:
             allchatusers = run_query('SELECT user_id, firstname FROM userdata '
                                      'WHERE chat_id=(?)', (update.effective_chat.id,))
             todaypidor = random.choice(allchatusers)
-            from telegram.error import BadRequest
+            from telegram.error import TelegramError
             try:
                 BOT.get_chat_member(chat_id=update.effective_chat.id,
                                     user_id=todaypidor[0])
                 break
-            except BadRequest:
+            except TelegramError:
+                run_query('DELETE FROM userdata WHERE chat_id=(?) AND user_id=(?)',
+                          (update.effective_chat.id, todaypidor[0]))
                 continue
         run_query('''UPDATE chattable SET lastpidorday=(?), lastpidorid=(?), lastpidorname=(?)
         WHERE chat_id=(?)''', (datetime.date.today().isoformat(), todaypidor[0],

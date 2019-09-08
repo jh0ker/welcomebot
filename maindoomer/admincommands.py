@@ -91,6 +91,7 @@ def duelstatus(update: Update, context: CallbackContext):
             run_query('UPDATE chattable SET duelstatusonoff=(?) WHERE chat_id=(?)',
                       (status, update.effective_chat.id))
         elif arg is None:
+            # Get the current status
             status = run_query('SELECT duelstatusonoff from chattable WHERE chat_id=(?)',
                                (update.effective_chat.id,))[0][0]
         else:

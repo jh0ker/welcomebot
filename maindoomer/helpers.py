@@ -201,8 +201,6 @@ def _check_cooldown(update: Update, whattocheck, cooldown):
             # 1 is global
             if chatexcused[0] in [update.effective_chat.id, 1]:
                 return True
-    # Create table if doesn't exist
-    # Shorten code
     message_time = datetime.datetime.now()
     # Find last instance
     lastinstance = run_query(f'''SELECT {whattocheck} FROM cooldowns
