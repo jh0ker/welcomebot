@@ -220,24 +220,24 @@ def pidor(update: Update, context: CallbackContext):
     if lastpidor[0] is None or datetime.date.fromisoformat(lastpidor[1]) < datetime.date.today():
         # Exclude users that are not in the chat, and delete their data if they are gone
         while True:
-            allchatusers = run_query('SELECT user_id, firstname FROM userdata '
+            allchatusers = run_query('SELECT user_id FROM userdata '
                                      'WHERE chat_id=(?)', (update.effective_chat.id,))
-            todaypidor = random.choice(allchatusers)
+            todaypidorid = random.choice(allchatusers)[0]
             from telegram.error import TelegramError
             try:
-                BOT.get_chat_member(chat_id=update.effective_chat.id,
-                                    user_id=todaypidor[0])
+                pidorname = BOT.get_chat_member(chat_id=update.effective_chat.id,
+                                                user_id=todaypidorid).user.first_name
                 break
             except TelegramError:
                 run_query('DELETE FROM userdata WHERE chat_id=(?) AND user_id=(?)',
-                          (update.effective_chat.id, todaypidor[0]))
+                          (update.effective_chat.id, todaypidorid))
                 continue
         run_query('''UPDATE chattable SET lastpidorday=(?), lastpidorid=(?), lastpidorname=(?)
-        WHERE chat_id=(?)''', (datetime.date.today().isoformat(), todaypidor[0],
-                               todaypidor[1], update.effective_chat.id))
-        run_query('''UPDATE userdata SET timespidor=timespidor+1
-        WHERE chat_id=(?) AND user_id=(?)''', (update.effective_chat.id, todaypidor[0]))
-        todaypidor = f"[{todaypidor[1].strip('[]')}](tg://user?id={todaypidor[0]})"
+        WHERE chat_id=(?)''', (datetime.date.today().isoformat(), todaypidorid,
+                               pidorname, update.effective_chat.id))
+        run_query('''UPDATE userdata SET timespidor=timespidor+1, firstname=(?)
+        WHERE chat_id=(?) AND user_id=(?)''', (pidorname, update.effective_chat.id, todaypidorid))
+        todaypidor = f"[{pidorname.strip('[]')}](tg://user?id={todaypidorid})"
     else:
         todaypidor = lastpidor[2]
     BOT.send_message(chat_id=update.effective_chat.id,
