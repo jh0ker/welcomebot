@@ -6,8 +6,8 @@ from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
 
 from maindoomer import (admincommands, devcommands, maincommands,
                         occasionalcommands, textfiltering)
-from maindoomer.helpers import callbackhandler, error_callback, ping
 from maindoomer.__init__ import BOT, LOGGER
+from maindoomer.helpers import callbackhandler, error_callback, ping
 
 
 # Bot commands

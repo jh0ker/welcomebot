@@ -10,8 +10,8 @@ from telegram import Update
 from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
 
-from maindoomer.helpers import check_if_group_chat, command_antispam_passed
 from maindoomer.__init__ import BOT, LOGGER
+from maindoomer.helpers import check_if_group_chat, command_antispam_passed
 from maindoomer.sqlcommands import run_query
 
 
@@ -62,7 +62,7 @@ def slap(update: Update, context: CallbackContext):
                  'Чтобы унизить, надо чтобы вы ответили вашей жертве.')
     else:
         # Get success and fail chances
-        success_and_fail = []
+        success_and_fail: list = []
         # Add failures and successes if its empty and shuffle (optimize CPU usage)
         if not success_and_fail:
             success_and_fail += ['failure'] * len(SLAPS['failure']) + \
@@ -100,7 +100,7 @@ def loli(update: Update, context: CallbackContext):
     # Get the photo ----------------------------------------------
     # Get the url start and get the count of the posts for the tag
     from constants import LOLI_BASE_URL
-    post_count = ET.fromstring(requests.get(LOLI_BASE_URL+tags).content).get('count')
+    post_count = ET.fromstring(requests.get(LOLI_BASE_URL + tags).content).get('count')
     # Get the random offset
     offset = random.randint(0, int(post_count))
     # Get the random image in json
@@ -136,7 +136,7 @@ def loli(update: Update, context: CallbackContext):
         run_query('UPDATE cooldowns SET lastcommandreply=(?) WHERE '
                   'chat_id=(?) AND user_id=(?)',
                   (datetime.datetime.now() - datetime.timedelta(minutes=INDIVIDUAL_USER_DELAY),
-                  update.effective_chat.id, update.effective_user.id))
+                   update.effective_chat.id, update.effective_user.id))
 
 
 @run_async
@@ -317,26 +317,26 @@ def duel(update: Update, context: CallbackContext):
         """Score the results in the database"""
         # One dead
         if winners:
-            p1, p2 = winners[0], losers[0]
+            player_1, player_2 = winners[0], losers[0]
             # Remove cooldown from the winner if it was the initiator
-            if update.effective_user.id == p1[1]:
+            if update.effective_user.id == player_1[1]:
                 # Reduce winner cooldown
                 from constants import CDREDUCTION
                 shortercd = datetime.datetime.now() - datetime.timedelta(seconds=CDREDUCTION)
                 run_query('UPDATE cooldowns SET lastcommandreply=(?) WHERE user_id=(?) '
-                          'AND chat_id=(?)', (shortercd, p1[1], update.effective_chat.id))
+                          'AND chat_id=(?)', (shortercd, player_1[1], update.effective_chat.id))
         # None dead
         else:
-            p1, p2 = losers[0], losers[1]
+            player_1, player_2 = losers[0], losers[1]
         counter = 0
-        for player in (p1, p2):
-            kd = p1_kdm if counter == 0 else p2_kdm
+        for player in (player_1, player_2):
+            duelscore = p1_kdm if counter == 0 else p2_kdm
             userid, firstname = player[1], player[0]
             run_query('INSERT OR IGNORE INTO duels (user_id, chat_id, firstname) '
                       'VALUES (?, ?, ?)', (userid, update.effective_chat.id, firstname))
             run_query('UPDATE duels SET kills=kills+(?), deaths=deaths+(?), misses=misses+(?)'
                       'WHERE user_id=(?) AND chat_id=(?)',
-                      (kd[0], kd[1], kd[2], userid, update.effective_chat.id))
+                      (duelscore[0], duelscore[1], duelscore[2], userid, update.effective_chat.id))
             counter += 1
 
     def _usenames(scenario: str, winners: list = None, losers: list = None) -> str:

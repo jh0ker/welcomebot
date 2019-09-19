@@ -14,11 +14,11 @@ from maindoomer.sqlcommands import run_query
 
 
 # Get known chats
-KNOWNCHATS = []
+KNOWNCHATS: list = []
 KNOWNCHATSDB = run_query('SELECT chat_id from chattable')
 KNOWNCHATS += [entry[0] for entry in KNOWNCHATSDB]
 # Get knownusers
-KNOWNUSERS = {}
+KNOWNUSERS: dict = {}
 KNOWNUSERSDB = run_query('SELECT user_id, chat_id FROM userdata')
 for entry in KNOWNUSERSDB:
     if entry[1] not in KNOWNUSERS:
@@ -138,8 +138,8 @@ def store_user_data(update: Update):
             chatlink = "t.me/" + update.effective_message.chat.username
         except:
             chatlink = 'private'
-        usable_data = []
-        usable_variable = []
+        usable_data: list = []
+        usable_variable: list = []
         # Prepare data for SQL
         for data in (
                 (user_id, 'user_id'),
