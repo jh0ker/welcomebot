@@ -223,6 +223,9 @@ def pidor(update: Update, context: CallbackContext):
             allchatusers = run_query('SELECT user_id FROM userdata '
                                      'WHERE chat_id=(?)', (update.effective_chat.id,))
             todaypidorid = random.choice(allchatusers)[0]
+            # Remove repetition
+            if len(allchatusers) > 1 and todaypidorid == lastpidor[0]:
+                continue
             from telegram.error import TelegramError
             try:
                 pidorname = BOT.get_chat_member(chat_id=update.effective_chat.id,
