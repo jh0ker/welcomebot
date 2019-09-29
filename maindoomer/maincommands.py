@@ -39,7 +39,7 @@ def dadjoke(update: Update, context: CallbackContext):
     # Retrieve the json with, the joke
     try:
         from constants import REQUEST_TIMEOUT
-        response = requests.get(
+        response: dict = requests.get(
             'https://icanhazdadjoke.com/', headers={'Accept': 'application/json'},
             timeout=REQUEST_TIMEOUT).json()
         handle_joke(update)
@@ -213,36 +213,47 @@ def animal(update: Update, context: CallbackContext):
 @check_if_group_chat
 def pidor(update: Update, context: CallbackContext):
     """Get the pidor of the day from all users stored for the chat"""
-    # Check last pidor day
-    # Use index to select first, no exception as chat data is created by antispam handler
-    lastpidor = run_query('SELECT lastpidorid, lastpidorday, lastpidorname FROM chattable '
-                          'WHERE chat_id=(?)', (update.effective_chat.id,))[0]
-    if lastpidor[0] is None or datetime.date.fromisoformat(lastpidor[1]) < datetime.date.today():
+
+    def getnewpidor():
         # Exclude users that are not in the chat, and delete their data if they are gone
+        nonlocal lastpidor, update
         while True:
             allchatusers = run_query('SELECT user_id FROM userdata '
                                      'WHERE chat_id=(?)', (update.effective_chat.id,))
+            if not allchatusers:
+                return
             todaypidorid = random.choice(allchatusers)[0]
             # Remove repetition
-            if len(allchatusers) > 1 and todaypidorid == lastpidor[0]:
-                continue
-            from telegram.error import TelegramError
+            if lastpidor:
+                if len(allchatusers) > 1 and todaypidorid == lastpidor[0][0]:
+                    continue
             try:
-                pidorname = BOT.get_chat_member(chat_id=update.effective_chat.id,
-                                                user_id=todaypidorid).user.first_name
+                newpidor = BOT.get_chat_member(chat_id=update.effective_chat.id,
+                                               user_id=todaypidorid)
+                newpidorname = newpidor.user.first_name
                 break
-            except TelegramError:
+            except:
                 run_query('DELETE FROM userdata WHERE chat_id=(?) AND user_id=(?)',
                           (update.effective_chat.id, todaypidorid))
                 continue
         run_query('''UPDATE chattable SET lastpidorday=(?), lastpidorid=(?), lastpidorname=(?)
-        WHERE chat_id=(?)''', (datetime.date.today().isoformat(), todaypidorid,
-                               pidorname, update.effective_chat.id))
+            WHERE chat_id=(?)''', (datetime.date.today().isoformat(), todaypidorid,
+                                   newpidorname, update.effective_chat.id))
         run_query('''UPDATE userdata SET timespidor=timespidor+1, firstname=(?)
-        WHERE chat_id=(?) AND user_id=(?)''', (pidorname, update.effective_chat.id, todaypidorid))
-        todaypidor = f"[{pidorname.strip('[]')}](tg://user?id={todaypidorid})"
+            WHERE chat_id=(?) AND user_id=(?)''', (newpidorname, update.effective_chat.id, todaypidorid))
+        todaypidor = f"[{newpidorname.strip('[]')}](tg://user?id={todaypidorid})"
+        return todaypidor
+
+    # Check last pidor day
+    # Use index to select first, no exception as chat data is created by antispam handler
+    lastpidor = run_query('SELECT lastpidorid, lastpidorday, lastpidorname FROM chattable '
+                          'WHERE chat_id=(?)', (update.effective_chat.id,))
+    if not lastpidor:
+        todaypidor = getnewpidor()
+    elif lastpidor[0][0] is None or datetime.date.fromisoformat(lastpidor[0][1]) < datetime.date.today():
+        todaypidor = getnewpidor()
     else:
-        todaypidor = lastpidor[2]
+        todaypidor = lastpidor[0][2]
     BOT.send_message(chat_id=update.effective_chat.id,
                      text=f'Пидором дня является {todaypidor}!',
                      reply_to_message_id=update.effective_message.message_id,
