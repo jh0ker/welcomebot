@@ -604,3 +604,26 @@ def duelranking(update: Update, context: CallbackContext):
         BOT.send_message(chat_id=update.effective_chat.id,
                          reply_to_message_id=update.effective_message.message_id,
                          text='Для этого чата нет данных.')
+
+@run_async
+@check_if_group_chat
+def rolluser(update: Update, context: CallbackContext):
+    """Get a random chat user"""
+    users = run_query('SELECT user_id, firstname from userdata WHERE chat_id=(?)',
+                      (update.effective_chat.id,))
+    while True:
+        user = random.choice(users)
+        try:
+            BOT.get_chat_member(
+                chat_id=update.effective_chat.id,
+                user_id=user[0]
+            )
+            break
+        except:
+            continue
+    BOT.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"[{user[1]}](tg://user?id={user[0]})",
+        parse_mode='Markdown'
+    )
+    

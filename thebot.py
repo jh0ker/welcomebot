@@ -32,7 +32,7 @@ USERCOMMANDS = [
     ("help", occasionalcommands.bothelp, 'Меню помощи'),
     ('whatsnew', occasionalcommands.whatsnew, 'Новое в боте'),
     ('adminmenu', admincommands.adminmenu, 'Админское меню'),
-    ]
+]
 ONLYADMINCOMMANDS = [
     'Команды для администраторов групп',
     ('leave', admincommands.leave, 'Сказать боту уйти'),
@@ -43,7 +43,7 @@ ONLYADMINCOMMANDS = [
      'Добавить пользователю иммунитет на задержку команд (ответить ему)'),
     ('unimmune', admincommands.unimmune, 'Снять иммунитет (ответить или имя)'),
     ('immunelist', admincommands.immunelist, 'Лист людей с иммунитетом')
-    ]
+]
 UNUSUALCOMMANDS = [
     'Нечастые команды',
     ('allcommands', devcommands.allcommands, 'Все команды бота'),
@@ -51,8 +51,9 @@ UNUSUALCOMMANDS = [
     ('getlogs', devcommands.getlogs,
      'Получить логи бота (только для разработчика)'),
     ('getdatabase', devcommands.getdatabase, 'Получить датабазу'),
-    ('sql', devcommands.sql, 'Использовать sqlite команду на дб')
-    ]
+    ('sql', devcommands.sql, 'Использовать sqlite команду на дб'),
+    ('banroll', maincommands.rolluser, 'Выбрать случайного пользователя')
+]
 
 
 def main():
