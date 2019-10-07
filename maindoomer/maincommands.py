@@ -609,21 +609,22 @@ def duelranking(update: Update, context: CallbackContext):
 @check_if_group_chat
 def rolluser(update: Update, context: CallbackContext):
     """Get a random chat user"""
-    users = run_query('SELECT user_id, firstname from userdata WHERE chat_id=(?)',
+    users = run_query('SELECT user_id from userdata WHERE chat_id=(?)',
                       (update.effective_chat.id,))
     while True:
-        user = random.choice(users)
+        user_id = random.choice(users)[0]
         try:
-            BOT.get_chat_member(
+            userdata = BOT.get_chat_member(
                 chat_id=update.effective_chat.id,
-                user_id=user[0]
-            )
+                user_id=user_id
+            ).user
+            user_name = userdata.first_name
             break
         except:
             continue
     BOT.send_message(
         chat_id=update.effective_chat.id,
-        text=f"[{user[1]}](tg://user?id={user[0]})",
+        text=f"[{user_name}](tg://user?id={user_id})",
         parse_mode='Markdown'
     )
     
