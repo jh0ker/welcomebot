@@ -365,7 +365,7 @@ def duel(update: Update, context: CallbackContext):
             phrase += f'\nПобеда за {winners[0][3]}!'
             if winners[0][1] == update.effective_user.id:
                 from constants import SHORTCD
-                phrase += f'\nВсе твои кулдауны были ресетнуты до {SHORTCD // 60}-х минут!'
+                phrase += f'\nТвой кулдаун был ресетнут до {SHORTCD // 60}-х минут!'
             return phrase
         if scenario == 'suicide':
             return phrase.replace('loser', init_tag)
