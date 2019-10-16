@@ -21,14 +21,14 @@ def loli(update: Update, context: CallbackContext) -> None:
     """Send photo of loli."""
     # Get the photo type Safe/Explicit
     lolitype = run_query(
-        '''SELECT loliNSFW from "chattable" WHERE chat_id=(?)''',
+        'SELECT loliNSFW from "chattable" WHERE chat_id=(?)',
         (update.effective_chat.id,)
-        )[0][0]
+    )[0][0]
     tags = 'child+highres+1girl+Rating%3ASafe' if lolitype == 0 else 'loli+highres+sex'
     BOT.send_chat_action(
         chat_id=update.effective_chat.id,
         action='upload_photo'
-        )
+    )
     post_count = ET.fromstring(requests.get(
         LOLI_BASE_URL + tags).content).get('count')
     # Get the random offset
@@ -55,17 +55,17 @@ def loli(update: Update, context: CallbackContext) -> None:
             reply_markup=source_button,
             caption=caption,
             reply_to_message_id=update.effective_message.message_id
-            )
+        )
     except BadRequest:
         BOT.send_message(
             chat_id=update.effective_chat.id,
             reply_to_message_id=update.effective_message.message_id,
             text='Думер умер на пути к серверу. Попробуйте ещё раз.'
-            )
+        )
         # Reset cooldown if sending failed
         run_query(
             'UPDATE cooldowns SET lastcommandreply=(?) WHERE '
             'chat_id=(?) AND user_id=(?)',
             (datetime.now() - timedelta(minutes=INDIVIDUAL_USER_DELAY),
              update.effective_chat.id, update.effective_user.id)
-            )
+        )

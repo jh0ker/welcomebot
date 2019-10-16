@@ -14,7 +14,7 @@ from maindoomer.sqlcommands import run_query
 def pidorme(update: Update, context: CallbackContext) -> None:
     """Give the user the number of times he has been pidor of the day."""
     timespidor = run_query(
-        'SELECT timespidor FROM userdata WHERE chat_id=(?) AND user_id=(?)''',
+        'SELECT timespidor FROM userdata WHERE chat_id=(?) AND user_id=(?)',
         (update.effective_chat.id, update.effective_user.id)
     )
     if timespidor:

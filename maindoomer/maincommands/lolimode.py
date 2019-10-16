@@ -14,7 +14,7 @@ def lolimode(update: Update, context: CallbackContext) -> None:
     """Set SFW/NSFW for Loli content."""
     # Get current settings
     lolitype = run_query(
-        '''SELECT loliNSFW from "chattable" WHERE chat_id=(?)''',
+        'SELECT loliNSFW from "chattable" WHERE chat_id=(?)',
         (update.effective_chat.id,)
     )[0][0]
     currentstate = 'На данный момент контент '

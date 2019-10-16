@@ -51,8 +51,10 @@ def _get_new_pidor(update: Update, lastpidor: list) -> None:
             if len(allchatusers) > 1 and todaypidorid == lastpidor[0][0]:
                 continue
         try:
-            newpidor = BOT.get_chat_member(chat_id=update.effective_chat.id,
-                                           user_id=todaypidorid)
+            newpidor = BOT.get_chat_member(
+                chat_id=update.effective_chat.id,
+                user_id=todaypidorid
+            )
             newpidorname = newpidor.user.first_name
             break
         except:
@@ -62,13 +64,14 @@ def _get_new_pidor(update: Update, lastpidor: list) -> None:
             )
             continue
     run_query(
-        '''UPDATE chattable SET lastpidorday=(?), lastpidorid=(?), lastpidorname=(?)
-            WHERE chat_id=(?)''', (date.today().isoformat(), todaypidorid,
-                                   newpidorname, update.effective_chat.id)
+        'UPDATE chattable SET lastpidorday=(?), lastpidorid=(?), lastpidorname=(?) '
+        'WHERE chat_id=(?)',
+        (date.today().isoformat(), todaypidorid,
+         newpidorname, update.effective_chat.id)
     )
     run_query(
-        '''UPDATE userdata SET timespidor=timespidor+1, firstname=(?)
-            WHERE chat_id=(?) AND user_id=(?)''',
+        'UPDATE userdata SET timespidor=timespidor+1, firstname=(?) '
+        'WHERE chat_id=(?) AND user_id=(?)',
         (newpidorname, update.effective_chat.id, todaypidorid)
     )
     return f"[{newpidorname.strip('[]')}](tg://user?id={todaypidorid})"
