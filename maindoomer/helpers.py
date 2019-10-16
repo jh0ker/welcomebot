@@ -9,16 +9,16 @@ from telegram import TelegramError, Update
 from telegram.ext import CallbackContext, run_async
 
 from constants import DEV
-from maindoomer.__init__ import BOT, LOGGER
+from maindoomer import BOT, LOGGER
 from maindoomer.sqlcommands import run_query
 
 
 # Get known chats
-KNOWNCHATS: list = []
+KNOWNCHATS = []
 KNOWNCHATSDB = run_query('SELECT chat_id from chattable')
 KNOWNCHATS += [entry[0] for entry in KNOWNCHATSDB]
 # Get knownusers
-KNOWNUSERS: dict = {}
+KNOWNUSERS = {}
 KNOWNUSERSDB = run_query('SELECT user_id, chat_id FROM userdata')
 for entry in KNOWNUSERSDB:
     if entry[1] not in KNOWNUSERS:
@@ -27,43 +27,27 @@ for entry in KNOWNUSERSDB:
 
 
 def command_antispam_passed(func):
-    """
-    Check if the user is spamming
+    """Check if the user is spamming.
+
     Delay of INDIVIDUAL_USER_DELAY minute(s) for individual user commands, changeable.
     """
 
     def executor(update: Update, *args, **kwargs):
-        """The wrapped function"""
-        # Store chat and user data
         store_data(update)
         # Check for cooldown
         from constants import INDIVIDUAL_USER_DELAY
-        if _check_cooldown(update, 'lastcommandreply', INDIVIDUAL_USER_DELAY):
-            func(update, *args, **kwargs)
-
-    return executor
-
-
-def text_antispam_passed(func):
-    """Checks if somebody is spamming reply_all words"""
-
-    def executor(update: Update, *args, **kwargs):
-        """The wrapped function"""
-        from constants import INDIVIDUAL_REPLY_DELAY
-        if _check_cooldown(update, 'lasttextreply', INDIVIDUAL_REPLY_DELAY):
+        if check_cooldown(update, 'lastcommandreply', INDIVIDUAL_USER_DELAY):
             func(update, *args, **kwargs)
 
     return executor
 
 
 def check_if_group_chat(func):
-    """Check if the chat is a group chat"""
+    """Check if the chat is a group chat."""
 
     def executor(update: Update, *args, **kwargs):
-        """The wrapped function"""
         if update.effective_message.chat.type == 'private':
             BOT.send_message(chat_id=update.effective_chat.id,
-                             reply_to_message_id=update.effective_message.message_id,
                              text='Это только для групп.')
         else:
             func(update, *args, **kwargs)
@@ -72,14 +56,13 @@ def check_if_group_chat(func):
 
 
 def rights_check(func):
-    """Checks if the user has enough right
-    Enough rights are defined as creator or administrator or developer"""
+    """Check if the user has enough rights.
+
+    Enough rights are defined as creator or administrator or developer.
+    """
 
     def executor(update: Update, *args, **kwargs):
-        """The wrapped function"""
-        # Store chat and user data
         store_data(update)
-        # Check user rank
         rank = BOT.get_chat_member(chat_id=update.effective_message.chat_id,
                                    user_id=update.effective_user.id).status
         permitted = ['creator', 'administrator']
@@ -92,10 +75,9 @@ def rights_check(func):
 
 
 def check_if_dev(func):
-    """Checks if user is the developer"""
+    """Check if user is the developer."""
 
     def executor(update: Update, *args, **kwargs):
-        """The wrapped function"""
         if update.effective_user.id == DEV:
             func(update, *args, **kwargs)
 
@@ -104,18 +86,21 @@ def check_if_dev(func):
 
 @run_async
 def store_chat_data(update: Update):
-    """Store chat data"""
+    """Store chat data."""
     global KNOWNCHATS
     if update.effective_chat.id not in KNOWNCHATS:
         # Create chat data
-        run_query('INSERT OR IGNORE INTO chattable (chat_id, chat_name) VALUES (?, ?)',
-                  (update.effective_chat.id, BOT.get_chat(chat_id=update.effective_chat.id).title))
+        run_query(
+            'INSERT OR IGNORE INTO chattable (chat_id, chat_name) VALUES (?, ?)',
+            (update.effective_chat.id,
+             BOT.get_chat(chat_id=update.effective_chat.id).title)
+            )
         KNOWNCHATS += [update.effective_chat.id]
 
 
 @run_async
 def store_user_data(update: Update):
-    """Add user data to the userdata table of the database"""
+    """Add user data to the userdata table of the database."""
     global KNOWNUSERS
     # Create chat entry
     if update.effective_chat.id not in KNOWNUSERS:
@@ -138,8 +123,8 @@ def store_user_data(update: Update):
             chatlink = "t.me/" + update.effective_message.chat.username
         except:
             chatlink = 'private'
-        usable_data: list = []
-        usable_variable: list = []
+        usable_data = []
+        usable_variable = []
         # Prepare data for SQL
         for data in (
                 (user_id, 'user_id'),
@@ -153,42 +138,53 @@ def store_user_data(update: Update):
                 usable_data += [data[0]]
                 usable_variable += [data[1]]
         # Store the user data
-        run_query(f'''INSERT OR IGNORE INTO userdata {tuple(usable_variable)} VALUES
+        run_query(
+            f'''INSERT OR IGNORE INTO userdata {tuple(usable_variable)} VALUES
         ({'?, ' * (len(usable_data) - 1) + '?'})''', tuple(usable_data))
         KNOWNUSERS[update.effective_chat.id] += [user_id]
 
 
 @run_async
 def store_data(update: Update):
-    """Store chat and user data"""
+    """Store chat and user data."""
     store_user_data(update)
     store_chat_data(update)
 
 
-def _check_cooldown(update: Update, whattocheck, cooldown):
-    """Check cooldown of command, reply, error
-    Whattocheck should be the sql column name"""
+def check_cooldown(update: Update, whattocheck, cooldown):
+    """Check cooldown of command, error.
+
+    Whattocheck should be the sql column name.
+    """
 
     def _give_command_error():
         """Give command cooldown error, if the user still spams, delete his message"""
         nonlocal update
         # Check if the error was given
-        if run_query('SELECT errorgiven from cooldowns WHERE chat_id=(?) and user_id=(?)',
-                     (update.effective_chat.id, update.effective_user.id))[0][0] == 0:
+        if run_query(
+                'SELECT errorgiven from cooldowns WHERE chat_id=(?) and user_id=(?)',
+                (update.effective_chat.id, update.effective_user.id)
+                )[0][0] == 0:
             # If it wasn't, give the time remaining and update the flag.
             time_remaining = str(
                 (barriertime - message_time)).split('.')[0][3:]
-            BOT.send_message(chat_id=update.effective_chat.id,
-                             reply_to_message_id=update.effective_message.message_id,
-                             text=f'До команды осталось {time_remaining} (ММ:СС). '
-                                  f'Пока можешь идти нахуй, я буду пытаться удалять твои команды.')
-            run_query('UPDATE cooldowns SET errorgiven=1 WHERE chat_id=(?) AND user_id=(?)',
-                      (update.effective_chat.id, user_id))
+            BOT.send_message(
+                chat_id=update.effective_chat.id,
+                reply_to_message_id=update.effective_message.message_id,
+                text=f'До команды осталось {time_remaining} (ММ:СС). '
+                     f'Пока можешь идти нахуй, я буду пытаться удалять твои команды.'
+                )
+            run_query(
+                'UPDATE cooldowns SET errorgiven=1 WHERE chat_id=(?) AND user_id=(?)',
+                (update.effective_chat.id, user_id)
+                )
         # If it was, try to delete the message
         else:
             try:
-                BOT.delete_message(chat_id=update.effective_chat.id,
-                                   message_id=update.effective_message.message_id)
+                BOT.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=update.effective_message.message_id
+                    )
             except TelegramError:
                 pass
 
@@ -196,8 +192,10 @@ def _check_cooldown(update: Update, whattocheck, cooldown):
         return True
     # Add exceptions for some users
     user_id = update.effective_user.id
-    if run_query('SELECT * FROM exceptions WHERE user_id=(?)', (user_id,)):
-        for chatexcused in run_query('SELECT chat_id FROM exceptions WHERE user_id=(?)', (user_id,)):
+    if run_query(
+            'SELECT * FROM exceptions WHERE user_id=(?)', (user_id,)):
+        for chatexcused in run_query(
+                'SELECT chat_id FROM exceptions WHERE user_id=(?)', (user_id,)):
             # 1 is global
             if chatexcused[0] in [update.effective_chat.id, 1]:
                 return True
@@ -213,34 +211,41 @@ def _check_cooldown(update: Update, whattocheck, cooldown):
                       datetime.timedelta(seconds=cooldown)
         if message_time > barriertime:
             # If it did, update table, return True
-            run_query(f'UPDATE cooldowns SET {whattocheck}=(?), errorgiven=0 '
-                      f'WHERE chat_id=(?) AND user_id=(?)',
-                      (message_time, update.effective_chat.id, user_id))
+            run_query(
+                f'UPDATE cooldowns SET {whattocheck}=(?), errorgiven=0 '
+                f'WHERE chat_id=(?) AND user_id=(?)',
+                (message_time, update.effective_chat.id, user_id)
+                )
             return True
-        if whattocheck == 'lastcommandreply':
-            _give_command_error()
-        # If it didn't return False
+        # If it didn't return False and give an error
+        _give_command_error()
         return False
     # If there was none, create entry and return True
-    run_query(f'INSERT OR IGNORE INTO cooldowns (user_id, chat_id, firstname, {whattocheck})'
-              'VALUES (?, ?, ?, ?)',
-              (user_id, update.effective_chat.id, update.effective_user.first_name, message_time))
-    run_query(f'UPDATE cooldowns SET {whattocheck}=(?) WHERE user_id=(?) AND chat_id=(?)',
-              (message_time, user_id, update.effective_chat.id))
+    run_query(
+        f'INSERT OR IGNORE INTO cooldowns (user_id, chat_id, firstname, {whattocheck})'
+        'VALUES (?, ?, ?, ?)', (user_id, update.effective_chat.id,
+                                update.effective_user.first_name, message_time)
+        )
+    run_query(
+        f'UPDATE cooldowns SET {whattocheck}=(?) WHERE user_id=(?) AND chat_id=(?)',
+        (message_time, user_id, update.effective_chat.id)
+        )
     return True
 
 
 @run_async
 def informthepleb(update: Update):
-    """If was not called by admin/creator/dev, inform the user that he is a pleb"""
-    BOT.send_message(chat_id=update.effective_chat.id,
-                     reply_to_message_id=update.effective_message.message_id,
-                     text='Пошёл нахуй, ты не админ.')
+    """If was not called by admin/creator/dev, inform the user that he is a pleb."""
+    BOT.send_message(
+        chat_id=update.effective_chat.id,
+        reply_to_message_id=update.effective_message.message_id,
+        text='Пошёл нахуй, ты не админ.'
+        )
 
 
 @run_async
 def callbackhandler(update: Update, context: CallbackContext):
-    """Handle callbacks for admins"""
+    """Handle callbacks for admins."""
     rank = BOT.get_chat_member(chat_id=update.effective_chat.id,
                                user_id=update.effective_user.id).status
     permitted = ['creator', 'administrator']
@@ -248,17 +253,23 @@ def callbackhandler(update: Update, context: CallbackContext):
         return
     if update.callback_query.data in ['legal', 'illegal']:
         lolitype = 0 if update.callback_query.data == 'legal' else 1
-        run_query('UPDATE chattable SET loliNSFW=(?) WHERE chat_id=(?)',
-                  (lolitype, update.effective_chat.id))
+        run_query(
+            'UPDATE chattable SET loliNSFW=(?) WHERE chat_id=(?)',
+            (lolitype, update.effective_chat.id)
+            )
         currentstate = 'Теперь контент '
-        currentstate += '***БЕЗ НЮДСОВ (SFW)***.' if lolitype == 0 else '***C НЮДСАМИ (NSFW)***.'
-        BOT.delete_message(chat_id=update.effective_chat.id,
-                           message_id=update.effective_message.message_id)
-        BOT.send_message(chat_id=update.effective_chat.id,
-                         text=currentstate,
-                         reply_to_message_id=update.effective_message.reply_to_message.message_id,
-                         disable_notification=True,
-                         parse_mode='Markdown')
+        currentstate += '***SFW***.' if lolitype == 0 else '***NSFW***.'
+        BOT.delete_message(
+            chat_id=update.effective_chat.id,
+            message_id=update.effective_message.message_id
+            )
+        BOT.send_message(
+            chat_id=update.effective_chat.id,
+            text=currentstate,
+            reply_to_message_id=update.effective_message.reply_to_message.message_id,
+            disable_notification=True,
+            parse_mode='Markdown'
+            )
 
 
 @run_async
@@ -269,8 +280,10 @@ def error_callback(update: Update, context: CallbackContext):
 
 @run_async
 def ping(context: CallbackContext):
-    """Ping a chat to show that the bot is working and is online"""
+    """Ping a chat to show that the bot is working and is online."""
     from constants import PING_CHANNEL
-    BOT.send_message(chat_id=PING_CHANNEL,
-                     text='ping...',
-                     disable_notification=True)
+    BOT.send_message(
+        chat_id=PING_CHANNEL,
+        text='ping...',
+        disable_notification=True
+        )

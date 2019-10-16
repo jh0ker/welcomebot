@@ -1,31 +1,23 @@
-"""
-Storer of the sql table creation and the query running function
-"""
+"""Storer of the sql table creation and the query running function."""
 
 import sqlite3
 
 
 def run_query(query: str, *params: tuple):
-    """Run an SQL query with the database"""
-    # Import the database name
+    """Run an SQL query with the database."""
     from constants import DATABASENAME
-    # Setup a connection
     db_con = sqlite3.connect(DATABASENAME, check_same_thread=False)
     # Use context manager to autocommit
     with db_con:
         cursor = db_con.cursor()
-        # Get all the data before closing the connection
         data = cursor.execute(query, *params).fetchall()
     db_con.close()
-    # Return all data that was fetched
     return data
 
 
 def create_tables():
-    """Create the database tables"""
-    # Import the database name
+    """Create the database tables."""
     from constants import DATABASENAME
-    # Setup a connection
     db_con = sqlite3.connect(DATABASENAME, check_same_thread=False)
     # Use context manager to autocommit
     with db_con:

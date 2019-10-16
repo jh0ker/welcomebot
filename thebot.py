@@ -4,7 +4,8 @@ Telegram bot with various commands. Listed below.
 from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
                           MessageHandler, Updater)
 
-from maindoomer import (admincommands, devcommands, maincommands,
+import maindoomer.maincommands as maincommands
+from maindoomer import (admincommands, devcommands,
                         occasionalcommands, textfiltering)
 from maindoomer.__init__ import BOT, LOGGER
 from maindoomer.helpers import callbackhandler, error_callback, ping
@@ -15,7 +16,8 @@ USERCOMMANDS = [
     'Команды для рядовых пользователей',
     ("slap", maincommands.slap,
      'Кого-то унизить (надо ответить жертве, чтобы бот понял кого бить)'),
-    ('duel', maincommands.duel, 'Устроить дуэль (надо ответить тому, с кем будет дуэль)'),
+    ('duel', maincommands.duel,
+     'Устроить дуэль (надо ответить тому, с кем будет дуэль)'),
     ('myscore', maincommands.myscore, 'Мой счёт в дуэлях'),
     ('duelranking', maincommands.duelranking,
      'Ранкинг дуэлей чата (показывает только тех, у кого есть убийства и смерти)'),
@@ -51,13 +53,12 @@ UNUSUALCOMMANDS = [
     ('getlogs', devcommands.getlogs,
      'Получить логи бота (только для разработчика)'),
     ('getdatabase', devcommands.getdatabase, 'Получить датабазу'),
-    ('sql', devcommands.sql, 'Использовать sqlite команду на дб'),
-    ('banroll', maincommands.rolluser, 'Выбрать случайного пользователя')
+    ('sql', devcommands.sql, 'Использовать sqlite команду на дб')
 ]
 
 
 def main():
-    """The main function"""
+    """The main function."""
     LOGGER.info('Creating the dispatcher...')
     # Create the updater
     updater = Updater(bot=BOT, use_context=True, workers=16)
@@ -81,7 +82,8 @@ def main():
     dispatcher.add_error_handler(error_callback)
     # Add job queue
     job_queue = updater.job_queue
-    job_queue.run_repeating(callback=ping, interval=10 * 60, first=0, name='ping')
+    job_queue.run_repeating(
+        callback=ping, interval=60 * 60, first=0, name='ping')
     # Start polling
     updater.start_polling(clean=True)
     LOGGER.info('Polling started.')

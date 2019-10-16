@@ -61,5 +61,5 @@ SHORTCD = round(INDIVIDUAL_USER_DELAY - CDREDUCTION)
 REQUEST_TIMEOUT = 3
 # Base url for /loli
 LOLI_BASE_URL = 'https://gelbooru.com/index.php?page=dapi&s=post&q=index' \
-           '&api_key=c45859a5140d8ff00d1910ec3e95297513961ff8eef5f8a184bde934a3df6089&user_id=448134' \
-           '&limit=1&tags='
+                '&api_key=c45859a5140d8ff00d1910ec3e95297513961ff8eef5f8a184bde934a3df6089&user_id=448134' \
+                '&limit=1&tags='
