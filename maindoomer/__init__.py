@@ -29,7 +29,7 @@ LOGGER = logging.getLogger(__name__)
 LOGGER.info('-----------------------------------------------')
 LOGGER.info('Initializing the bot...')
 BOT = Bot(
-    token="824227677:AAG_KhaNi5KEPcBt6LCLW-cpgXSTUo1eiXE",
+    token=environ.get("TG_BOT_TOKEN"),
     request=Request(con_pool_size=20)
 )
 
