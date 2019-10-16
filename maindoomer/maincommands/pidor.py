@@ -4,6 +4,7 @@ import random
 from datetime import date
 
 from telegram import Update
+from telegram.error import BadRequest
 from telegram.ext import CallbackContext, run_async
 
 from maindoomer import BOT
@@ -37,13 +38,17 @@ def pidor(update: Update, context: CallbackContext) -> None:
 
 
 def _get_new_pidor(update: Update, lastpidor: list) -> None:
-    # Exclude users that are not in the chat, and delete their data if they are gone
     while True:
         allchatusers = run_query(
             'SELECT user_id FROM userdata WHERE chat_id=(?)',
             (update.effective_chat.id,)
         )
         if not allchatusers:
+            BOT.send_message(
+                chat_id=update.effective_chat.id,
+                text='Попробуйте ещё раз! (недостаточно данных по чату)',
+                reply_to_message_id=update.effective_message.message_id
+            )
             return
         todaypidorid = random.choice(allchatusers)[0]
         # Remove repetition
@@ -55,14 +60,19 @@ def _get_new_pidor(update: Update, lastpidor: list) -> None:
                 chat_id=update.effective_chat.id,
                 user_id=todaypidorid
             )
+            if newpidor.status in ['left', 'restricted', 'kicked']:
+                run_query(
+                    'DELETE FROM userdata WHERE chat_id=(?) AND user_id=(?)',
+                    (update.effective_chat.id, todaypidorid)
+                )
+                continue
             newpidorname = newpidor.user.first_name
             break
-        except:
+        except BadRequest:
             run_query(
                 'DELETE FROM userdata WHERE chat_id=(?) AND user_id=(?)',
                 (update.effective_chat.id, todaypidorid)
             )
-            continue
     run_query(
         'UPDATE chattable SET lastpidorday=(?), lastpidorid=(?), lastpidorname=(?) '
         'WHERE chat_id=(?)',

@@ -27,10 +27,10 @@ def duel(update: Update, context: CallbackContext):
 
 def _check_duel_status(update: Update) -> bool:
     """Check if the duels are allowed/more possible."""
-    chatid = f"{update.effective_chat.id}"
+    chat_id = f"{update.effective_chat.id}"
     chatdata = run_query(
         'SELECT duelstatusonoff, duelmaximum, duelcount, accountingday '
-        'FROM chattable WHERE chat_id=(?)', (chatid,)
+        'FROM chattable WHERE chat_id=(?)', (chat_id,)
     )[0]
     now = f"{datetime.now().date()}"
     if chatdata:
@@ -45,7 +45,7 @@ def _check_duel_status(update: Update) -> bool:
                 date.fromisoformat(now) > date.fromisoformat(chatdata[3]):
             run_query(
                 'UPDATE chattable SET accountingday=(?), duelcount=1 '
-                'WHERE chat_id=(?)', (now, chatid)
+                'WHERE chat_id=(?)', (now, chat_id)
             )
             return True
         # If number of duels done is higher than the maximum
@@ -55,20 +55,20 @@ def _check_duel_status(update: Update) -> bool:
                     date.fromisoformat(chatdata[3]):
                 run_query(
                     'UPDATE chattable SET duelcount=1, accountingday=(?)'
-                    'WHERE chat_id=(?)', (now, chatid)
+                    'WHERE chat_id=(?)', (now, chat_id)
                 )
                 return True
             return False
         # Increment if none of the conditions were met
         run_query(
             'UPDATE chattable SET duelcount=duelcount+1 WHERE chat_id=(?)',
-            (chatid,)
+            (chat_id,)
         )
         return True
     # If there is no chat data, create it
     run_query(
         'INSERT OR IGNORE INTO chattable (chat_id, duelcount, accountingday)'
-        'VALUES (?, ?, ?)', (chatid, 1, now)
+        'VALUES (?, ?, ?)', (chat_id, 1, now)
     )
     return True
 
