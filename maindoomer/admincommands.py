@@ -1,4 +1,4 @@
-"""Module dedicated to commands available only to admins."""
+"""Module dedicated to commands available only to admins and the developer."""
 
 from telegram import Update
 from telegram.ext import CallbackContext
@@ -22,7 +22,7 @@ def leave(update: Update, context: CallbackContext):
             chat_id=update.effective_chat.id,
             reply_to_message_id=update.effective_message.message_id,
             text='Я не могу уйти отсюда. Сам уйди.'
-            )
+        )
 
 
 @run_async
@@ -37,7 +37,7 @@ def adminmenu(update: Update, context: CallbackContext):
         chat_id=update.effective_chat.id,
         reply_to_message_id=update.effective_message.message_id,
         text=text
-        )
+    )
 
 
 @run_async
@@ -45,7 +45,6 @@ def adminmenu(update: Update, context: CallbackContext):
 @rights_check
 def duelstatus(update: Update, context: CallbackContext):
     """Make a global maximum duels per chat and be able to turn them on and off."""
-
     @run_async
     def _handle_limits():
         """Handle the global limits to duels of the chat."""
@@ -55,14 +54,14 @@ def duelstatus(update: Update, context: CallbackContext):
             run_query(
                 'UPDATE chattable set duelmaximum=NULL WHERE chat_id=(?)',
                 (update.effective_chat.id,)
-                )
+            )
             reply = 'Был убран лимит дуэлей.'
         # Get current status if no argument was given
         elif arg is None:
             status = run_query(
                 'SELECT duelmaximum from chattable WHERE chat_id=(?)',
                 (update.effective_chat.id,)
-                )
+            )
             # If nothing, means no limit
             if not status:
                 reply = 'Лимита на дуэли нет.'
@@ -70,7 +69,7 @@ def duelstatus(update: Update, context: CallbackContext):
                 duelsused = run_query(
                     'SELECT duelcount from "chattable" WHERE chat_id=(?)',
                     (update.effective_chat.id,)
-                    )
+                )
                 reply = f'Лимит дуэлей составляет {status[0][0]}. ' \
                         f'Уже использовано {duelsused[0][0]}.'
         # Set maximum
@@ -80,7 +79,7 @@ def duelstatus(update: Update, context: CallbackContext):
                 run_query(
                     'UPDATE chattable SET duelmaximum=(?) WHERE chat_id=(?)',
                     (arg, update.effective_chat.id)
-                    )
+                )
                 reply = f'Максимальное количество дуэлей за день стало {arg}.'
             except ValueError:
                 reply = f'\"{arg}\" не подходит. Дайте число. /adminmenu для справки.'
@@ -88,7 +87,7 @@ def duelstatus(update: Update, context: CallbackContext):
             chat_id=update.effective_chat.id,
             text=reply,
             reply_to_message_id=update.effective_message.reply_to_message.message_id
-            )
+        )
 
     @run_async
     def _handle_status():
@@ -105,13 +104,13 @@ def duelstatus(update: Update, context: CallbackContext):
             run_query(
                 'UPDATE chattable SET duelstatusonoff=(?) WHERE chat_id=(?)',
                 (status, update.effective_chat.id)
-                )
+            )
         elif arg is None:
             # Get the current status
             status = run_query(
                 'SELECT duelstatusonoff from chattable WHERE chat_id=(?)',
                 (update.effective_chat.id,)
-                )[0][0]
+            )[0][0]
         else:
             reply = 'Всмысле? Ты обосрался. /adminmenu для справки.'
         if status == 1:
@@ -122,7 +121,7 @@ def duelstatus(update: Update, context: CallbackContext):
             chat_id=update.effective_chat.id,
             text=reply,
             reply_to_message_id=update.effective_message.message_id
-            )
+        )
 
     commands = ['/duellimit', '/duelstatus']
     # Check if used by admin, a valid command, and there an argument to handle
@@ -142,7 +141,7 @@ def duelstatus(update: Update, context: CallbackContext):
             chat_id=update.effective_chat.id,
             text='Всмысле? Ты обосрался. /adminmenu для справки.',
             reply_to_message_id=update.effective_message.reply_to_message.message_id
-            )
+        )
 
 
 @run_async
@@ -157,14 +156,14 @@ def immune(update: Update, context: CallbackContext):
             'INSERT OR IGNORE INTO exceptions (user_id, chat_id, firstname) '
             'VALUES (?, ?, ?)',
             (targetdata.id, update.effective_chat.id, targetdata.first_name)
-            )
+        )
         # If the user has a username
         if targetdata.username:
             run_query(
                 'UPDATE exceptions SET username=(?) '
                 'WHERE chat_id=(?) AND user_id=(?)',
                 (targetdata.username, update.effective_chat.id, targetdata.id)
-                )
+            )
         reply = f'Готово. \"{targetdata.first_name}\" теперь под иммунитетом!'
     else:
         reply = 'Дай цель.'
@@ -172,7 +171,7 @@ def immune(update: Update, context: CallbackContext):
         chat_id=update.effective_chat.id,
         text=reply,
         reply_to_message_id=update.effective_message.message_id
-        )
+    )
 
 
 @run_async
@@ -185,12 +184,12 @@ def unimmune(update: Update, context: CallbackContext):
         run_query(
             'DELETE FROM exceptions WHERE user_id=(?) AND chat_id=(?)',
             (targetdata.id, update.effective_chat.id)
-            )
+        )
         BOT.send_message(
             chat_id=update.effective_chat.id,
             text=f'Сделано. \"{targetdata.first_name}\" больше не под имуном',
             reply_to_message_id=update.effective_message.reply_to_message.message_id
-            )
+        )
     else:
         if len(update.effective_message.text.split()) > 1:
             unimmune_target = ' '.join(
@@ -199,13 +198,13 @@ def unimmune(update: Update, context: CallbackContext):
                 'DELETE FROM exceptions WHERE chat_id=(?) AND '
                 '(username=(?) OR firstname=(?))',
                 (update.effective_chat.id, unimmune_target, unimmune_target)
-                )
+            )
         else:
             BOT.send_message(
                 chat_id=update.effective_chat.id,
                 text='Дай цель.',
                 reply_to_message_id=update.effective_message.message_id
-                )
+            )
 
 
 @run_async
@@ -216,7 +215,7 @@ def immunelist(update: Update, context: CallbackContext):
     chatdata = run_query(
         "SELECT firstname FROM exceptions WHERE chat_id=(?)",
         (update.effective_chat.id,)
-        )
+    )
     if not chatdata:
         reply = 'Список пуст.'
     else:
@@ -230,4 +229,4 @@ def immunelist(update: Update, context: CallbackContext):
         chat_id=update.effective_chat.id,
         text=reply,
         reply_to_message_id=update.effective_message.message_id
-        )
+    )

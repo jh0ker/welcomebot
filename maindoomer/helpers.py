@@ -1,5 +1,5 @@
-"""
-Module dedicated to functions that assist other functions
+"""Module dedicated to functions that assist other functions.
+
 E.g. decorators, checking cooldowns, etc.
 """
 
@@ -31,7 +31,6 @@ def command_antispam_passed(func):
 
     Delay of INDIVIDUAL_USER_DELAY minute(s) for individual user commands, changeable.
     """
-
     def executor(update: Update, *args, **kwargs):
         store_data(update)
         # Check for cooldown
@@ -44,7 +43,6 @@ def command_antispam_passed(func):
 
 def check_if_group_chat(func):
     """Check if the chat is a group chat."""
-
     def executor(update: Update, *args, **kwargs):
         if update.effective_message.chat.type == 'private':
             BOT.send_message(chat_id=update.effective_chat.id,
@@ -60,7 +58,6 @@ def rights_check(func):
 
     Enough rights are defined as creator or administrator or developer.
     """
-
     def executor(update: Update, *args, **kwargs):
         store_data(update)
         rank = BOT.get_chat_member(chat_id=update.effective_message.chat_id,
@@ -76,7 +73,6 @@ def rights_check(func):
 
 def check_if_dev(func):
     """Check if user is the developer."""
-
     def executor(update: Update, *args, **kwargs):
         if update.effective_user.id == DEV:
             func(update, *args, **kwargs)
@@ -158,9 +154,8 @@ def check_cooldown(update: Update, whattocheck, cooldown):
 
     Whattocheck should be the sql column name.
     """
-
     def _give_command_error():
-        """Give command cooldown error, if the user still spams, delete his message"""
+        """Give command cooldown error, if the user still spams, delete his message."""
         nonlocal update
         # Check if the error was given
         if run_query(

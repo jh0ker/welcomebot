@@ -1,7 +1,4 @@
-"""
-Module dedicated to commands that are not the main purpose of the bot but usable
-by users
-"""
+"""Module dedicated to commands that are not the main purpose of the bot but usable by users."""
 from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
@@ -21,7 +18,7 @@ def start(update: Update, context: CallbackContext):
         chat_id=update.effective_chat.id,
         reply_to_message_id=update.effective_message.message_id,
         text=text
-        )
+    )
 
 
 @run_async
@@ -47,7 +44,7 @@ def whatsnew(update: Update, context: CallbackContext):
         reply_to_message_id=update.effective_message.message_id,
         text=latest_changes,
         parse_mode='Markdown'
-        )
+    )
 
 
 @run_async
@@ -69,4 +66,4 @@ def bothelp(update, context):
         reply_to_message_id=update.effective_message.message_id,
         text=help_text,
         parse_mode='HTML'
-        )
+    )

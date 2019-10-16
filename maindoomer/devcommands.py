@@ -21,14 +21,14 @@ def getlogs(update: Update, context: CallbackContext):
             chat_id=update.effective_chat.id,
             document=open('logs.log', 'rb'),
             filename=f'{filename}.log'
-            )
+        )
     except (EOFError, FileNotFoundError) as changelog_err:
         LOGGER.error(changelog_err)
         BOT.send_message(
             chat_id=update.effective_chat.id,
             reply_to_message_id=update.effective_message.message_id,
             text='Не смог добраться до логов. Что-то не так.'
-            )
+        )
     finally:
         # Clean the file after sending/create a new one if failed to get it
         with open('logs.log', 'w') as logfile:
@@ -55,14 +55,14 @@ def getdatabase(update: Update, context: CallbackContext):
         BOT.send_document(
             chat_id=update.effective_chat.id,
             document=open(DATABASENAME, 'rb')
-            )
+        )
     except (EOFError, FileNotFoundError) as database_err:
         LOGGER.error(database_err)
         BOT.send_message(
             chat_id=update.effective_chat.id,
             reply_to_message_id=update.effective_message.message_id,
             text='Не смог добраться до датабазы. Что-то не так.'
-            )
+        )
 
 
 @run_async
@@ -80,4 +80,4 @@ def allcommands(update: Update, context: CallbackContext):
         reply_to_message_id=update.effective_message.message_id,
         text=text,
         parse_mode='HTML'
-        )
+    )

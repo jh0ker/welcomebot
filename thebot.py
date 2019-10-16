@@ -1,6 +1,5 @@
-"""
-Telegram bot with various commands. Listed below.
-"""
+"""Telegram bot based on python-telegram-bot with various commands."""
+
 from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
                           MessageHandler, Updater)
 
@@ -14,7 +13,7 @@ from maindoomer.helpers import callbackhandler, error_callback, ping
 # Bot commands
 USERCOMMANDS = [
     'Команды для рядовых пользователей',
-    ("slap", maincommands.slap,
+    ('slap', maincommands.slap,
      'Кого-то унизить (надо ответить жертве, чтобы бот понял кого бить)'),
     ('duel', maincommands.duel,
      'Устроить дуэль (надо ответить тому, с кем будет дуэль)'),
@@ -58,7 +57,7 @@ UNUSUALCOMMANDS = [
 
 
 def main():
-    """The main function."""
+    """Main function."""
     LOGGER.info('Creating the dispatcher...')
     # Create the updater
     updater = Updater(bot=BOT, use_context=True, workers=16)

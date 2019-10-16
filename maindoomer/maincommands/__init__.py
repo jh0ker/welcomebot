@@ -1,3 +1,5 @@
+"""Module containing the main commands of the bot usable by the user."""
+
 from maindoomer.maincommands.animal import animal
 from maindoomer.maincommands.dadjoke import dadjoke
 from maindoomer.maincommands.duel import duel
