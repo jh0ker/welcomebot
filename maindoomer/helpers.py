@@ -136,8 +136,7 @@ def store_user_data(update: Update):
         # Store the user data
         run_query(
             f"""INSERT OR IGNORE INTO userdata {tuple(usable_variable)} VALUES
-            '({'?, ' * (len(usable_data) - 1) + '?'})""",
-            tuple(usable_data)
+            ({','.join('?'*len(usable_data))})""", tuple(usable_data)
         )
         KNOWNUSERS[update.effective_chat.id] += [user_id]
 
