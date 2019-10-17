@@ -1,6 +1,5 @@
 """/loli command."""
 
-import random
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 
@@ -10,7 +9,7 @@ from telegram.error import BadRequest
 from telegram.ext import CallbackContext, run_async
 
 from constants import INDIVIDUAL_USER_DELAY, LOLI_BASE_URL
-from maindoomer import BOT
+from maindoomer import BOT, randomizer
 from maindoomer.helpers import command_antispam_passed
 from maindoomer.sqlcommands import run_query
 
@@ -32,7 +31,7 @@ def loli(update: Update, context: CallbackContext) -> None:
     post_count = ET.fromstring(requests.get(
         LOLI_BASE_URL + tags).content).get('count')
     # Get the random offset
-    offset = random.randint(0, int(post_count))
+    offset = randomizer.randint(0, int(post_count))
     # Get the random image in json
     url = LOLI_BASE_URL + tags + f'&json=1&pid={offset}'
     response = requests.get(url).json()[0]

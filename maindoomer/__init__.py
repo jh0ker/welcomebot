@@ -1,6 +1,7 @@
 """Module dedicated to bot initiation variables that are usable in other modules."""
 import logging
 from os import environ
+import random
 
 from telegram import Bot
 from telegram.utils.request import Request
@@ -40,3 +41,6 @@ LOGGER.info(
     'Creating memory instances of known users and '
     'chats to make less queries to the database...'
 )
+
+# Create a randomizer
+randomizer = random.SystemRandom()

@@ -1,13 +1,12 @@
 """/pidor command."""
 
-import random
 from datetime import date
 
 from telegram import Update
 from telegram.error import BadRequest
 from telegram.ext import CallbackContext, run_async
 
-from maindoomer import BOT
+from maindoomer import BOT, randomizer
 from maindoomer.helpers import check_if_group_chat, command_antispam_passed
 from maindoomer.sqlcommands import run_query
 
@@ -51,7 +50,7 @@ def _get_new_pidor(update: Update, lastpidor: list) -> str:
                 reply_to_message_id=update.effective_message.message_id
             )
             return
-        todaypidorid = random.choice(allchatusers)[0]
+        todaypidorid = randomizer.choice(allchatusers)[0]
         # Remove repetition
         if lastpidor:
             if len(allchatusers) > 1 and todaypidorid == lastpidor[0][0]:

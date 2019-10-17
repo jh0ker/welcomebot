@@ -1,12 +1,10 @@
 """/slap command."""
 
-import random
-
 from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
 from commandPretexts.slaps import SLAPS
-from maindoomer import BOT
+from maindoomer import BOT, randomizer
 from maindoomer.helpers import check_if_group_chat, command_antispam_passed
 
 
@@ -29,7 +27,7 @@ def slap(update: Update, context: CallbackContext) -> None:
         target_tag = f"[{tdata.first_name}](tg://user?id={tdata.id})"
         # Different depending on the scenario
         scenario = success_and_fail.pop()
-        action = random.choice(SLAPS[scenario])
+        action = randomizer.choice(SLAPS[scenario])
         # Replace premade text with user tags.
         reply = action.replace('init', init_tag).replace('target', target_tag)
     BOT.send_message(

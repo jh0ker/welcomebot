@@ -1,18 +1,17 @@
 """/duel command."""
 
-import random
 from datetime import date, datetime, timedelta
 
 from telegram import Update
 from telegram.ext import CallbackContext, run_async
-from maindoomer import BOT
+from maindoomer import BOT, randomizer
 from commandPretexts.duels import DUELS
 from maindoomer.helpers import check_if_group_chat, command_antispam_passed
 from maindoomer.sqlcommands import run_query
 
 
 @check_if_group_chat
-def duel(update: Update, context: CallbackContext):
+def duel(update: Update, context: CallbackContext) -> None:
     """Duel to solve any kind of argument."""
     # noinspection PyUnresolvedReferences
     if _check_duel_status(update):
@@ -75,7 +74,7 @@ def _check_duel_status(update: Update) -> bool:
 
 @run_async
 @command_antispam_passed
-def _try_to_duel(update: Update):
+def _try_to_duel(update: Update) -> None:
     """Try to duel. Main duel function."""
     if update.effective_message.reply_to_message is None:
         reply = ('С кем дуэль проводить будем?\n'
@@ -107,19 +106,21 @@ def _try_to_duel(update: Update):
             # Get the winner and the loser. Check 1
             winners, losers = [], []
             for player in participant_list:
-                individualwinreq = random.uniform(0, THRESHOLDCAP)
+                individualwinreq = randomizer.uniform(0, THRESHOLDCAP)
                 winners.append(player) if player[2] > individualwinreq \
                     else losers.append(player)
             # Get the winner and the loser. Check 2
             if len(winners) == 2:
-                random.shuffle(winners)
+                randomizer.shuffle(winners)
                 losers.append(winners.pop())
             # Make the scenario tree
             scenario = 'onedead' if winners else 'nonedead'
             if scenario == 'onedead':
-                _score_the_results(winners, losers, (1, 0, 0), (0, 1, 0))
+                _score_the_results(update, winners, losers,
+                                   (1, 0, 0), (0, 1, 0))
             else:
-                _score_the_results(winners, losers, (0, 0, 1), (0, 0, 1))
+                _score_the_results(update, winners, losers,
+                                   (0, 0, 1), (0, 0, 1))
             # Get the result
             duel_result = _use_names(update, scenario, winners, losers)
             return _conclude_the_duel(update, duel_result, participant_list)
@@ -152,19 +153,20 @@ def _get_user_str(update: Update, userid: int) -> float:
     if userfound:
         from constants import DUELDICT as DD
         userdata = userfound[0]
-        strength = random.uniform(DD['LOW_BASE_ACCURACY'], DD['HIGH_BASE_ACCURACY']) \
+        strength = randomizer.uniform(DD['LOW_BASE_ACCURACY'], DD['HIGH_BASE_ACCURACY']) \
             + userdata[0] * DD['KILLMULT'] \
             + userdata[1] * DD['DEATHMULT'] \
             + userdata[2] * DD['MISSMULT']
         return min(strength, DD['STRENGTHCAP'])
     # Return base if table not found or user not found
-    return random.uniform(DD['LOW_BASE_ACCURACY'], DD['HIGH_BASE_ACCURACY'])
+    return randomizer.uniform(DD['LOW_BASE_ACCURACY'], DD['HIGH_BASE_ACCURACY'])
 
 
-def _use_names(update: Update, scenario: str, winners: list = None, losers: list = None) -> str:
+def _use_names(update: Update, scenario: str, winners: list = None,
+               losers: list = None) -> str:
     """Insert names into the strings."""
     init_tag = f"[{update.effective_user.first_name}](tg://user?id={update.effective_user.id})"
-    phrase = random.choice(DUELS[scenario])
+    phrase = randomizer.choice(DUELS[scenario])
     if scenario == 'nonedead':
         return phrase.replace('loser1', losers[0][3]).replace('loser2', losers[1][3])
     if scenario == 'onedead':
@@ -178,11 +180,12 @@ def _use_names(update: Update, scenario: str, winners: list = None, losers: list
     if scenario == 'suicide':
         return phrase.replace('loser', init_tag)
     if scenario == 'bot':
-        return random.choice(DUELS[scenario])
+        return randomizer.choice(DUELS[scenario])
 
 
 @run_async
-def _score_the_results(winners: list, losers: list, p1_kdm: tuple, p2_kdm: tuple):
+def _score_the_results(update: Update, winners: list, losers: list,
+                       p1_kdm: tuple, p2_kdm: tuple) -> None:
     """Score the results in the database."""
     # One dead
     if winners:
@@ -218,7 +221,7 @@ def _score_the_results(winners: list, losers: list, p1_kdm: tuple, p2_kdm: tuple
 
 
 @run_async
-def _conclude_the_duel(update: Update, result: str, participants):
+def _conclude_the_duel(update: Update, result: str, participants) -> None:
     """Send all the messages for the duel."""
     from time import sleep
     # Send the initial message
@@ -227,7 +230,7 @@ def _conclude_the_duel(update: Update, result: str, participants):
         text='Дуэлисты расходятся...'
     )
     # Get the sound of the duel
-    sound = '***BANG BANG***' if random.random() < 0.90 else '***ПИФ-ПАФ***'
+    sound = '***BANG BANG***' if randomizer.random() < 0.90 else '***ПИФ-ПАФ***'
     # Make the message loop
     for phrase in ('Готовятся к выстрелу...', sound, result):
         sleep(0.85)
@@ -244,7 +247,7 @@ def _conclude_the_duel(update: Update, result: str, participants):
 def _try_to_hard_reset(update: Update, participant: list) -> None:
     """Try to hard reset stats."""
     from constants import HARDRESETCHANCE
-    if random.uniform(0, 1) < HARDRESETCHANCE:
+    if randomizer.uniform(0, 1) < HARDRESETCHANCE:
         run_query('DELETE FROM duels WHERE user_id=(?) AND chat_id=(?)',
                   (participant[1], update.effective_chat.id))
         BOT.send_message(
