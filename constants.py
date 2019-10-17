@@ -1,6 +1,4 @@
-"""
-Collection of constants for modules
-"""
+"""Collection of constants for modules."""
 
 # Admin id
 # Add developer ID for passing the spam check and other commands
@@ -12,15 +10,15 @@ PING_CHANNEL = -353404420
 # Maximum STR the bot can roll
 THRESHOLDCAP = 80
 # Low and high accuracy that the user can get without exp
-LOW_BASE_ACCURACY = 35
+LOW_BASE_ACCURACY = 40
 HIGH_BASE_ACCURACY = 50
 # Exp multiplier for kills, deaths and misses
-KILLMULT = 0.33
-DEATHMULT = -0.12
-MISSMULT = -0.05
+KILLMULT = 0.37
+DEATHMULT = -0.13
+MISSMULT = -0.06
 # Always lose percent
 ALWAYSLOSS = 0.05
-HARDRESETCHANCE = 0.001  # 0.1%
+HARDRESETCHANCE = 0.0025  # 0.25%
 
 # DO NOT TOUCH
 # -----------------------------------------------------------
@@ -45,16 +43,14 @@ DUELDICT = {
     'DEATHMULTPERC': DEATHMULTPERC,
     'MISSMULTPERC': MISSMULTPERC,
     'ADDITIONALPERCENTCAP': ADDITIONALPERCENTCAP
-    }
+}
 # -----------------------------------------------------------
 
 # Antispam constants
 # Delays in seconds for the BOT
 INDIVIDUAL_USER_DELAY = 10 * 60  # Ten minutes
-INDIVIDUAL_REPLY_DELAY = 5 * 60  # Five minutes
-ERROR_DELAY = 5 * 60  # One minute
 # Duel cooldowns
-CDREDUCTION = round(0.8 * INDIVIDUAL_USER_DELAY)  # 80%
+CDREDUCTION = round(0.7 * INDIVIDUAL_USER_DELAY)  # 70%
 SHORTCD = round(INDIVIDUAL_USER_DELAY - CDREDUCTION)
 
 # Request timeout time in seconds

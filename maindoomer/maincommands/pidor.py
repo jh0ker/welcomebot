@@ -1,4 +1,4 @@
-"""/pidor command"""
+"""/pidor command."""
 
 import random
 from datetime import date
@@ -24,9 +24,9 @@ def pidor(update: Update, context: CallbackContext) -> None:
         'WHERE chat_id=(?)', (update.effective_chat.id,)
     )
     if not lastpidor:
-        todaypidor = _get_new_pidor(update, lastpidor)
+        todaypidor = _get_new_pidor(update, lastpidor).result()
     elif lastpidor[0][0] is None or date.fromisoformat(lastpidor[0][1]) < date.today():
-        todaypidor = _get_new_pidor(update, lastpidor)
+        todaypidor = _get_new_pidor(update, lastpidor).result()
     else:
         todaypidor = lastpidor[0][2]
     BOT.send_message(
@@ -37,7 +37,8 @@ def pidor(update: Update, context: CallbackContext) -> None:
     )
 
 
-def _get_new_pidor(update: Update, lastpidor: list) -> None:
+@run_async
+def _get_new_pidor(update: Update, lastpidor: list) -> str:
     while True:
         allchatusers = run_query(
             'SELECT user_id FROM userdata WHERE chat_id=(?)',
