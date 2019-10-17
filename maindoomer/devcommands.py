@@ -1,5 +1,7 @@
 """Module dedicated to commands available only to the dev."""
 
+from datetime import datetime, date
+
 from telegram import Update
 from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
@@ -12,10 +14,9 @@ from maindoomer.helpers import check_if_dev
 @check_if_dev
 def getlogs(update: Update, context: CallbackContext):
     """Get the bot logs."""
-    import datetime
     try:
         # Get the filename
-        filename = datetime.date.today().isoformat()
+        filename = date.today().isoformat()
         # Send the file
         BOT.send_document(
             chat_id=update.effective_chat.id,
@@ -33,7 +34,7 @@ def getlogs(update: Update, context: CallbackContext):
         # Clean the file after sending/create a new one if failed to get it
         with open('logs.log', 'w') as logfile:
             logfile.write(
-                f'{datetime.datetime.now().isoformat()} - Start of the log file.\n')
+                f"{datetime.now().isoformat(sep=' ')} - Start of the log file.\n")
 
 
 @run_async

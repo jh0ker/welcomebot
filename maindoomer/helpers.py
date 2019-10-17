@@ -3,7 +3,7 @@
 E.g. decorators, checking cooldowns, etc.
 """
 
-import datetime
+from datetime import datetime, timedelta
 
 from telegram import TelegramError, Update
 from telegram.ext import CallbackContext, run_async
@@ -196,7 +196,7 @@ def check_cooldown(update: Update, whattocheck, cooldown):
             # 1 is global
             if chatexcused[0] in [update.effective_chat.id, 1]:
                 return True
-    message_time = datetime.datetime.now()
+    message_time = datetime.now()
     # Find last instance
     lastinstance = run_query(
         f'SELECT {whattocheck} FROM cooldowns WHERE chat_id=(?) AND user_id=(?)',
@@ -206,8 +206,8 @@ def check_cooldown(update: Update, whattocheck, cooldown):
     if lastinstance:
         lasttime = lastinstance[0][0]
         # Check if the cooldown has passed
-        barriertime = datetime.datetime.fromisoformat(lasttime) + \
-            datetime.timedelta(seconds=cooldown)
+        barriertime = datetime.fromisoformat(lasttime) + \
+            timedelta(seconds=cooldown)
         if message_time > barriertime:
             # If it did, update table, return True
             run_query(
