@@ -15,6 +15,11 @@ def leave(update: Update, context: CallbackContext):
     """Make the bot leave the group, usable only by the admin/dev/creator."""
     from telegram.error import BadRequest
     try:
+        BOT.send_message(
+            chat_id=update.effective_chat.id,
+            reply_to_message_id=update.effective_message.message_id,
+            text="Ну ладно, ухожу \U0001F61E"
+        )
         BOT.leave_chat(chat_id=update.effective_chat.id)
     except BadRequest as leaveerror:
         LOGGER.info(leaveerror)
