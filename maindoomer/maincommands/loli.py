@@ -65,11 +65,10 @@ def loli(update: Update, context: CallbackContext) -> None:
             reply_to_message_id=update.effective_message.message_id
         )
     except telegram.error.BadRequest as err:
-        LOGGER.error(err)
         BOT.send_message(
             chat_id=update.effective_chat.id,
-            text=('Недостаточно прав для отправки медиа файлов, вопросы к админу.\n'
-                  'Нужно право на отправку медиа файлов.'),
+            text=('Либо недостаточно прав для отправки медиа файлов или '
+                  'произошла ошибка. Пожалуйста, попробуйте ещё раз.'),
             reply_to_message_id=update.effective_message.message_id
         )
         # Reset cooldown
