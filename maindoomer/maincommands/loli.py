@@ -9,7 +9,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackContext, run_async
 
 from constants import INDIVIDUAL_USER_DELAY, LOLI_BASE_URL
-from maindoomer import BOT, randomizer
+from maindoomer import BOT, randomizer, LOGGER
 from maindoomer.helpers import command_antispam_passed
 from maindoomer.sqlcommands import run_query
 
@@ -64,7 +64,8 @@ def loli(update: Update, context: CallbackContext) -> None:
             caption=caption,
             reply_to_message_id=update.effective_message.message_id
         )
-    except telegram.error.BadRequest:
+    except telegram.error.BadRequest as err:
+        LOGGER.error(err)
         BOT.send_message(
             chat_id=update.effective_chat.id,
             text=('Недостаточно прав для отправки медиа файлов, вопросы к админу.\n'
