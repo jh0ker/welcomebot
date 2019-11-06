@@ -5,10 +5,12 @@ E.g. decorators, checking cooldowns, etc.
 
 from datetime import datetime, timedelta
 
+import requests
+import telegram.error
 from telegram import TelegramError, Update
 from telegram.ext import CallbackContext, run_async
 
-from constants import DEV
+from constants import DEV, INDIVIDUAL_USER_DELAY
 from maindoomer import BOT, LOGGER
 from maindoomer.sqlcommands import run_query
 
@@ -36,7 +38,12 @@ def command_antispam_passed(func):
         # Check for cooldown
         from constants import INDIVIDUAL_USER_DELAY
         if check_cooldown(update, 'lastcommandreply', INDIVIDUAL_USER_DELAY):
-            func(update, *args, **kwargs)
+            try:
+                func(update, *args, **kwargs)
+            except (telegram.error.BadRequest,
+                    requests.exceptions.ConnectTimeout,
+                    requests.exceptions.ReadTimeout):
+                reset_command_cooldown(update)
 
     return executor
 
@@ -167,8 +174,9 @@ def check_cooldown(update: Update, whattocheck, cooldown):
             BOT.send_message(
                 chat_id=update.effective_chat.id,
                 reply_to_message_id=update.effective_message.message_id,
-                text=f'До команды осталось {time_remaining} (ММ:СС). '
-                     f'Пока можешь идти нахуй, я буду пытаться удалять твои команды.'
+                text=(f'До команды осталось {time_remaining} (ММ:СС). '
+                      f'Пока не прошёл откат, я буду удалять твои команды, '
+                      'если у меня есть на это права.')
             )
             run_query(
                 'UPDATE cooldowns SET errorgiven=1 WHERE chat_id=(?) AND user_id=(?)',
@@ -284,4 +292,15 @@ def ping(context: CallbackContext):
         chat_id=PING_CHANNEL,
         text='ping...',
         disable_notification=True
+    )
+
+
+@run_async
+def reset_command_cooldown(update: Update):
+    """Reset the user command cooldown."""
+    run_query(
+        'UPDATE cooldowns SET lastcommandreply=(?) WHERE '
+        'chat_id=(?) AND user_id=(?)',
+        (datetime.now() - timedelta(seconds=INDIVIDUAL_USER_DELAY),
+         update.effective_chat.id, update.effective_user.id)
     )

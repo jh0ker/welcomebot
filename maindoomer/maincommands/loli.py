@@ -4,8 +4,8 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 
 import requests
+import telegram.error
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.error import BadRequest
 from telegram.ext import CallbackContext, run_async
 
 from constants import INDIVIDUAL_USER_DELAY, LOLI_BASE_URL
@@ -17,8 +17,8 @@ from maindoomer.sqlcommands import run_query
 @run_async
 @command_antispam_passed
 def loli(update: Update, context: CallbackContext) -> None:
-    """Send photo of loli."""
-    # Get the photo type Safe/Explicit
+    """Send photo of NSFW/SFW loli."""
+    # Get the photo type (Safe/Explicit)
     lolitype = run_query(
         'SELECT loliNSFW from "chattable" WHERE chat_id=(?)',
         (update.effective_chat.id,)
@@ -34,7 +34,16 @@ def loli(update: Update, context: CallbackContext) -> None:
     offset = randomizer.randint(0, int(post_count))
     # Get the random image in json
     url = LOLI_BASE_URL + tags + f'&json=1&pid={offset}'
-    response = requests.get(url).json()[0]
+    try:
+        response = requests.get(url).json()[0]
+    except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout):
+        BOT.send_message(
+            chat_id=update.effective_chat.id,
+            reply_to_message_id=update.effective_message.message_id,
+            text='Думер умер на пути к серверу. Попробуйте ещё раз.'
+        )
+        # Reset cooldown
+        raise
     # Get the image link
     image_link = response['file_url']
     source = response.get('source')
@@ -55,16 +64,12 @@ def loli(update: Update, context: CallbackContext) -> None:
             caption=caption,
             reply_to_message_id=update.effective_message.message_id
         )
-    except BadRequest:
+    except telegram.error.BadRequest:
         BOT.send_message(
             chat_id=update.effective_chat.id,
-            reply_to_message_id=update.effective_message.message_id,
-            text='Думер умер на пути к серверу. Попробуйте ещё раз.'
+            text=('Недостаточно прав для отправки медиа файлов, вопросы к админу.\n'
+                  'Нужно право на отправку медиа файлов.'),
+            reply_to_message_id=update.effective_message.message_id
         )
-        # Reset cooldown if sending failed
-        run_query(
-            'UPDATE cooldowns SET lastcommandreply=(?) WHERE '
-            'chat_id=(?) AND user_id=(?)',
-            (datetime.now() - timedelta(minutes=INDIVIDUAL_USER_DELAY),
-             update.effective_chat.id, update.effective_user.id)
-        )
+        # Reset cooldown
+        raise
