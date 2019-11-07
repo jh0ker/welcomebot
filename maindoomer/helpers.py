@@ -245,7 +245,7 @@ def informthepleb(update: Update):
     BOT.send_message(
         chat_id=update.effective_chat.id,
         reply_to_message_id=update.effective_message.message_id,
-        text='Пошёл нахуй, ты не админ.'
+        text='Не катит, ты не админ.'
     )
 
 
