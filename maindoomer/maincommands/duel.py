@@ -150,8 +150,8 @@ def _get_user_str(update: Update, userid: int) -> float:
         'user_id=(?) AND chat_id=(?)',
         (userid, update.effective_chat.id)
     )
+    from constants import DUELDICT as DD
     if userfound:
-        from constants import DUELDICT as DD
         userdata = userfound[0]
         strength = randomizer.uniform(DD['LOW_BASE_ACCURACY'], DD['HIGH_BASE_ACCURACY']) \
             + userdata[0] * DD['KILLMULT'] \
