@@ -59,6 +59,7 @@ SLAPS = {
         'init стрельнул у target сижку',
         'init ласково разбудил target, когда он обосрался',
         'init прокрался к target и укоротил ему хуй',
+        'init сделал target кусь',
     ],
     'failure': [
         'init хрюкнул',
