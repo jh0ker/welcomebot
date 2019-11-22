@@ -43,7 +43,7 @@ def animal(update: Update, context: CallbackContext) -> None:
         chat_id=update.effective_chat.id,
         action='upload_photo'
     )
-    file_link = list(response.values())[0]
+    file_link = [item for item in response.values() if 'http' in str(item)][0]
     file_extension = file_link.split('.')[-1]
     # Try to send it to the chat
     try:
