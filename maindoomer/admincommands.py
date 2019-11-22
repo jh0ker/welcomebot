@@ -11,6 +11,7 @@ from maindoomer.sqlcommands import run_query
 
 @run_async
 @rights_check
+@check_if_group_chat
 def leave(update: Update, context: CallbackContext):
     """Make the bot leave the group, usable only by the admin/dev/creator."""
     from telegram.error import BadRequest
