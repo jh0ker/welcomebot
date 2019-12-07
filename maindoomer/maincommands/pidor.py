@@ -24,7 +24,12 @@ def pidor(update: Update, context: CallbackContext) -> None:
     )
     if not lastpidor:
         todaypidor = _get_new_pidor(update, lastpidor).result()
-    elif lastpidor[0][0] is None or date.fromisoformat(lastpidor[0][1]) < date.today():
+    elif lastpidor[0][0] is None or \
+        date.fromisoformat(lastpidor[0][1]) < date.today() or \
+            BOT.get_chat_member(
+                chat_id=update.effective_chat.id,
+                user_id=lastpidor[0][0]
+            ).status in ['left', 'restricted', 'kicked']:
         todaypidor = _get_new_pidor(update, lastpidor).result()
     else:
         todaypidor = lastpidor[0][2]
