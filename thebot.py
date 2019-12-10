@@ -52,7 +52,8 @@ UNUSUALCOMMANDS = [
     ('getlogs', devcommands.getlogs,
      'Получить логи бота (только для разработчика)'),
     ('getdatabase', devcommands.getdatabase, 'Получить датабазу'),
-    ('sql', devcommands.sql, 'Использовать sqlite команду на дб')
+    ('sql', devcommands.sql, 'Использовать sqlite команду на дб'),
+    ('podrochil', occasionalcommands.podrochil, 'Кумер ответ на дроч')
 ]
 
 

@@ -67,3 +67,13 @@ def bothelp(update, context):
         text=help_text,
         parse_mode='HTML'
     )
+
+
+@run_async
+@command_antispam_passed
+def podrochil(update, context):
+    """Joke reply to /podrochil."""
+    BOT.send_message(
+        chat_id=update.effective_chat.id,
+        reply_to_message_id=update.effective_message.message_id,
+        text='https://www.youtube.com/watch?v=0wdRQW8WmVI')
