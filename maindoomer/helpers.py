@@ -38,13 +38,21 @@ def command_antispam_passed(func):
         # Check for cooldown
         from constants import INDIVIDUAL_USER_DELAY
         if check_cooldown(update, 'lastcommandreply', INDIVIDUAL_USER_DELAY):
+            # Try to execute the command
             try:
                 func(update, *args, **kwargs)
             except (telegram.error.BadRequest,
                     requests.exceptions.ConnectTimeout,
                     requests.exceptions.ReadTimeout):
                 reset_command_cooldown(update)
-
+            # Try to delete the user message
+            try:
+                BOT.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=update.effective_message.message_id
+                )
+            except:
+                pass
     return executor
 
 
