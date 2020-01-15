@@ -12,3 +12,4 @@ from maindoomer.maincommands.pidor import pidor
 from maindoomer.maincommands.pidorme import pidorme
 from maindoomer.maincommands.pidorstats import pidorstats
 from maindoomer.maincommands.slap import slap
+from maindoomer.maincommands.roll import roll
