@@ -7,7 +7,7 @@ from maindoomer.maincommands.duelranking import duelranking
 from maindoomer.maincommands.flip import flip
 from maindoomer.maincommands.loli import loli
 from maindoomer.maincommands.lolimode import lolimode
-from maindoomer.maincommands.myscore import myscore
+from maindoomer.maincommands.duelscore import duelscore
 from maindoomer.maincommands.pidor import pidor
 from maindoomer.maincommands.pidorme import pidorme
 from maindoomer.maincommands.pidorstats import pidorstats

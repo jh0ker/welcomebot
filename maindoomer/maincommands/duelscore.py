@@ -1,4 +1,4 @@
-"""/myscore command."""
+"""/duelscore command."""
 
 from telegram import Update
 from telegram.ext import CallbackContext, run_async
@@ -11,7 +11,7 @@ from maindoomer.sqlcommands import run_query
 
 @run_async
 @check_if_group_chat
-def myscore(update: Update, context: CallbackContext) -> None:
+def duelscore(update: Update, context: CallbackContext) -> None:
     """Give the user his K/D for duels."""
     # Get userdata
     u_data = run_query(

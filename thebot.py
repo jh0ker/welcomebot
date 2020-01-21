@@ -17,7 +17,7 @@ USERCOMMANDS = [
      'Кого-то унизить (надо ответить жертве, чтобы бот понял кого бить)'),
     ('duel', maincommands.duel,
      'Устроить дуэль (надо ответить тому, с кем будет дуэль)'),
-    ('myscore', maincommands.myscore, 'Мой счёт в дуэлях'),
+    ('duelscore', maincommands.duelscore, 'Мой счёт в дуэлях'),
     ('duelranking', maincommands.duelranking,
      'Ранкинг дуэлей чата (показывает только тех, у кого есть убийства и смерти)'),
     ('pidor', maincommands.pidor,
