@@ -76,7 +76,7 @@ def duelstatus(update: Update, context: CallbackContext):
                     'SELECT duelcount from "chattable" WHERE chat_id=(?)',
                     (update.effective_chat.id,)
                 )
-                reply = f'Лимит дуэлей составляет {status[0][0]}. ' \
+                reply = f'Лимит дуэлей на сегодня составляет {status[0][0]}. ' \
                         f'Уже использовано {duelsused[0][0]}.'
         # Set maximum
         else:
