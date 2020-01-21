@@ -50,11 +50,11 @@ def _handle_ranking(update: Update) -> None:
                 Q[1][3] * DD['MISSMULTPERC']
             wr_increase = min(round(wr_increase, 2), 45)
             ranking += (f'№{Q[0]+1} {Q[1][0]}\t -\t '
-                        f'{Q[1][1]}/{Q[1][2]}/{Q[1][3]}/{wr_increase}\n')
+                        f'{Q[1][1]}/{Q[1][2]}/{Q[1][3]}/{wr_increase}%\n')
     BOT.send_message(
         chat_id=update.effective_chat.id,
         reply_to_message_id=update.effective_message.message_id,
         text=header + ranking +
-        'Показывается топ 10 по очкам. 3/2/1 очко за убийство/смерть/промах.',
+        'Показывается топ 10 по очкам.\n3/2/1 очко за убийство/смерть/промах.',
         parse_mode='Markdown'
     )
