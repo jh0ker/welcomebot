@@ -46,7 +46,7 @@ def _handle_score(update: Update, userdata: tuple) -> None:
     reply = (f'Твой K/D/M равен {userkda[0]}/{userkda[1]}/{userkda[2]} ({round(wr, 2)}%)\n'
              f"Шанс победы из-за опыта изменен на {wrincrease}%. (максимум {DD['ADDITIONALPERCENTCAP']}%)\n"
              f"P.S. {DD['KILLMULTPERC']}% за убийство, {DD['DEATHMULTPERC']}% за смерть, {DD['MISSMULTPERC']}% за "
-             f"мисс.")
+             f"промах.")
     BOT.send_message(
         chat_id=update.effective_chat.id,
         reply_to_message_id=update.effective_message.message_id,
