@@ -26,7 +26,7 @@ def start(update: Update, context: CallbackContext):
 def whatsnew(update: Update, context: CallbackContext):
     """Reply with all new goodies."""
     # Choose for how many days to get the changelog
-    lastdayschanges = 2
+    lastdayschanges = 3
     # Import the changelog
     try:
         with open('changelog.md', 'r', encoding='utf-8') as changelog:
