@@ -49,7 +49,7 @@ def whatsnew(update: Update, context: CallbackContext):
 
 @run_async
 @command_antispam_passed
-def bothelp(update, context):
+def bothelp(update: Update, context: CallbackContext):
     """Help message."""
     from thebot import USERCOMMANDS
     from constants import INDIVIDUAL_USER_DELAY
@@ -67,13 +67,3 @@ def bothelp(update, context):
         text=help_text,
         parse_mode='HTML'
     )
-
-
-@run_async
-@command_antispam_passed
-def podrochil(update, context):
-    """Joke reply to /podrochil."""
-    context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        reply_to_message_id=update.effective_message.message_id,
-        text='https://www.youtube.com/watch?v=0wdRQW8WmVI')
