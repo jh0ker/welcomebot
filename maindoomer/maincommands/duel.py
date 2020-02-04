@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 
 from telegram import Update
 from telegram.ext import CallbackContext, run_async
-from maindoomer import BOT, randomizer
+from maindoomer import randomizer
 from commandPretexts.duels import DUELS
 from maindoomer.helpers import check_if_group_chat, command_antispam_passed
 from maindoomer.sqlcommands import run_query
@@ -15,9 +15,9 @@ def duel(update: Update, context: CallbackContext) -> None:
     """Duel to solve any kind of argument."""
     # noinspection PyUnresolvedReferences
     if _check_duel_status(update):
-        _try_to_duel(update)
+        _try_to_duel(update, context)
     else:
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             reply_to_message_id=update.effective_message.message_id,
             text='На сегодня дуэли всё/дуэли отключены.'
@@ -74,12 +74,12 @@ def _check_duel_status(update: Update) -> bool:
 
 @run_async
 @command_antispam_passed
-def _try_to_duel(update: Update) -> None:
+def _try_to_duel(update: Update, context: CallbackContext) -> None:
     """Try to duel. Main duel function."""
     if update.effective_message.reply_to_message is None:
         reply = ('С кем дуэль проводить будем?\n'
                  'Чтобы подуэлиться, надо чтобы вы ответили вашему оппоненту.')
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             reply_to_message_id=update.effective_message.message_id,
             text=reply
@@ -95,7 +95,7 @@ def _try_to_duel(update: Update) -> None:
     # Tree for when the target is not self
     if initiator_id != target_id:
         # Tree for when the bot is not the target
-        if target_id != BOT.id:
+        if target_id != context.bot.id:
                 # Get the player list
             participant_list = [
                 (initiator_name, initiator_id,
@@ -123,7 +123,7 @@ def _try_to_duel(update: Update) -> None:
                                    (0, 0, 1), (0, 0, 1))
             # Get the result
             duel_result = _use_names(update, scenario, winners, losers)
-            return _conclude_the_duel(update, duel_result, participant_list)
+            return _conclude_the_duel(update, context, duel_result, participant_list)
         else:
             # If the bot is the target, send an angry message
             scenario = 'bot'
@@ -134,7 +134,7 @@ def _try_to_duel(update: Update) -> None:
         duel_result = f"{_use_names(update, scenario)}!\n" \
                       f"За суицид экспа/статы не даются!"
     # Send the reply for all cases
-    BOT.send_message(
+    context.bot.send_message(
         chat_id=update.effective_chat.id,
         reply_to_message_id=update.effective_message.message_id,
         text=duel_result,
@@ -221,11 +221,11 @@ def _score_the_results(update: Update, winners: list, losers: list,
 
 
 @run_async
-def _conclude_the_duel(update: Update, result: str, participants) -> None:
+def _conclude_the_duel(update: Update, context: CallbackContext, result: str, participants) -> None:
     """Send all the messages for the duel."""
     from time import sleep
     # Send the initial message
-    botmsg = BOT.send_message(
+    botmsg = context.bot.send_message(
         chat_id=update.effective_chat.id,
         text='Дуэлисты расходятся...'
     )
@@ -234,23 +234,23 @@ def _conclude_the_duel(update: Update, result: str, participants) -> None:
     # Make the message loop
     for phrase in ('Готовятся к выстрелу...', sound, result):
         sleep(0.85)
-        botmsg = BOT.edit_message_text(
+        botmsg = context.bot.edit_message_text(
             chat_id=update.effective_chat.id,
             text=phrase,
             message_id=botmsg.message_id,
             parse_mode='Markdown'
         )
     for player in participants:
-        _try_to_hard_reset(update, player)
+        _try_to_hard_reset(update, context, player)
 
 
-def _try_to_hard_reset(update: Update, participant: list) -> None:
+def _try_to_hard_reset(update: Update, context: CallbackContext, participant: list) -> None:
     """Try to hard reset stats."""
     from constants import HARDRESETCHANCE
     if randomizer.uniform(0, 1) < HARDRESETCHANCE:
         run_query('DELETE FROM duels WHERE user_id=(?) AND chat_id=(?)',
                   (participant[1], update.effective_chat.id))
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=f'Упс, я случайно ресетнул все статы {participant[3]}.\n'
             f'Кому-то сегодня не везёт.',

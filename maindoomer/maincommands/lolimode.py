@@ -3,7 +3,6 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackContext, run_async
 
-from maindoomer import BOT
 from maindoomer.helpers import command_antispam_passed
 from maindoomer.sqlcommands import run_query
 
@@ -30,7 +29,7 @@ def lolimode(update: Update, context: CallbackContext) -> None:
     ]
     loli_settings = InlineKeyboardMarkup(keyboard)
     # Send options
-    BOT.send_message(
+    context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=currentstate + info,
         reply_markup=loli_settings,

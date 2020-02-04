@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
 
-from maindoomer import BOT, LOGGER
+from maindoomer import LOGGER
 from maindoomer.helpers import check_if_group_chat, rights_check
 from maindoomer.sqlcommands import run_query
 
@@ -16,15 +16,15 @@ def leave(update: Update, context: CallbackContext):
     """Make the bot leave the group, usable only by the admin/dev/creator."""
     from telegram.error import BadRequest
     try:
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             reply_to_message_id=update.effective_message.message_id,
             text="Ну ладно, ухожу \U0001F61E"
         )
-        BOT.leave_chat(chat_id=update.effective_chat.id)
+        context.bot.leave_chat(chat_id=update.effective_chat.id)
     except BadRequest as leaveerror:
         LOGGER.info(leaveerror)
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             reply_to_message_id=update.effective_message.message_id,
             text='Я не могу уйти отсюда. Сам уйди.'
@@ -39,7 +39,7 @@ def adminmenu(update: Update, context: CallbackContext):
     text = ONLYADMINCOMMANDS[0] + '\n'
     for command in ONLYADMINCOMMANDS[1:]:
         text += f'/{command[0]} - {command[2]};\n'
-    BOT.send_message(
+    context.bot.send_message(
         chat_id=update.effective_chat.id,
         reply_to_message_id=update.effective_message.message_id,
         text=text
@@ -89,7 +89,7 @@ def duelstatus(update: Update, context: CallbackContext):
                 reply = f'Максимальное количество дуэлей за день стало {arg}.'
             except ValueError:
                 reply = f'\"{arg}\" не подходит. Дайте число. /adminmenu для справки.'
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=reply,
             reply_to_message_id=update.effective_message.message_id
@@ -123,7 +123,7 @@ def duelstatus(update: Update, context: CallbackContext):
             reply = 'Дуэли включены для этого чата.'
         elif status == 0:
             reply = 'Дуэли выключены для этого чата.'
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=reply,
             reply_to_message_id=update.effective_message.message_id
@@ -143,7 +143,7 @@ def duelstatus(update: Update, context: CallbackContext):
         if commands[1] in update.effective_message.text.lower():
             _handle_status()
     else:
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             text='Всмысле? Ты обосрался. /adminmenu для справки.',
             reply_to_message_id=update.effective_message.reply_to_message.message_id
@@ -173,7 +173,7 @@ def immune(update: Update, context: CallbackContext):
         reply = f'Готово. \"{targetdata.first_name}\" теперь под иммунитетом!'
     else:
         reply = 'Дай цель.'
-    BOT.send_message(
+    context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=reply,
         reply_to_message_id=update.effective_message.message_id
@@ -191,7 +191,7 @@ def unimmune(update: Update, context: CallbackContext):
             'DELETE FROM exceptions WHERE user_id=(?) AND chat_id=(?)',
             (targetdata.id, update.effective_chat.id)
         )
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=f'Сделано. \"{targetdata.first_name}\" больше не под имуном',
             reply_to_message_id=update.effective_message.reply_to_message.message_id
@@ -206,7 +206,7 @@ def unimmune(update: Update, context: CallbackContext):
                 (update.effective_chat.id, unimmune_target, unimmune_target)
             )
         else:
-            BOT.send_message(
+            context.bot.send_message(
                 chat_id=update.effective_chat.id,
                 text='Дай цель.',
                 reply_to_message_id=update.effective_message.message_id
@@ -231,7 +231,7 @@ def immunelist(update: Update, context: CallbackContext):
         for entry in chatdata:
             reply += f'{listnumber}. {entry[0]}\n'
             listnumber += 1
-    BOT.send_message(
+    context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=reply,
         reply_to_message_id=update.effective_message.message_id

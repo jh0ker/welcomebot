@@ -11,7 +11,7 @@ from telegram import TelegramError, Update
 from telegram.ext import CallbackContext, run_async
 
 from constants import DEV, INDIVIDUAL_USER_DELAY
-from maindoomer import BOT, LOGGER
+from maindoomer import LOGGER
 from maindoomer.sqlcommands import run_query
 
 
@@ -33,13 +33,13 @@ def command_antispam_passed(func):
 
     Delay of INDIVIDUAL_USER_DELAY minute(s) for individual user commands, changeable.
     """
-    def executor(update: Update, *args, **kwargs):
-        store_data(update)
+    def executor(update: Update, context: CallbackContext, *args, **kwargs):
+        store_data(update, context)
         # Check for cooldown
         from constants import INDIVIDUAL_USER_DELAY
-        if check_cooldown(update, 'lastcommandreply', INDIVIDUAL_USER_DELAY):
+        if check_cooldown(update, context, 'lastcommandreply', INDIVIDUAL_USER_DELAY):
             try:
-                func(update, *args, **kwargs)
+                func(update, context, *args, **kwargs)
             except (telegram.error.BadRequest,
                     requests.exceptions.ConnectTimeout,
                     requests.exceptions.ReadTimeout):
@@ -50,12 +50,12 @@ def command_antispam_passed(func):
 
 def check_if_group_chat(func):
     """Check if the chat is a group chat."""
-    def executor(update: Update, *args, **kwargs):
+    def executor(update: Update, context: CallbackContext, *args, **kwargs):
         if update.effective_message.chat.type == 'private':
-            BOT.send_message(chat_id=update.effective_chat.id,
-                             text='Это только для групп.')
+            context.bot.send_message(chat_id=update.effective_chat.id,
+                                     text='Это только для групп.')
         else:
-            func(update, *args, **kwargs)
+            func(update, context, *args, **kwargs)
 
     return executor
 
@@ -65,30 +65,30 @@ def rights_check(func):
 
     Enough rights are defined as creator or administrator or developer.
     """
-    def executor(update: Update, *args, **kwargs):
-        store_data(update)
-        rank = BOT.get_chat_member(chat_id=update.effective_message.chat_id,
-                                   user_id=update.effective_user.id).status
+    def executor(update: Update, context: CallbackContext, *args, **kwargs):
+        store_data(update, context)
+        rank = context.bot.get_chat_member(chat_id=update.effective_message.chat_id,
+                                           user_id=update.effective_user.id).status
         permitted = ['creator', 'administrator']
         if rank in permitted or update.effective_user.id == DEV:
-            func(update, *args, **kwargs)
+            func(update, context, *args, **kwargs)
         else:
-            informthepleb(update)
+            informthepleb(update, context)
 
     return executor
 
 
 def check_if_dev(func):
     """Check if user is the developer."""
-    def executor(update: Update, *args, **kwargs):
+    def executor(update: Update, context: CallbackContext, *args, **kwargs):
         if update.effective_user.id == DEV:
-            func(update, *args, **kwargs)
+            func(update, context, *args, **kwargs)
 
     return executor
 
 
 @run_async
-def store_chat_data(update: Update):
+def store_chat_data(update: Update, context: CallbackContext,):
     """Store chat data."""
     global KNOWNCHATS
     if update.effective_chat.id not in KNOWNCHATS:
@@ -96,13 +96,13 @@ def store_chat_data(update: Update):
         run_query(
             'INSERT OR IGNORE INTO chattable (chat_id, chat_name) VALUES (?, ?)',
             (update.effective_chat.id,
-             BOT.get_chat(chat_id=update.effective_chat.id).title)
+             context.bot.get_chat(chat_id=update.effective_chat.id).title)
         )
         KNOWNCHATS += [update.effective_chat.id]
 
 
 @run_async
-def store_user_data(update: Update):
+def store_user_data(update: Update, context: CallbackContext):
     """Add user data to the userdata table of the database."""
     global KNOWNUSERS
     # Create chat entry
@@ -117,7 +117,7 @@ def store_user_data(update: Update):
         username = update.effective_user.username if update.effective_user.username else ''
         # Try to get the chat name
         try:
-            chatname = BOT.get_chat(
+            chatname = context.bot.get_chat(
                 chat_id=update.effective_message.chat_id).title
         except:
             chatname = ''
@@ -149,13 +149,13 @@ def store_user_data(update: Update):
 
 
 @run_async
-def store_data(update: Update):
+def store_data(update: Update, context: CallbackContext):
     """Store chat and user data."""
-    store_user_data(update)
-    store_chat_data(update)
+    store_user_data(update, context)
+    store_chat_data(update, context)
 
 
-def check_cooldown(update: Update, whattocheck, cooldown):
+def check_cooldown(update: Update, context: CallbackContext, whattocheck, cooldown):
     """Check cooldown of command, error.
 
     Whattocheck should be the sql column name.
@@ -171,7 +171,7 @@ def check_cooldown(update: Update, whattocheck, cooldown):
             # If it wasn't, give the time remaining and update the flag.
             time_remaining = str(
                 (barriertime - message_time)).split('.')[0][3:]
-            BOT.send_message(
+            context.bot.send_message(
                 chat_id=update.effective_chat.id,
                 reply_to_message_id=update.effective_message.message_id,
                 text=(f'До команды осталось {time_remaining} (ММ:СС). '
@@ -185,7 +185,7 @@ def check_cooldown(update: Update, whattocheck, cooldown):
         # If it was, try to delete the message
         else:
             try:
-                BOT.delete_message(
+                context.bot.delete_message(
                     chat_id=update.effective_chat.id,
                     message_id=update.effective_message.message_id
                 )
@@ -240,9 +240,9 @@ def check_cooldown(update: Update, whattocheck, cooldown):
 
 
 @run_async
-def informthepleb(update: Update):
+def informthepleb(update: Update, context: CallbackContext):
     """If was not called by admin/creator/dev, inform the user that he is a pleb."""
-    BOT.send_message(
+    context.bot.send_message(
         chat_id=update.effective_chat.id,
         reply_to_message_id=update.effective_message.message_id,
         text='Не катит, ты не админ.'
@@ -252,8 +252,8 @@ def informthepleb(update: Update):
 @run_async
 def callbackhandler(update: Update, context: CallbackContext):
     """Handle callbacks for admins."""
-    rank = BOT.get_chat_member(chat_id=update.effective_chat.id,
-                               user_id=update.effective_user.id).status
+    rank = context.bot.get_chat_member(chat_id=update.effective_chat.id,
+                                       user_id=update.effective_user.id).status
     permitted = ['creator', 'administrator']
     if rank not in permitted and update.effective_chat.type != 'private':
         return
@@ -265,11 +265,11 @@ def callbackhandler(update: Update, context: CallbackContext):
         )
         currentstate = 'Теперь контент '
         currentstate += '***SFW***.' if lolitype == 0 else '***NSFW***.'
-        BOT.delete_message(
+        context.bot.delete_message(
             chat_id=update.effective_chat.id,
             message_id=update.effective_message.message_id
         )
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=currentstate,
             reply_to_message_id=update.effective_message.reply_to_message.message_id,
@@ -288,7 +288,7 @@ def error_callback(update: Update, context: CallbackContext):
 def ping(context: CallbackContext):
     """Ping a chat to show that the bot is working and is online."""
     from constants import PING_CHANNEL
-    BOT.send_message(
+    context.bot.send_message(
         chat_id=PING_CHANNEL,
         text='ping...',
         disable_notification=True

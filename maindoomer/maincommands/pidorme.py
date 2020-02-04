@@ -3,7 +3,6 @@
 from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
-from maindoomer import BOT
 from maindoomer.helpers import check_if_group_chat, command_antispam_passed
 from maindoomer.sqlcommands import run_query
 
@@ -21,7 +20,7 @@ def pidorme(update: Update, context: CallbackContext) -> None:
         reply = f'Вы были пидором дня *{timespidor[0][0]} раз(а)*!'
     else:
         reply = 'Вы ещё не разу не были пидором дня!'
-    BOT.send_message(
+    context.bot.send_message(
         chat_id=update.effective_chat.id,
         reply_to_message_id=update.effective_message.message_id,
         text=reply,

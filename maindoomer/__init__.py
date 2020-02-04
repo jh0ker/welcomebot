@@ -3,9 +3,7 @@ import logging
 from os import environ
 import random
 
-from telegram import Bot
-from telegram.utils.request import Request
-
+from telegram.ext import Updater
 from maindoomer.sqlcommands import create_tables
 
 
@@ -26,21 +24,15 @@ logging.basicConfig(
 )
 LOGGER = logging.getLogger(__name__)
 
-# Bot initialization
 LOGGER.info('-----------------------------------------------')
-LOGGER.info('Initializing the bot...')
-BOT = Bot(
-    token=environ.get("TG_BOT_TOKEN"),
-    request=Request(con_pool_size=20)
-)
+LOGGER.info('Initializing the bot and creating database tables if needed...')
+
+# Bot initialization
+updater = Updater(token=environ.get("TG_BOT_TOKEN"), use_context=True)
+dispatcher = updater.dispatcher
 
 # Create tables in the database if they don't exist
-LOGGER.info('Creating database tables if needed...')
 create_tables()
-LOGGER.info(
-    'Creating memory instances of known users and '
-    'chats to make less queries to the database...'
-)
 
 # Create a randomizer
 randomizer = random.SystemRandom()

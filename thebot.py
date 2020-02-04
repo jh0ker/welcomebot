@@ -1,12 +1,12 @@
 """Telegram bot based on python-telegram-bot with various commands."""
 
 from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
-                          MessageHandler, Updater)
+                          MessageHandler)
 
 import maindoomer.maincommands as maincommands
 from maindoomer import (admincommands, devcommands,
                         occasionalcommands, textfiltering)
-from maindoomer.__init__ import BOT, LOGGER
+from maindoomer import LOGGER, updater, dispatcher
 from maindoomer.helpers import callbackhandler, error_callback, ping
 
 
@@ -61,11 +61,6 @@ UNUSUALCOMMANDS = [
 
 def main():
     """Main function."""
-    LOGGER.info('Creating the dispatcher...')
-    # Create the updater
-    updater = Updater(bot=BOT, use_context=True, workers=16)
-    # Create dispatcher
-    dispatcher = updater.dispatcher
     LOGGER.info('Adding handlers...')
     # Add command handles
     for commandlists in (USERCOMMANDS, ONLYADMINCOMMANDS, UNUSUALCOMMANDS):

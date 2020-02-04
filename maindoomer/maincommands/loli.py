@@ -9,7 +9,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackContext, run_async
 
 from constants import INDIVIDUAL_USER_DELAY, LOLI_BASE_URL
-from maindoomer import BOT, randomizer, LOGGER
+from maindoomer import randomizer, LOGGER
 from maindoomer.helpers import command_antispam_passed
 from maindoomer.sqlcommands import run_query
 
@@ -24,7 +24,7 @@ def loli(update: Update, context: CallbackContext) -> None:
         (update.effective_chat.id,)
     )[0][0]
     tags = 'child+highres+1girl+Rating%3ASafe' if lolitype == 0 else 'loli+highres+sex'
-    BOT.send_chat_action(
+    context.bot.send_chat_action(
         chat_id=update.effective_chat.id,
         action='upload_photo'
     )
@@ -37,7 +37,7 @@ def loli(update: Update, context: CallbackContext) -> None:
     try:
         response = requests.get(url).json()[0]
     except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout):
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             reply_to_message_id=update.effective_message.message_id,
             text='Думер умер на пути к серверу. Попробуйте ещё раз.'
@@ -57,7 +57,7 @@ def loli(update: Update, context: CallbackContext) -> None:
         source_button = None
     # Send the result
     try:
-        BOT.send_photo(
+        context.bot.send_photo(
             chat_id=update.effective_chat.id,
             photo=image_link,
             reply_markup=source_button,
@@ -65,7 +65,7 @@ def loli(update: Update, context: CallbackContext) -> None:
             reply_to_message_id=update.effective_message.message_id
         )
     except telegram.error.BadRequest as err:
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=('Либо недостаточно прав для отправки медиа файлов или '
                   'произошла ошибка. Пожалуйста, попробуйте ещё раз.'),

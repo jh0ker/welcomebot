@@ -4,7 +4,6 @@ from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
 from constants import DUELDICT as DD
-from maindoomer import BOT
 from maindoomer.helpers import check_if_group_chat, command_antispam_passed
 from maindoomer.sqlcommands import run_query
 
@@ -18,7 +17,7 @@ def duelranking(update: Update, context: CallbackContext) -> None:
                  (update.effective_chat.id,)):
         _handle_ranking(update)
     else:
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             reply_to_message_id=update.effective_message.message_id,
             text='Для этого чата нет данных.'
@@ -51,7 +50,7 @@ def _handle_ranking(update: Update) -> None:
             wr_increase = min(round(wr_increase, 2), 45)
             ranking += (f'№{Q[0]+1} {Q[1][0]}\t -\t '
                         f'{Q[1][1]}/{Q[1][2]}/{Q[1][3]}/{wr_increase}%\n')
-    BOT.send_message(
+    context.bot.send_message(
         chat_id=update.effective_chat.id,
         reply_to_message_id=update.effective_message.message_id,
         text=header + ranking +

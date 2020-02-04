@@ -6,7 +6,7 @@ from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
 from constants import REQUEST_TIMEOUT
-from maindoomer import BOT, LOGGER
+from maindoomer import LOGGER
 from maindoomer.helpers import command_antispam_passed, reset_command_cooldown
 
 
@@ -26,7 +26,7 @@ def dadjoke(update: Update, context: CallbackContext) -> None:
             timeout=REQUEST_TIMEOUT
         ).json()
     except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout):
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             reply_to_message_id=update.effective_message.message_id,
             text='Думер умер на пути к серверу. Попробуйте ещё раз.'
@@ -34,7 +34,7 @@ def dadjoke(update: Update, context: CallbackContext) -> None:
         # Reset cooldown
         raise
     # Try to send the joke
-    BOT.send_message(
+    context.bot.send_message(
         chat_id=update.effective_chat.id,
         reply_to_message_id=update.effective_message.message_id,
         text=response['joke']

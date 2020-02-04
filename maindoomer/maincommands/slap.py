@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
 from commandPretexts.slaps import SLAPS
-from maindoomer import BOT, randomizer
+from maindoomer import randomizer
 from maindoomer.helpers import check_if_group_chat, command_antispam_passed
 
 
@@ -30,7 +30,7 @@ def slap(update: Update, context: CallbackContext) -> None:
         action = randomizer.choice(SLAPS[scenario])
         # Replace premade text with user tags.
         reply = action.replace('init', init_tag).replace('target', target_tag)
-    BOT.send_message(
+    context.bot.send_message(
         chat_id=update.effective_chat.id,
         reply_to_message_id=update.effective_message.message_id,
         text=reply,

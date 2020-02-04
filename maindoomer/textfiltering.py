@@ -3,7 +3,7 @@ from telegram import Update
 from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
 
-from maindoomer import BOT, LOGGER
+from maindoomer import LOGGER
 from maindoomer.helpers import store_data
 
 
@@ -16,42 +16,42 @@ def welcomer(update: Update, context: CallbackContext):
     for new_member in update.effective_message.new_chat_members:
         tagged_user = \
             f"[{new_member.first_name.strip('[]')}](tg://user?id={new_member.id})"
-        # This BOT joined the chat
-        if new_member.id == BOT.id:
+        # This bot joined the chat
+        if new_member.id == context.bot.id:
             reply_text = "Думер бот в чате. Для списка функций используйте /help."
         # Another user joined the chat
         else:
             try:
-                chattitle = BOT.get_chat(
+                chattitle = context.bot.get_chat(
                     chat_id=update.effective_message.chat_id).title
                 reply_text = f'Приветствуем вас в {chattitle}, {tagged_user}!\n'
             except:
                 reply_text = f'Приветствуем вас в нашем чате, {tagged_user}!\n'
             if update.effective_chat.id in [-1001226124289, -1001445688548]:
                 reply_text += 'По традициям группы, с вас фото своих ног.'
-        botmsg = BOT.send_message(
+        botmsg = context.bot.send_message(
             chat_id=update.effective_chat.id,
             reply_to_message_id=update.effective_message.message_id,
             text=reply_text,
             parse_mode='Markdown'
-            )
+        )
         # Sleep and check if user is still there or voicy kicked it
         sleep(90)
-        if BOT.get_chat_member(
+        if context.bot.get_chat_member(
                 chat_id=update.effective_message.chat_id,
                 user_id=new_member.id
-                ).status in ['restricted', 'left', 'kicked']:
+        ).status in ['restricted', 'left', 'kicked']:
             # Delete the bot welcome message
-            BOT.delete_message(
+            context.bot.delete_message(
                 chat_id=botmsg.chat_id,
                 message_id=botmsg.message_id
-                )
+            )
             # Delete the join notification unless no rights or it was deleted
             try:
-                BOT.delete_message(
+                context.bot.delete_message(
                     chat_id=update.effective_message.chat_id,
                     message_id=update.effective_message.message_id
-                    )
+                )
             except BadRequest:
                 pass
 
@@ -61,20 +61,20 @@ def farewell(update: Update, context: CallbackContext):
     """Goodbye message."""
     leftuser = update.effective_message.left_chat_member
     # Not this bot was removed
-    if leftuser.id != BOT.id:
+    if leftuser.id != context.bot.id:
         # Other bot was removed
-        if leftuser.is_bot and leftuser.id != BOT.id:
+        if leftuser.is_bot and leftuser.id != context.bot.id:
             reply = f"{leftuser.first_name}'а убили, красиво, уважаю."
         # A user was removed
         else:
             leftusertag = f"[{leftuser.first_name.strip('[]')}](tg://user?id={leftuser.id})"
             reply = f'Сегодня нас покинул {leftusertag}.'
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             reply_to_message_id=update.effective_message.message_id,
             text=reply,
             parse_mode='Markdown'
-            )
+        )
 
 
 @run_async
@@ -84,4 +84,4 @@ def message_filter(update: Update, context: CallbackContext):
     LOGGER.info(f'{update.effective_user.first_name}[{update.effective_user.id}] - '
                 f'{update.effective_chat.title} - {update.effective_message.text}')
     # Store chat and user data
-    store_data(update)
+    store_data(update, context)

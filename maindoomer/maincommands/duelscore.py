@@ -4,7 +4,6 @@ from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
 from constants import DUELDICT as DD
-from maindoomer import BOT
 from maindoomer.helpers import check_if_group_chat, command_antispam_passed
 from maindoomer.sqlcommands import run_query
 
@@ -21,9 +20,9 @@ def duelscore(update: Update, context: CallbackContext) -> None:
     # Check if the data for the user exists
     if u_data:
         # If there is user data, get the score
-        _handle_score(update, u_data)
+        _handle_score(update, context, u_data)
     else:
-        BOT.send_message(
+        context.bot.send_message(
             chat_id=update.effective_chat.id,
             reply_to_message_id=update.effective_message.message_id,
             text='Сначала подуэлься, потом спрашивай.'
@@ -32,7 +31,7 @@ def duelscore(update: Update, context: CallbackContext) -> None:
 
 @run_async
 @command_antispam_passed
-def _handle_score(update: Update, userdata: tuple) -> None:
+def _handle_score(update: Update, context: CallbackContext, userdata: tuple) -> None:
     userkda = userdata[0]
     # Get the current additional strength
     wrincrease = userkda[0] * DD['KILLMULTPERC'] + \
@@ -47,7 +46,7 @@ def _handle_score(update: Update, userdata: tuple) -> None:
              f"Шанс победы из-за опыта изменен на {wrincrease}%. (максимум {DD['ADDITIONALPERCENTCAP']}%)\n"
              f"P.S. {DD['KILLMULTPERC']}% за убийство, {DD['DEATHMULTPERC']}% за смерть, {DD['MISSMULTPERC']}% за "
              f"промах.")
-    BOT.send_message(
+    context.bot.send_message(
         chat_id=update.effective_chat.id,
         reply_to_message_id=update.effective_message.message_id,
         text=reply
