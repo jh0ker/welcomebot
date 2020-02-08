@@ -3,61 +3,58 @@
 from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
                           MessageHandler)
 
-import maindoomer.maincommands as maincommands
-from maindoomer import (admincommands, devcommands,
-                        occasionalcommands, textfiltering)
-from maindoomer import LOGGER, updater, dispatcher
-from maindoomer.helpers import callbackhandler, error_callback, ping
+import main.commands as commands
+from main import LOGGER, updater, dispatcher, textfiltering, constants
+from main.helpers import error_callback, ping
+from main.database import *
 
 
 # Bot commands
 USERCOMMANDS = [
     'Команды для рядовых пользователей',
-    ('slap', maincommands.slap,
+    ('slap', commands.slap,
      'Кого-то унизить (надо ответить жертве, чтобы бот понял кого бить)'),
-    ('duel', maincommands.duel,
+    ('duel', commands.duel,
      'Устроить дуэль (надо ответить тому, с кем будет дуэль)'),
-    ('duelscore', maincommands.duelscore, 'Мой счёт в дуэлях'),
-    ('duelranking', maincommands.duelranking,
+    ('duelscore', commands.duelscore, 'Мой счёт в дуэлях'),
+    ('duelranking', commands.duelranking,
      'Ранкинг дуэлей чата (показывает только тех, у кого есть убийства и смерти)'),
-    ('pidor', maincommands.pidor,
+    ('pidor', commands.pidor,
      'Пидор дня (новый пидор каждый день по немецкому времени)'),
-    ('pidorme', maincommands.pidorme, 'Сколько раз вы были пидором дня'),
-    ('pidorstats', maincommands.pidorstats, 'Статы чата по пидорам дня'),
-    ("flip", maincommands.flip, 'Бросить монетку (Орёл/Решка)'),
-    ("roll", maincommands.roll,
-     'Зароллить число между 0 и 100 или 0 и заданным. /roll число'),
-    ("dadjoke", maincommands.dadjoke, 'Случайная шутка бати'),
-    ("dog", maincommands.animal, 'Случайное фото собачки'),
-    ("cat", maincommands.animal, 'Случайное фото котика'),
-    ("help", occasionalcommands.bothelp, 'Меню помощи'),
-    ('whatsnew', occasionalcommands.whatsnew, 'Новое в боте'),
-    ('adminmenu', admincommands.adminmenu, 'Админское меню'),
+    ('pidorme', commands.pidorme, 'Сколько раз вы были пидором дня'),
+    ('pidorstats', commands.pidorstats, 'Статы чата по пидорам дня'),
+    ("flip", commands.flip, 'Бросить монетку (Орёл/Решка)'),
+    ("dadjoke", commands.dadjoke, 'Случайная шутка бати'),
+    ("dog", commands.animal, 'Случайное фото собачки'),
+    ("cat", commands.animal, 'Случайное фото котика'),
+    ("help", commands.bothelp, 'Меню помощи'),
+    ('whatsnew', commands.whatsnew, 'Новое в боте'),
+    ('adminmenu', commands.adminmenu, 'Админское меню'),
 ]
 ONLYADMINCOMMANDS = [
     'Команды для администраторов групп',
-    ('leave', admincommands.leave, 'Сказать боту уйти'),
-    ('duellimit', admincommands.duelstatus,
-     'Изменить глобальный лимит на дуэли за день (число или убрать через None)'),
-    ('duelstatus', admincommands.duelstatus, 'Включить/Выключить дуэли (on/off)'),
-    ('immune', admincommands.immune,
+    ('leave', commands.leave, 'Сказать боту уйти'),
+    ('duelstatus', commands.duelstatus, 'Включить/Выключить дуэли (on/off)'),
+    ('immune', commands.immune,
      'Добавить пользователю иммунитет на задержку команд (ответить ему)'),
-    ('unimmune', admincommands.unimmune, 'Снять иммунитет (ответить или имя)'),
-    ('immunelist', admincommands.immunelist, 'Лист людей с иммунитетом')
+    ('unimmune', commands.unimmune, 'Снять иммунитет (ответить или имя)'),
+    ('immunelist', commands.immunelist, 'Лист людей с иммунитетом')
 ]
 UNUSUALCOMMANDS = [
     'Нечастые команды',
-    ('allcommands', devcommands.allcommands, 'Все команды бота'),
-    ('start', occasionalcommands.start, 'Начальное сообщение бота'),
-    ('getlogs', devcommands.getlogs,
+    ('allcommands', commands.allcommands, 'Все команды бота'),
+    ('start', commands.start, 'Начальное сообщение бота'),
+    ('getlogs', commands.getlogs,
      'Получить логи бота (только для разработчика)'),
-    ('getdatabase', devcommands.getdatabase, 'Получить датабазу'),
-    ('sql', devcommands.sql, 'Использовать sqlite команду на дб')
+    ('getdatabase', commands.getdatabase, 'Получить датабазу')
 ]
 
 
 def main():
     """Main function."""
+    set_sql_debug(True, True)
+    db.bind(provider='sqlite', filename=constants.DATABASE_NAME, create_db=True)
+    db.generate_mapping(create_tables=True)
     LOGGER.info('Adding handlers...')
     # Add command handles
     for commandlists in (USERCOMMANDS, ONLYADMINCOMMANDS, UNUSUALCOMMANDS):
@@ -70,8 +67,6 @@ def main():
         Filters.status_update.left_chat_member, textfiltering.farewell))
     dispatcher.add_handler(MessageHandler(
         Filters.all, textfiltering.message_filter))
-    # Add callback handler
-    dispatcher.add_handler(CallbackQueryHandler(callbackhandler))
     # Log errors
     dispatcher.add_error_handler(error_callback)
     # Add job queue

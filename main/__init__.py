@@ -4,7 +4,6 @@ from os import environ
 import random
 
 from telegram.ext import Updater
-from maindoomer.sqlcommands import create_tables
 
 
 __author__ = "Vlad Chitic"
@@ -31,9 +30,6 @@ LOGGER.info('Initializing the bot and creating database tables if needed...')
 updater = Updater(token="824227677:AAH02iFPHGM7JiK2kLx9lq34apfinwuT1dU",
                   use_context=True)
 dispatcher = updater.dispatcher
-
-# Create tables in the database if they don't exist
-create_tables()
 
 # Create a randomizer
 randomizer = random.SystemRandom()

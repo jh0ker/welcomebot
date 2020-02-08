@@ -2,18 +2,19 @@
 
 from datetime import datetime, date
 
-from telegram import Update
+from telegram import Update, Message
 from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
 
-from maindoomer import LOGGER
-from maindoomer.helpers import check_if_dev
+from main import LOGGER
+from main.constants import DEVS, DATABASE_NAME
 
 
 @run_async
-@check_if_dev
-def getlogs(update: Update, context: CallbackContext):
+def getlogs(update: Update, context: CallbackContext) -> Message:
     """Get the bot logs."""
+    if update.message.from_user.id not in DEVS:
+        return
     try:
         # Get the filename
         filename = date.today().isoformat()
@@ -25,11 +26,7 @@ def getlogs(update: Update, context: CallbackContext):
         )
     except (EOFError, FileNotFoundError) as changelog_err:
         LOGGER.error(changelog_err)
-        context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            reply_to_message_id=update.effective_message.message_id,
-            text='Не смог добраться до логов. Что-то не так.'
-        )
+        update.message.reply_text('Не смог добраться до логов. Что-то не так.')
     finally:
         # Clean the file after sending/create a new one if failed to get it
         with open('logs.log', 'w') as logfile:
@@ -38,47 +35,30 @@ def getlogs(update: Update, context: CallbackContext):
 
 
 @run_async
-@check_if_dev
-def sql(update: Update, context: CallbackContext):
-    """Use sql commands for the database."""
-    from maindoomer import sqlcommands
-    statement = ' '.join(update.effective_message.text.split()[1:])
-    sqlcommands.run_query(statement)
-
-
-@run_async
-@check_if_dev
 def getdatabase(update: Update, context: CallbackContext):
     """Get the database as a document."""
+    if update.message.from_user.id not in DEVS:
+        return
     try:
         # Send the file
-        from constants import DATABASENAME
         context.bot.send_document(
             chat_id=update.effective_chat.id,
             document=open(DATABASENAME, 'rb')
         )
     except (EOFError, FileNotFoundError) as database_err:
         LOGGER.error(database_err)
-        context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            reply_to_message_id=update.effective_message.message_id,
-            text='Не смог добраться до датабазы. Что-то не так.'
-        )
+        update.message.reply_text('Не смог добраться до базы. Что-то не так.')
 
 
 @run_async
-@check_if_dev
 def allcommands(update: Update, context: CallbackContext):
     """Send the list of all commands."""
+    if update.message.from_user.id not in DEVS:
+        return
     from thebot import USERCOMMANDS, ONLYADMINCOMMANDS, UNUSUALCOMMANDS
-    text = ''
+    reply = ''
     for commandlists in (USERCOMMANDS, ONLYADMINCOMMANDS, UNUSUALCOMMANDS):
-        text += f'<b>{commandlists[0]}:</b>\n'
+        reply += f'<b>{commandlists[0]}:</b>\n'
         for commands in commandlists[1:]:
-            text += f'/{commands[0]} - {commands[2]};\n'
-    context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        reply_to_message_id=update.effective_message.message_id,
-        text=text,
-        parse_mode='HTML'
-    )
+            reply += f'/{commands[0]} - {commands[2]};\n'
+    update.message.reply_text(text=reply, parse_mode='HTML')

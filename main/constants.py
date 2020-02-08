@@ -2,7 +2,7 @@
 
 # Admin id
 # Add developer ID for passing the spam check and other commands
-DEV = 255295801
+DEVS = [255295801]
 # Add a ping channel
 PING_CHANNEL = -353404420
 
@@ -23,7 +23,7 @@ HARDRESETCHANCE = 0.0025  # 0.25%
 # DO NOT TOUCH
 # -----------------------------------------------------------
 # Get the kill, death multiplier and their percentage to total
-DATABASENAME = 'thedoomerbot.db'
+DATABASE_NAME = 'doomer.db'
 KILLMULTPERC = round(KILLMULT / THRESHOLDCAP * 100, 2)
 DEATHMULTPERC = round(DEATHMULT / THRESHOLDCAP * 100, 2)
 MISSMULTPERC = round(MISSMULT / THRESHOLDCAP * 100, 2)
@@ -55,7 +55,3 @@ SHORTCD = round(INDIVIDUAL_USER_DELAY - CDREDUCTION)
 
 # Request timeout time in seconds
 REQUEST_TIMEOUT = 3
-# Base url for /loli
-LOLI_BASE_URL = 'https://gelbooru.com/index.php?page=dapi&s=post&q=index' \
-                '&api_key=c45859a5140d8ff00d1910ec3e95297513961ff8eef5f8a184bde934a3df6089&user_id=448134' \
-                '&limit=1&tags='

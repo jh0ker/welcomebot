@@ -111,6 +111,7 @@ venv.bak/
 /.vscode/
 
 # Database
+doomer.db
 thedoomerbot.db
 
 # Pipenv

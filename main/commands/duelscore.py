@@ -1,37 +1,34 @@
 """/duelscore command."""
 
-from telegram import Update
+from telegram import Update, Message
 from telegram.ext import CallbackContext, run_async
 
-from constants import DUELDICT as DD
-from maindoomer.helpers import check_if_group_chat, command_antispam_passed
-from maindoomer.sqlcommands import run_query
+from main.constants import DUELDICT as DD
+from main.helpers import check_if_group_chat, antispam_passed, set_cooldown
+from main.database import *
 
 
 @run_async
 @check_if_group_chat
-def duelscore(update: Update, context: CallbackContext) -> None:
+@antispam_passed
+@db_session
+def duelscore(update: Update, context: CallbackContext) -> Message:
     """Give the user his K/D for duels."""
     # Get userdata
-    u_data = run_query(
-        'SELECT kills, deaths, misses from duels WHERE user_id=(?) AND chat_id=(?)',
-        (update.effective_user.id, update.effective_chat.id)
-    )
+    u_data = select((q.kills, q.deaths, q.misses) for q in User_Stats
+                    if q.user_id == Users[update.message.from_user.id] and
+                    q.chat_id == Chats[update.message.chat.id])[:]
     # Check if the data for the user exists
     if u_data:
         # If there is user data, get the score
         _handle_score(update, context, u_data)
     else:
-        context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            reply_to_message_id=update.effective_message.message_id,
-            text='Сначала подуэлься, потом спрашивай.'
-        )
+        context.bot.send_message('Сначала подуэлься, потом спрашивай.')
+        set_cooldown(update, False)
 
 
 @run_async
-@command_antispam_passed
-def _handle_score(update: Update, context: CallbackContext, userdata: tuple) -> None:
+def _handle_score(update: Update, context: CallbackContext, userdata: tuple) -> Message:
     userkda = userdata[0]
     # Get the current additional strength
     wrincrease = userkda[0] * DD['KILLMULTPERC'] + \
@@ -46,8 +43,4 @@ def _handle_score(update: Update, context: CallbackContext, userdata: tuple) -> 
              f"Шанс победы из-за опыта изменен на {wrincrease}%. (максимум {DD['ADDITIONALPERCENTCAP']}%)\n"
              f"P.S. {DD['KILLMULTPERC']}% за убийство, {DD['DEATHMULTPERC']}% за смерть, {DD['MISSMULTPERC']}% за "
              f"промах.")
-    context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        reply_to_message_id=update.effective_message.message_id,
-        text=reply
-    )
+    update.message.reply_text(reply)
