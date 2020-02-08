@@ -2,7 +2,7 @@
 
 import requests
 import telegram.error
-from telegram import Update
+from telegram import Update, Message
 from telegram.ext import CallbackContext, run_async
 
 from constants import REQUEST_TIMEOUT
@@ -12,7 +12,7 @@ from maindoomer.helpers import command_antispam_passed, reset_command_cooldown
 
 @run_async
 @command_antispam_passed
-def animal(update: Update, context: CallbackContext) -> None:
+def animal(update: Update, context: CallbackContext) -> Message:
     """Get photo/video/gif of dog or cat.
 
     Raise errors to reset the command cooldown.

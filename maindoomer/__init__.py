@@ -28,7 +28,8 @@ LOGGER.info('-----------------------------------------------')
 LOGGER.info('Initializing the bot and creating database tables if needed...')
 
 # Bot initialization
-updater = Updater(token=environ.get("TG_BOT_TOKEN"), use_context=True)
+updater = Updater(token="824227677:AAH02iFPHGM7JiK2kLx9lq34apfinwuT1dU",
+                  use_context=True)
 dispatcher = updater.dispatcher
 
 # Create tables in the database if they don't exist

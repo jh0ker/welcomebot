@@ -24,8 +24,6 @@ USERCOMMANDS = [
      'Пидор дня (новый пидор каждый день по немецкому времени)'),
     ('pidorme', maincommands.pidorme, 'Сколько раз вы были пидором дня'),
     ('pidorstats', maincommands.pidorstats, 'Статы чата по пидорам дня'),
-    #("loli", maincommands.loli, 'Лоли фото (SFW/NSFW)'),
-    #('lolimode', maincommands.lolimode, 'Настройка лоли на SFW или NSFW'),
     ("flip", maincommands.flip, 'Бросить монетку (Орёл/Решка)'),
     ("roll", maincommands.roll,
      'Зароллить число между 0 и 100 или 0 и заданным. /roll число'),
