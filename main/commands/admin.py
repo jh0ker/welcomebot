@@ -5,7 +5,7 @@ from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
 
 from main import LOGGER
-from main.helpers import check_if_group_chat, admin_priv, antispam_passed
+from main.helpers import check_if_group_chat, admin_priv, antispam_passed, ResetError
 from main.database import *
 
 
@@ -28,6 +28,8 @@ def adminmenu(update: Update, context: CallbackContext) -> Message:
         for command in ONLYADMINCOMMANDS[1:]:
             reply += f'/{command[0]} - {command[2]};\n'
         update.message.reply_text(reply)
+    else:
+        raise ResetError
 
 
 @run_async
@@ -42,8 +44,7 @@ def duelstatus(update: Update, context: CallbackContext) -> Message:
     """
     # Check command validity
     if not admin_priv(update, context):
-        update.message.reply_text('Вы не админ.')
-        return
+        raise ResetError
     reply = 'Ошибка. /adminmenu для справки.'
     if len(update.message.text.split()) < 3:
         try:
@@ -78,8 +79,7 @@ def immune(update: Update, context: CallbackContext,
     """Add user to exceptions."""
     # Check command validity
     if not admin_priv(update, context):
-        update.message.reply_text('Вы не админ.')
-        return
+        raise ResetError
 
     if update.message.reply_to_message is not None:
         tar = update.message.reply_to_message.from_user
@@ -109,11 +109,13 @@ def immunelist(update: Update, context: CallbackContext) -> Message:
     """Get the exceptions list."""
     # Check command validity
     if not admin_priv(update, context):
-        update.message.reply_text('Вы не админ.')
-        return
+        raise ResetError
 
     query = select(q.user_id.full_name for q in User_Stats
                    if q.chat_id == Chats[update.message.chat.id]
                    and q.exception == 1)[:]
-    reply = '\n'.join([f'{u[0]}. {u[1]}' for u in enumerate(query, 1)])
+    if query:
+        reply = '\n'.join([f'{u[0]}. {u[1]}' for u in enumerate(query, 1)])
+    else:
+        reply = 'Список пуст.'
     update.message.reply_text(reply)

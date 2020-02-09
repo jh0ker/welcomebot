@@ -5,7 +5,7 @@ from telegram.ext import CallbackContext, run_async
 
 from commandPretexts.slaps import SLAPS
 from main import randomizer
-from main.helpers import check_if_group_chat, antispam_passed
+from main.helpers import check_if_group_chat, antispam_passed, set_cooldown, ResetError
 
 
 @run_async
@@ -17,6 +17,8 @@ def slap(update: Update, context: CallbackContext) -> Message:
     if update.message.reply_to_message is None:
         reply = ('Кого унижать то будем?\n'
                  'Чтобы унизить, надо чтобы вы ответили вашей жертве.')
+        update.message.reply_text(reply)
+        raise ResetError
     else:
         # Get user tags as it is used in both cases
         init = update.message.from_user

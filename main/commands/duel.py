@@ -6,7 +6,7 @@ from telegram import Update, Message
 from telegram.ext import CallbackContext, run_async
 from main import randomizer
 from commandPretexts.duels import DUELS
-from main.helpers import check_if_group_chat, antispam_passed, set_cooldown
+from main.helpers import check_if_group_chat, antispam_passed, set_cooldown, ResetError
 from main.database import *
 
 
@@ -35,8 +35,7 @@ def _try_to_duel(update: Update, context: CallbackContext) -> None:
         reply = ('С кем дуэль проводить будем?\n'
                  'Чтобы подуэлиться, надо чтобы вы ответили вашему оппоненту.')
         update.message.reply_text(reply)
-        set_cooldown(update, False)
-        return
+        raise ResetError
     from main.constants import THRESHOLDCAP
     # Shorten the code, format the names
     init_data = update.message.from_user

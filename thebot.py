@@ -6,7 +6,6 @@ from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
 import main.commands as commands
 from main import LOGGER, updater, dispatcher, textfiltering, constants
 from main.helpers import error_callback, ping
-from main.database import *
 
 
 # Bot commands
@@ -52,9 +51,6 @@ UNUSUALCOMMANDS = [
 
 def main():
     """Main function."""
-    set_sql_debug(True, True)
-    db.bind(provider='sqlite', filename=constants.DATABASE_NAME, create_db=True)
-    db.generate_mapping(create_tables=True)
     LOGGER.info('Adding handlers...')
     # Add command handles
     for commandlists in (USERCOMMANDS, ONLYADMINCOMMANDS, UNUSUALCOMMANDS):
@@ -66,13 +62,13 @@ def main():
     dispatcher.add_handler(MessageHandler(
         Filters.status_update.left_chat_member, textfiltering.farewell))
     dispatcher.add_handler(MessageHandler(
-        Filters.all, textfiltering.message_filter))
+        Filters.text, textfiltering.message_filter))
     # Log errors
     dispatcher.add_error_handler(error_callback)
     # Add job queue
     job_queue = updater.job_queue
     job_queue.run_repeating(
-        callback=ping, interval=60 * 60, first=0, name='ping')
+        callback=ping, interval=60*60, first=0, name='ping')
     # Start polling
     updater.start_polling(clean=True)
     LOGGER.info('Polling started.')

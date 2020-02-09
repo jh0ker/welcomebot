@@ -1,6 +1,7 @@
 from datetime import date
 from datetime import datetime
 from pony.orm import *
+from pathlib import Path
 from main.constants import DATABASE_NAME
 
 
@@ -59,3 +60,9 @@ class Cooldowns(db.Entity):
     last_command = Required(datetime, default=lambda: datetime.now())
     error_sent = Required(int, default=0)
     PrimaryKey(user_id, chat_id)
+
+
+db.bind(provider='sqlite',
+        filename=f'{(Path().parent/DATABASE_NAME).absolute()}',
+        create_db=True)
+db.generate_mapping(create_tables=True)

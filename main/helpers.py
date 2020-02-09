@@ -14,6 +14,11 @@ from main.database import *
 from main.constants import DEVS, INDIVIDUAL_USER_DELAY, PING_CHANNEL
 
 
+class ResetError(Exception):
+    """Error made to be able to reset cooldowns when needed by raising the error."""
+    pass
+
+
 def antispam_passed(func):
     """Check if the user is spamming in a group."""
     def executor(update: Update, context: CallbackContext, *args, **kwargs):
@@ -26,6 +31,8 @@ def antispam_passed(func):
                     set_cooldown(update, True)
                 except telegram.error.BadRequest as crit:
                     LOGGER.error(crit)
+                    set_cooldown(update, False)
+                except ResetError:
                     set_cooldown(update, False)
         else:
             func(update, context, *args, **kwargs)
@@ -61,6 +68,9 @@ def admin_priv(update: Update, context: CallbackContext) -> bool:
 @db_session
 def record_data(update: Update) -> None:
     """Store chat and user data."""
+    # Don't record private chats
+    if update.message.chat.type == 'private':
+        return
     # Record the chat
     if not Chats.exists(id=update.message.chat.id):
         Chats(id=update.message.chat.id,
@@ -130,7 +140,8 @@ def set_cooldown(update: Update, success: bool) -> None:
     if success:
         to_set = datetime.now()
     else:
-        to_set = None
+        to_set = datetime.now() - \
+            timedelta(minutes=Options[Chats[update.message.chat.id]].cooldown)
     Cooldowns[Users[update.message.from_user.id],
               Chats[update.message.chat.id]].last_command = to_set
 

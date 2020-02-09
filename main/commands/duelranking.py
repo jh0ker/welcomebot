@@ -3,7 +3,7 @@
 from telegram import Update, Message
 from telegram.ext import CallbackContext, run_async
 
-from main.helpers import check_if_group_chat, antispam_passed, set_cooldown
+from main.helpers import check_if_group_chat, antispam_passed, set_cooldown, ResetError
 from main.database import *
 
 
@@ -22,8 +22,7 @@ def duelranking(update: Update, context: CallbackContext) -> Message:
     # Check if the chat table exists
     if not query:
         update.message.reply_text('Для этого чата нет данных.')
-        set_cooldown(update, False)
-        return
+        raise ResetError
 
     reply = '\n'.join(
         [f'{c.user_id.full_name} - {c.kills}/{c.deaths}/{c.misses}' for c in query])

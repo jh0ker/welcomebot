@@ -4,7 +4,7 @@ from telegram import Update, Message
 from telegram.ext import CallbackContext, run_async
 
 from main.constants import DUELDICT as DD
-from main.helpers import check_if_group_chat, antispam_passed, set_cooldown
+from main.helpers import check_if_group_chat, antispam_passed, set_cooldown, ResetError
 from main.database import *
 
 
@@ -24,7 +24,7 @@ def duelscore(update: Update, context: CallbackContext) -> Message:
         _handle_score(update, context, u_data)
     else:
         context.bot.send_message('Сначала подуэлься, потом спрашивай.')
-        set_cooldown(update, False)
+        raise ResetError
 
 
 @run_async
