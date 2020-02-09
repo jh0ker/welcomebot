@@ -1,17 +1,17 @@
 """/pidorme command."""
 
-from telegram import Update, Message
+from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
-from main.helpers import check_if_group_chat, antispam_passed
 from main.database import *
+from main.helpers import antispam_passed, check_if_group_chat
 
 
 @run_async
 @antispam_passed
 @check_if_group_chat
 @db_session
-def pidorme(update: Update, context: CallbackContext) -> Message:
+def pidorme(update: Update, context: CallbackContext):
     """Give the user the number of times he has been pidor of the day."""
     times_pidor = User_Stats[Users[update.message.from_user.id],
                              Chats[update.message.chat.id]].times_pidor

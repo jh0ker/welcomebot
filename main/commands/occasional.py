@@ -1,5 +1,5 @@
 """Module dedicated to commands that are not the main purpose of the bot but usable by users."""
-from telegram import Update, Message
+from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
 from main import LOGGER
@@ -8,7 +8,7 @@ from main.helpers import antispam_passed
 
 @run_async
 @antispam_passed
-def start(update: Update, context: CallbackContext) -> Message:
+def start(update: Update, context: CallbackContext):
     """Send out a start message."""
     reply = 'Думер бот в чате. Для списка функций используйте /help.\n'
     # Add explanation for groups for best experience
@@ -19,7 +19,7 @@ def start(update: Update, context: CallbackContext) -> Message:
 
 @run_async
 @antispam_passed
-def whatsnew(update: Update, context: CallbackContext) -> Message:
+def whatsnew(update: Update, context: CallbackContext):
     """Reply with all new goodies."""
     # Choose for how many days to get the changelog
     lastdayschanges = 3
@@ -40,7 +40,7 @@ def whatsnew(update: Update, context: CallbackContext) -> Message:
 
 @run_async
 @antispam_passed
-def bothelp(update: Update, context: CallbackContext) -> Message:
+def bothelp(update: Update, context: CallbackContext):
     """Help message."""
     from thebot import USERCOMMANDS
     from main.constants import INDIVIDUAL_USER_DELAY

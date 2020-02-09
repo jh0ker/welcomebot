@@ -1,16 +1,17 @@
 """/duel command."""
 
-from datetime import date, datetime, timedelta
+from datetime import timedelta
 
-from telegram import Update, Message
+from telegram import Update
 from telegram.ext import CallbackContext, run_async
-from main import randomizer
+
 from commandPretexts.duels import DUELS
-from main.helpers import check_if_group_chat, antispam_passed, set_cooldown, ResetError
+from main import randomizer
 from main.database import *
+from main.helpers import ResetError, antispam_passed
 
 
-def duel(update: Update, context: CallbackContext) -> Message:
+def duel(update: Update, context: CallbackContext):
     """Duel to solve any kind of argument."""
     # noinspection PyUnresolvedReferences
     if duels_active(update):
@@ -54,7 +55,7 @@ def _try_to_duel(update: Update, context: CallbackContext) -> None:
                  _get_user_str(update, init_id), init_tag),
                 (targ_name, targ_id,
                  _get_user_str(update, targ_id), targ_tag)
-            ]
+                ]
             # Get the winner and the loser. Check 1
             winners, losers = [], []
             for player in participant_list:
@@ -95,9 +96,9 @@ def _get_user_str(update: Update, userid: int) -> float:
     from main.constants import DUELDICT as DD
     user_score = User_Stats[Users[userid], Chats[update.message.chat.id]]
     strength = randomizer.uniform(DD['LOW_BASE_ACCURACY'], DD['HIGH_BASE_ACCURACY']) \
-        + user_score.kills * DD['KILLMULT'] \
-        + user_score.deaths * DD['DEATHMULT'] \
-        + user_score.misses * DD['MISSMULT']
+               + user_score.kills * DD['KILLMULT'] \
+               + user_score.deaths * DD['DEATHMULT'] \
+               + user_score.misses * DD['MISSMULT']
     return min(strength, DD['STRENGTHCAP'])
 
 
@@ -167,4 +168,4 @@ def _conclude_the_duel(update: Update, context: CallbackContext, result: str, pa
             text=phrase,
             message_id=botmsg.message_id,
             parse_mode='Markdown'
-        )
+            )

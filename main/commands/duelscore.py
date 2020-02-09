@@ -1,18 +1,18 @@
 """/duelscore command."""
 
-from telegram import Update, Message
+from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
 from main.constants import DUELDICT as DD
-from main.helpers import check_if_group_chat, antispam_passed, set_cooldown, ResetError
 from main.database import *
+from main.helpers import ResetError, antispam_passed, check_if_group_chat
 
 
 @run_async
 @check_if_group_chat
 @antispam_passed
 @db_session
-def duelscore(update: Update, context: CallbackContext) -> Message:
+def duelscore(update: Update, context: CallbackContext):
     """Give the user his K/D for duels."""
     # Get userdata
     u_data = select((q.kills, q.deaths, q.misses) for q in User_Stats
@@ -28,12 +28,12 @@ def duelscore(update: Update, context: CallbackContext) -> Message:
 
 
 @run_async
-def _handle_score(update: Update, context: CallbackContext, userdata: tuple) -> Message:
+def _handle_score(update: Update, context: CallbackContext, userdata: tuple):
     userkda = userdata[0]
     # Get the current additional strength
     wrincrease = userkda[0] * DD['KILLMULTPERC'] + \
-        userkda[1] * DD['DEATHMULTPERC'] + \
-        userkda[2] * DD['MISSMULTPERC']
+                 userkda[1] * DD['DEATHMULTPERC'] + \
+                 userkda[2] * DD['MISSMULTPERC']
     wrincrease = min(round(wrincrease, 2), 45)
     try:
         wr = userkda[0] / (userkda[0] + userkda[1]) * 100

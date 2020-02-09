@@ -1,17 +1,17 @@
 """/pidorstats command."""
 
-from telegram import Update, Message
+from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
-from main.helpers import check_if_group_chat, antispam_passed
 from main.database import *
+from main.helpers import antispam_passed, check_if_group_chat
 
 
 @run_async
 @antispam_passed
 @check_if_group_chat
 @db_session
-def pidorstats(update: Update, context: CallbackContext) -> Message:
+def pidorstats(update: Update, context: CallbackContext):
     """Get the chat stats of how many times people have been pidors of the day."""
     query = select(q for q in User_Stats
                    if q.chat_id == Chats[update.message.chat.id]

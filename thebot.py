@@ -1,10 +1,10 @@
 """Telegram bot based on python-telegram-bot with various commands."""
 
-from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
+from telegram.ext import (CommandHandler, Filters,
                           MessageHandler)
 
 import main.commands as commands
-from main import LOGGER, updater, dispatcher, textfiltering, constants
+from main import LOGGER, dispatcher, textfiltering, updater
 from main.helpers import error_callback, ping
 
 
@@ -29,7 +29,7 @@ USERCOMMANDS = [
     ("help", commands.bothelp, 'Меню помощи'),
     ('whatsnew', commands.whatsnew, 'Новое в боте'),
     ('adminmenu', commands.adminmenu, 'Админское меню'),
-]
+    ]
 ONLYADMINCOMMANDS = [
     'Команды для администраторов групп',
     ('leave', commands.leave, 'Сказать боту уйти'),
@@ -38,7 +38,7 @@ ONLYADMINCOMMANDS = [
      'Добавить пользователю иммунитет на задержку команд (ответить ему)'),
     ('unimmune', commands.unimmune, 'Снять иммунитет (ответить или имя)'),
     ('immunelist', commands.immunelist, 'Лист людей с иммунитетом')
-]
+    ]
 UNUSUALCOMMANDS = [
     'Нечастые команды',
     ('allcommands', commands.allcommands, 'Все команды бота'),
@@ -46,7 +46,7 @@ UNUSUALCOMMANDS = [
     ('getlogs', commands.getlogs,
      'Получить логи бота (только для разработчика)'),
     ('getdatabase', commands.getdatabase, 'Получить датабазу')
-]
+    ]
 
 
 def main():
@@ -68,7 +68,7 @@ def main():
     # Add job queue
     job_queue = updater.job_queue
     job_queue.run_repeating(
-        callback=ping, interval=60*60, first=0, name='ping')
+        callback=ping, interval=60 * 60, first=0, name='ping')
     # Start polling
     updater.start_polling(clean=True)
     LOGGER.info('Polling started.')

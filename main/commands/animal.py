@@ -2,17 +2,16 @@
 
 import requests
 import telegram.error
-from telegram import Update, Message
+from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
-from main import LOGGER
 from main.constants import REQUEST_TIMEOUT
 from main.helpers import antispam_passed
 
 
 @run_async
 @antispam_passed
-def animal(update: Update, context: CallbackContext) -> Message:
+def animal(update: Update, context: CallbackContext):
     """Get photo/video/gif of dog or cat.
 
     Raise errors to reset the command cooldown.
@@ -43,19 +42,19 @@ def animal(update: Update, context: CallbackContext) -> Message:
                 chat_id=update.message.chat.id,
                 video=file_link,
                 reply_to_message_id=update.message.message_id
-            )
+                )
         elif 'gif' in file_extension:
             context.bot.send_animation(
                 chat_id=update.message.chat.id,
                 animation=file_link,
                 reply_to_message_id=update.message.message_id
-            )
+                )
         else:
             context.bot.send_photo(
                 chat_id=update.message.chat.id,
                 photo=file_link,
                 reply_to_message_id=update.message.message_id
-            )
+                )
     except telegram.error.BadRequest:
         update.message.reply_text(
             'Недостаточно прав для отправки медиа файлов, вопросы к админу.\n'

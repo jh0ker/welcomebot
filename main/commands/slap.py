@@ -1,17 +1,17 @@
 """/slap command."""
 
-from telegram import Update, Message
+from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
 from commandPretexts.slaps import SLAPS
 from main import randomizer
-from main.helpers import check_if_group_chat, antispam_passed, set_cooldown, ResetError
+from main.helpers import ResetError, antispam_passed, check_if_group_chat
 
 
 @run_async
 @antispam_passed
 @check_if_group_chat
-def slap(update: Update, context: CallbackContext) -> Message:
+def slap(update: Update, context: CallbackContext):
     """Slap with random item."""
     # Check if there was a target
     if update.message.reply_to_message is None:
@@ -26,5 +26,5 @@ def slap(update: Update, context: CallbackContext) -> Message:
         # Replace premade text with user tags.
         reply = randomizer.choice(SLAPS).replace(
             'init', f"[{init.full_name}](tg://user?id={init.id})").replace(
-                'target', f"[{targ.first_name}](tg://user?id={targ.id})")
+            'target', f"[{targ.first_name}](tg://user?id={targ.id})")
     update.message.reply_text(text=reply, parse_mode='Markdown')

@@ -1,17 +1,16 @@
 """Module dedicated to commands available only to admins and the developer."""
 
-from telegram import Update, Message
+from telegram import Message, Update
 from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
 
-from main import LOGGER
-from main.helpers import check_if_group_chat, admin_priv, antispam_passed, ResetError
 from main.database import *
+from main.helpers import ResetError, admin_priv, antispam_passed, check_if_group_chat
 
 
 @run_async
 @check_if_group_chat
-def leave(update: Update, context: CallbackContext) -> Message:
+def leave(update: Update, context: CallbackContext):
     """Make the bot leave the group, usable only by the admin/dev/creator."""
     if admin_priv(update, context):
         update.message.reply_text("Ну ладно, ухожу \U0001F61E")
@@ -20,7 +19,7 @@ def leave(update: Update, context: CallbackContext) -> Message:
 
 @run_async
 @antispam_passed
-def adminmenu(update: Update, context: CallbackContext) -> Message:
+def adminmenu(update: Update, context: CallbackContext):
     """Send the admin menu commands."""
     if admin_priv(update, context):
         from thebot import ONLYADMINCOMMANDS
@@ -36,7 +35,7 @@ def adminmenu(update: Update, context: CallbackContext) -> Message:
 @check_if_group_chat
 @antispam_passed
 @db_session
-def duelstatus(update: Update, context: CallbackContext) -> Message:
+def duelstatus(update: Update, context: CallbackContext):
     """Handle the on/off state of duels in the chat.
 
     1 for turned on, 0 for turned off.
@@ -75,7 +74,7 @@ def duelstatus(update: Update, context: CallbackContext) -> Message:
 @antispam_passed
 @db_session
 def immune(update: Update, context: CallbackContext,
-           reverse: bool = False) -> Message:
+           reverse: bool = False):
     """Add user to exceptions."""
     # Check command validity
     if not admin_priv(update, context):
@@ -96,7 +95,7 @@ def immune(update: Update, context: CallbackContext,
 
 
 @run_async
-def unimmune(update: Update, context: CallbackContext) -> Message:
+def unimmune(update: Update, context: CallbackContext):
     """Remove user from exceptions."""
     immune(update, context, reverse=True)
 
@@ -105,7 +104,7 @@ def unimmune(update: Update, context: CallbackContext) -> Message:
 @check_if_group_chat
 @antispam_passed
 @db_session
-def immunelist(update: Update, context: CallbackContext) -> Message:
+def immunelist(update: Update, context: CallbackContext):
     """Get the exceptions list."""
     # Check command validity
     if not admin_priv(update, context):

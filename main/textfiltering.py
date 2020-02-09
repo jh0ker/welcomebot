@@ -1,14 +1,13 @@
 """Module dedicated to message handlers."""
-from telegram import Update, Message
+from telegram import Update
 from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
 
-from main import LOGGER
 from main.helpers import record_data
 
 
 @run_async
-def welcomer(update: Update, context: CallbackContext) -> Message:
+def welcomer(update: Update, context: CallbackContext):
     """Send the welcoming message to the newcoming member."""
     # Create a loop over a list in cast many users have been invited at once
     for new_member in update.message.new_chat_members:
@@ -28,7 +27,7 @@ def welcomer(update: Update, context: CallbackContext) -> Message:
 
 
 @run_async
-def farewell(update: Update, context: CallbackContext) -> Message:
+def farewell(update: Update, context: CallbackContext):
     """Send the goodbye message to the leaving member."""
     leftuser = update.message.left_chat_member
     # Not this bot was removed

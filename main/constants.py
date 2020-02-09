@@ -43,7 +43,7 @@ DUELDICT = {
     'DEATHMULTPERC': DEATHMULTPERC,
     'MISSMULTPERC': MISSMULTPERC,
     'ADDITIONALPERCENTCAP': ADDITIONALPERCENTCAP
-}
+    }
 # -----------------------------------------------------------
 
 # Antispam constants

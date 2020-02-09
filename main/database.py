@@ -1,7 +1,8 @@
-from datetime import date
-from datetime import datetime
-from pony.orm import *
+from datetime import date, datetime
 from pathlib import Path
+
+from pony.orm import *
+
 from main.constants import DATABASE_NAME
 
 
@@ -63,6 +64,6 @@ class Cooldowns(db.Entity):
 
 
 db.bind(provider='sqlite',
-        filename=f'{(Path().parent/DATABASE_NAME).absolute()}',
+        filename=f'{(Path().parent / DATABASE_NAME).absolute()}',
         create_db=True)
 db.generate_mapping(create_tables=True)

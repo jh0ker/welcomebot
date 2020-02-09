@@ -1,22 +1,18 @@
 """/pidor command."""
 
-from datetime import date
-
-from telegram import Update, Message
-from telegram.error import BadRequest
+from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
 from main import randomizer
-from main.helpers import check_if_group_chat, antispam_passed
 from main.database import *
-import time
+from main.helpers import antispam_passed, check_if_group_chat
 
 
 @run_async
 @antispam_passed
 @check_if_group_chat
 @db_session
-def pidor(update: Update, context: CallbackContext) -> Message:
+def pidor(update: Update, context: CallbackContext):
     """Get the pidor of the day from all users stored for the chat."""
     chat_users = select(q.user_id for q in User_Stats
                         if q.chat_id == Chats[update.message.chat.id])[:]
@@ -27,13 +23,15 @@ def pidor(update: Update, context: CallbackContext) -> Message:
     # Find a pidor that's still in the chat and delete those that are gone.
     while True:
         pidor = randomizer.choice(chat_users)
-        pidor_status = update.message.chat.get_member(pidor.id).status
-        if pidor_status in ['restricted', 'left', 'kicked']:
+        pidor_data = update.message.chat.get_member(pidor.id)
+        if pidor_data.status in ['restricted', 'left', 'kicked']:
             delete(u for u in User_Stats
                    if u.user_id == pidor
                    and u.chat_id == Chats[update.message.chat.id])
         else:
             break
+    Users[pidor.id].full_name = pidor_data.user.full_name
+    pidor = Users[pidor.id]
     # Assign a tag if he's new
     name = f'[{pidor.full_name}](tg://user?id={pidor.id})'
     if not Pidors.exists(chat_id=Chats[update.message.chat.id]):

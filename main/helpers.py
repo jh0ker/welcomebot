@@ -3,15 +3,15 @@
 E.g. decorators, checking cooldowns, etc.
 """
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import telegram.error
-from telegram import Update, Message
+from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
 from main import LOGGER
+from main.constants import DEVS, PING_CHANNEL
 from main.database import *
-from main.constants import DEVS, INDIVIDUAL_USER_DELAY, PING_CHANNEL
 
 
 class ResetError(Exception):
@@ -21,6 +21,7 @@ class ResetError(Exception):
 
 def antispam_passed(func):
     """Check if the user is spamming in a group."""
+
     def executor(update: Update, context: CallbackContext, *args, **kwargs):
         if update.message.chat.type != 'private':
             record_data(update)
@@ -42,6 +43,7 @@ def antispam_passed(func):
 
 def check_if_group_chat(func) -> None:
     """Check if the chat is a group chat."""
+
     def executor(update: Update, context: CallbackContext, *args, **kwargs):
         if update.message.chat.type == 'private':
             update.message.reply_text('Эта команда только для групп.')
@@ -124,11 +126,11 @@ def cooldown(update: Update, context: CallbackContext) -> bool:
     # Don't do
     if not error_sent:
         remaining = last_command + \
-            timedelta(minutes=chat_cooldown) - datetime.now()
+                    timedelta(minutes=chat_cooldown) - datetime.now()
         update.message.reply_text(
             (f'До вашей следующей команды {remaining.seconds} секунд.\n'
-                'Ошибку на задержку даю только один раз, запоминай.')
-        )
+             'Ошибку на задержку даю только один раз, запоминай.')
+            )
         Cooldowns[Users[sender.id],
                   Chats[update.message.chat.id]].error_sent = 1
     return True
@@ -141,7 +143,7 @@ def set_cooldown(update: Update, success: bool) -> None:
         to_set = datetime.now()
     else:
         to_set = datetime.now() - \
-            timedelta(minutes=Options[Chats[update.message.chat.id]].cooldown)
+                 timedelta(minutes=Options[Chats[update.message.chat.id]].cooldown)
     Cooldowns[Users[update.message.from_user.id],
               Chats[update.message.chat.id]].last_command = to_set
 
@@ -153,10 +155,15 @@ def error_callback(update: Update, context: CallbackContext):
 
 
 @run_async
-def ping(context: CallbackContext) -> Message:
+def ping(context: CallbackContext):
     """Ping a chat to show that the bot is working and is online."""
     context.bot.send_message(
         chat_id=PING_CHANNEL,
         text='ping...',
         disable_notification=True
-    )
+        )
+
+
+# Add user updater to use for pidor, duelranking
+def update_users(users: list) -> None:
+    pass

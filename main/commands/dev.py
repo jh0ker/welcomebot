@@ -1,8 +1,8 @@
 """Module dedicated to commands available only to the dev."""
 
-from datetime import datetime, date
+from datetime import date, datetime
 
-from telegram import Update, Message
+from telegram import Update
 from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
 
@@ -11,7 +11,7 @@ from main.constants import DEVS, DATABASE_NAME
 
 
 @run_async
-def getlogs(update: Update, context: CallbackContext) -> Message:
+def getlogs(update: Update, context: CallbackContext):
     """Get the bot logs."""
     if update.message.from_user.id not in DEVS:
         return
@@ -23,7 +23,7 @@ def getlogs(update: Update, context: CallbackContext) -> Message:
             chat_id=update.effective_chat.id,
             document=open('logs.log', 'rb'),
             filename=f'{filename}.log'
-        )
+            )
     except (EOFError, FileNotFoundError) as changelog_err:
         LOGGER.error(changelog_err)
         update.message.reply_text('Не смог добраться до логов. Что-то не так.')
@@ -43,8 +43,8 @@ def getdatabase(update: Update, context: CallbackContext):
         # Send the file
         context.bot.send_document(
             chat_id=update.effective_chat.id,
-            document=open(DATABASENAME, 'rb')
-        )
+            document=open(DATABASE_NAME, 'rb')
+            )
     except (EOFError, FileNotFoundError) as database_err:
         LOGGER.error(database_err)
         update.message.reply_text('Не смог добраться до базы. Что-то не так.')

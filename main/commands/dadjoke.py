@@ -2,17 +2,16 @@
 
 import requests
 import telegram.error
-from telegram import Update, Message
+from telegram import Update
 from telegram.ext import CallbackContext, run_async
 
-from main import LOGGER
 from main.constants import REQUEST_TIMEOUT
 from main.helpers import antispam_passed
 
 
 @run_async
 @antispam_passed
-def dadjoke(update: Update, context: CallbackContext) -> Message:
+def dadjoke(update: Update, context: CallbackContext):
     """Get a random dad joke.
 
     Raise errors to reset the command cooldown.
