@@ -1,6 +1,6 @@
 """Module dedicated to commands available only to admins and the developer."""
 
-from telegram import Message, Update
+from telegram import Update
 from telegram.ext import CallbackContext
 from telegram.ext.dispatcher import run_async
 
