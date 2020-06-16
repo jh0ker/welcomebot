@@ -1,0 +1,2 @@
+BOTNAME = "usernameofbot"
+TOKEN = "TOKEN"
