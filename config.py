@@ -1,2 +1,2 @@
-BOTNAME = "usernameofbot"
-TOKEN = "TOKEN"
+BOTNAME = "@ueydydbot"
+TOKEN = "1877723635:AAHM5MRjbdnco11K70o2UkJAHtSnMh1lKaA"
